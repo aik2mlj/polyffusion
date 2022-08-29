@@ -8,7 +8,7 @@ class PianoTreeEncoder(nn.Module):
     def __init__(
         self,
         device,
-        max_simu_note=16,
+        max_simu_note=20,
         max_pitch=127,
         min_pitch=0,
         pitch_sos=128,
