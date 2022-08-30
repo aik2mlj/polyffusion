@@ -1,15 +1,18 @@
 from dl_modules import PianoTreeEncoder, PianoTreeDecoder, NaiveNN
 import torch
 import torch.nn as nn
+from utils import *
 
 
 class Diffpro(nn.Module):
-    def __init__(self, pretrained_pnotree_model):
+    def __init__(self, pt_pnotree_model_path):
         super(Diffpro, self).__init__()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.pnotree_enc = PianoTreeEncoder(self.device)
+        # load pretrained model
+        self.pnotree_enc, self.pnotree_dec = load_pretrained_pnotree_enc_dec(
+            pt_pnotree_model_path, 20, self.device
+        )
         self.naive_nn = NaiveNN()
-        self.pnotree_dec = PianoTreeDecoder(self.device)
         self._disable_grads_for_enc_dec()
 
     def _disable_grads_for_enc_dec(self):
