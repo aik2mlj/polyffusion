@@ -35,6 +35,144 @@ def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
     return pnotree_enc, pnotree_dec
 
 
+def save_dict(path, dict_file):
+    with open(path, "wb") as handle:
+        pickle.dump(dict_file, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def read_dict(path):
+    with open(path, "rb") as handle:
+        return pickle.load(handle)
+
+
+def nmat_to_pianotree_repr(
+    nmat,
+    n_step=32,
+    max_note_count=20,
+    dur_pad_ind=2,
+    min_pitch=0,
+    pitch_sos_ind=128,
+    pitch_eos_ind=129,
+    pitch_pad_ind=130,
+):
+    """
+    Convert the input note matrix to pianotree representation.
+    Input: (N, 3), 3 for onset, pitch, duration. o and d are in time steps.
+    """
+
+    pno_tree = np.ones((n_step, max_note_count, 6), dtype=np.int64) * dur_pad_ind
+    pno_tree[:, :, 0] = pitch_pad_ind
+    pno_tree[:, 0, 0] = pitch_sos_ind
+
+    cur_idx = np.ones(n_step, dtype=np.int64)
+    for o, p, d in nmat:
+        pno_tree[o, cur_idx[o], 0] = p - min_pitch
+
+        # e.g., d = 4 -> bin_str = '00011'
+        d = min(d, 32)
+        bin_str = np.binary_repr(int(d) - 1, width=5)
+        pno_tree[o, cur_idx[o],
+                 1 :] = np.fromstring(" ".join(list(bin_str)), dtype=np.int64, sep=" ")
+
+        # FIXME: when more than `max_note_count` notes are played in one step
+        if cur_idx[o] < max_note_count - 1:
+            cur_idx[o] += 1
+        else:
+            print(f"more than max_note_count {max_note_count} occur!")
+
+    pno_tree[np.arange(0, n_step), cur_idx, 0] = pitch_eos_ind
+    return pno_tree
+
+
+def pianotree_pitch_shift(pno_tree, shift):
+    pno_tree = pno_tree.copy()
+    pno_tree[pno_tree[:, :, 0] < 128, 0] += shift
+    return pno_tree
+
+
+def pr_mat_pitch_shift(pr_mat, shift):
+    pr_mat = pr_mat.copy()
+    pr_mat = np.roll(pr_mat, shift, -1)
+    return pr_mat
+
+
+def chd_pitch_shift(chd, shift):
+    chd = chd.copy()
+    chd[:, 0] = (chd[:, 0] + shift) % 12
+    chd[:, 1 : 13] = np.roll(chd[:, 1 : 13], shift, axis=-1)
+    chd[:, -1] = (chd[:, -1] + shift) % 12
+    return chd
+
+
+def chd_to_onehot(chd):
+    n_step = chd.shape[0]
+    onehot_chd = np.zeros((n_step, 36), dtype=np.int64)
+    onehot_chd[np.arange(n_step), chd[:, 0]] = 1
+    onehot_chd[:, 12 : 24] = chd[:, 1 : 13]
+    onehot_chd[np.arange(n_step), 24 + chd[:, -1]] = 1
+    return onehot_chd
+
+
+def onehot_to_chd(onehot):
+    n_step = onehot.shape[0]
+    chd = np.zeros((n_step, 14), dtype=np.int64)
+    chd[:, 0] = np.argmax(onehot[:, 0 : 12], axis=1)
+    chd[:, 1 : 13] = onehot[:, 12 : 24]
+    chd[:, 13] = np.argmax(onehot[:, 24 : 36], axis=1)
+    return chd
+
+
+def nmat_to_pr_mat_repr(nmat, n_step=32):
+    pr_mat = np.zeros((n_step, 128), dtype=np.int64)
+    for o, p, d in nmat:
+        pr_mat[o, p] = d
+    return pr_mat
+
+
+def nmat_to_rhy_array(nmat, n_step=32):
+    """Compute onset track of from melody note matrix."""
+    pr_mat = np.zeros(n_step, dtype=np.int64)
+    for o, _, _ in nmat:
+        pr_mat[o] = 1
+    return pr_mat
+
+
+def estx_to_midi_file(est_x, fpath):
+    # print(f"est_x with shape {est_x.shape} to midi file {fpath}")  # (#, 32, 15, 6)
+    # pr_mat3d is a (32, max_note_count, 6) matrix. In the last dim,
+    # the 0th column is for pitch, 1: 6 is for duration in binary repr. Output is
+    # padded with <sos> and <eos> tokens in the pitch column, but with pad token
+    # for dur columns.
+    midi = pm.PrettyMIDI()
+    piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
+    piano = pm.Instrument(program=piano_program)
+    t = 0
+    for two_bar_ind, two_bars in enumerate(est_x):
+        for step_ind, step in enumerate(two_bars):
+            for kth_key in step:
+                assert len(kth_key) == 6
+                if not (kth_key[0] >= 0 and kth_key[0] <= 127):
+                    # rest key
+                    # print(f"({two_bar_ind}, {step_ind}, somekey, 0): {kth_key[0]}")
+                    continue
+
+                # print(f"({two_bar_ind}, {step_ind}, somekey, 0): {kth_key[0]}")
+                dur = (
+                    kth_key[5] + (kth_key[4] << 1) + (kth_key[3] << 2) +
+                    (kth_key[2] << 3) + (kth_key[1] << 4) + 1
+                )
+                note = pm.Note(
+                    velocity=80,
+                    pitch=int(kth_key[0]),
+                    start=t,
+                    end=t + int(dur) * 1 / 8,
+                )
+                piano.notes.append(note)
+            t += 1 / 8
+    midi.instruments.append(piano)
+    midi.write(fpath)
+
+
 if __name__ == "__main__":
     load_pretrained_pnotree_enc_dec(
         "../PianoTree-VAE/model20/train_20-last-model.pt", 20, None
