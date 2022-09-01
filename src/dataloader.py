@@ -34,5 +34,6 @@ def collate_fn(batch):
 
 def get_train_val_dataloaders(batch_size):
     train_dataset, val_dataset = PianoOrchDataset.load_train_and_valid_sets()
-    train_loader = DataLoader(train_dataset, batch_size, True, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size, True, collate_fn=collate_fn)
+    train_dl = DataLoader(train_dataset, batch_size, True, collate_fn=collate_fn)
+    val_dl = DataLoader(val_dataset, batch_size, True, collate_fn=collate_fn)
+    return train_dl, val_dl

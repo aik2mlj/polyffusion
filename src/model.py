@@ -5,8 +5,9 @@ from utils import *
 
 
 class Diffpro(nn.Module):
-    def __init__(self, pt_pnotree_model_path):
+    def __init__(self, pt_pnotree_model_path, params):
         super(Diffpro, self).__init__()
+        self.params = params
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         # load pretrained model
         self.pnotree_enc, self.pnotree_dec = load_pretrained_pnotree_enc_dec(
@@ -21,7 +22,30 @@ class Diffpro(nn.Module):
         for param in self.pnotree_dec.parameters():
             param.requires_grad = False
 
-    def forward(self, pnotree_x, pnotree_y, tfr1=0, tfr2=0):
+    def loss_function(self, pnotree_y, recon_pitch, recon_dur, dist_x):
+        pnotree_l, pitch_l, dur_l = self.pnotree_dec.recon_loss(
+            pnotree_y, recon_pitch, recon_dur, self.params.weights, False
+        )
+
+        # kl losses
+        kl_x = kl_with_normal(dist_x)
+        kl_l = self.params.beta * (kl_x)
+
+        # TODO: contrastive loss
+
+        loss = pnotree_l + kl_l
+
+        return {
+            "loss": loss,
+            "pnotree_l": pnotree_l,
+            "pitch_l": pitch_l,
+            "dur_l": dur_l,
+            "kl_l": kl_l,
+            "kl_x": kl_x,
+            "beta": self.params.beta
+        }
+
+    def forward(self, pnotree_x, pnotree_y, tfr1, tfr2):
         """
         FIXME: teacher-forcing is not needed here?
         """
@@ -40,3 +64,8 @@ class Diffpro(nn.Module):
         )
 
         return (recon_pitch, recon_dur, dist_x)
+
+    def get_loss_dict(self, pnotree_x, pnotree_y, tfr1=0, tfr2=0):
+        recon_pitch, recon_dur, dist_x = self.forward(pnotree_x, pnotree_y, tfr1, tfr2)
+
+        return self.loss_function(pnotree_y, recon_pitch, recon_dur, dist_x)
