@@ -6,6 +6,7 @@ import pretty_midi as pm
 import torch
 from dl_modules import PianoTreeEncoder, PianoTreeDecoder
 from collections import OrderedDict
+from torch.distributions import Normal, kl_divergence
 
 
 def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
@@ -43,6 +44,21 @@ def save_dict(path, dict_file):
 def read_dict(path):
     with open(path, "rb") as handle:
         return pickle.load(handle)
+
+
+def standard_normal(shape):
+    N = Normal(torch.zeros(shape), torch.ones(shape))
+    if torch.cuda.is_available():
+        N.loc = N.loc.cuda()
+        N.scale = N.scale.cuda()
+    return N
+
+
+def kl_with_normal(dist):
+    shape = dist.mean.size(-1)
+    normal = standard_normal(shape)
+    kl = kl_divergence(dist, normal).mean()
+    return kl
 
 
 def nmat_to_pianotree_repr(
