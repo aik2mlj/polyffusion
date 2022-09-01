@@ -4,6 +4,9 @@ import os
 DATA_DIR = "data/LOP_4_bin_pnt"
 TRAIN_SPLIT_DIR = "data/train_split_pnt"
 
+# pretrained path
+PT_PNOTREE_PATH = "pretrained/pnotree_20/train_20-last-model.pt"
+
 # the path to store demo.
 DEMO_FOLDER = "./demo"
 
