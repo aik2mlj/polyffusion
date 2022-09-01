@@ -49,7 +49,7 @@ class Diffpro(nn.Module):
         """
         FIXME: teacher-forcing is not needed here?
         """
-        dist_x, emb_x = self.pnotree_enc(pnotree_x)
+        dist_x, emb_x, _ = self.pnotree_enc(pnotree_x)
 
         z_x = dist_x.rsample()
 

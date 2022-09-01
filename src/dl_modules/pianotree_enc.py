@@ -69,7 +69,7 @@ class PianoTreeEncoder(nn.Module):
         with torch.no_grad():
             lengths = self.max_simu_note - (ind_x[:, :, :, 0] - self.pitch_pad
                                             == 0).sum(dim=-1)
-        return lengths
+        return lengths.to("cpu")
 
     def index_tensor_to_multihot_tensor(self, ind_x):
         """Transfer piano_grid to multi-hot piano_grid."""
