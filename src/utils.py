@@ -46,6 +46,17 @@ def read_dict(path):
         return pickle.load(handle)
 
 
+def nested_map(struct, map_fn):
+    """This is for trasfering into cuda device"""
+    if isinstance(struct, tuple):
+        return tuple(nested_map(x, map_fn) for x in struct)
+    if isinstance(struct, list):
+        return [nested_map(x, map_fn) for x in struct]
+    if isinstance(struct, dict):
+        return {k: nested_map(v, map_fn) for k, v in struct.items()}
+    return map_fn(struct)
+
+
 def standard_normal(shape):
     N = Normal(torch.zeros(shape), torch.ones(shape))
     if torch.cuda.is_available():

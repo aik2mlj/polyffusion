@@ -29,7 +29,7 @@ params = AttrDict(
 
     # Model params
     beta=0.1,
-    weight=(1, 0.5),
+    weights=(1, 0.5),
 
     # unconditional sample len
 )

@@ -1,6 +1,7 @@
 # local
 data/
 pretrained/
+result/
 
 
 # Byte-compiled / optimized / DLL files

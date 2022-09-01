@@ -10,6 +10,7 @@ from datetime import datetime
 from dataloader import get_train_val_dataloaders
 from dirs import *
 from model import Diffpro
+from utils import nested_map
 
 
 class DiffproLearner:
@@ -89,11 +90,15 @@ class DiffproLearner:
                 return
 
             for batch in tqdm(self.train_dl, desc=f"Epoch {self.epoch}"):
-                batch = batch.to(self.device)
+                batch = nested_map(
+                    batch, lambda x: x.to(self.device)
+                    if isinstance(x, torch.Tensor) else x
+                )
                 losses = self.train_step(batch)
                 # check NaN
                 for loss_value in list(losses.values()):
-                    if torch.isnan(loss_value).any():
+                    if isinstance(loss_value,
+                                  torch.Tensor) and torch.isnan(loss_value).any():
                         raise RuntimeError(
                             f"Detected NaN loss at step {self.step}, epoch {self.epoch}"
                         )
@@ -124,7 +129,7 @@ class DiffproLearner:
 
 def train(params, output_dir=None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = Diffpro(PT_PNOTREE_PATH).to(device)
+    model = Diffpro(PT_PNOTREE_PATH, params).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
     train_dl, val_dl = get_train_val_dataloaders(params.batch_size)
     output_dir = f"result/{datetime.now().strftime('%m-%d_%H%M%S')}" if output_dir is None else output_dir
