@@ -68,12 +68,12 @@ class DataSampleNpz:
         self.db_pos = data_x["db_pos"][self.db_pos_filter]
 
         self._nmat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-        self._pianotree_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
+        self._pnotree_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._pr_mat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._feat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
 
         self._nmat_dict_y = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-        self._pianotree_dict_y = dict(zip(self.db_pos, [None] * len(self.db_pos)))
+        self._pnotree_dict_y = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._pr_mat_dict_y = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._feat_dict_y = dict(zip(self.db_pos, [None] * len(self.db_pos)))
 
@@ -163,29 +163,29 @@ class DataSampleNpz:
         nmat = self.format_reset_seg_mat(nmat)
         self._nmat_dict_y[db] = nmat
 
-    def store_pno_tree_seg_x(self, db):
+    def store_pnotree_seg_x(self, db):
         """
         Get PianoTree representation (SEG_LGTH) from nmat
         """
-        if self._pianotree_dict_x[db] is not None:
+        if self._pnotree_dict_x[db] is not None:
             return
 
-        self._pianotree_dict_x[db] = nmat_to_pianotree_repr(self._nmat_dict_x[db])
+        self._pnotree_dict_x[db] = nmat_to_pianotree_repr(self._nmat_dict_x[db])
 
-    def store_pno_tree_seg_y(self, db):
+    def store_pnotree_seg_y(self, db):
         """
         Get PianoTree representation (SEG_LGTH) from nmat
         """
-        if self._pianotree_dict_y[db] is not None:
+        if self._pnotree_dict_y[db] is not None:
             return
 
-        self._pianotree_dict_y[db] = nmat_to_pianotree_repr(self._nmat_dict_y[db])
+        self._pnotree_dict_y[db] = nmat_to_pianotree_repr(self._nmat_dict_y[db])
 
     def _store_seg(self, db):
         self.store_nmat_seg_x(db)
-        self.store_pno_tree_seg_x(db)
+        self.store_pnotree_seg_x(db)
         self.store_nmat_seg_y(db)
-        self.store_pno_tree_seg_y(db)
+        self.store_pnotree_seg_y(db)
 
     def _get_item_by_db(self, db):
         """
@@ -195,9 +195,9 @@ class DataSampleNpz:
 
         self._store_seg(db)
 
-        seg_pno_tree_x = self._pianotree_dict_x[db]
-        seg_pno_tree_y = self._pianotree_dict_y[db]
-        return seg_pno_tree_x, seg_pno_tree_y
+        seg_pnotree_x = self._pnotree_dict_x[db]
+        seg_pnotree_y = self._pnotree_dict_y[db]
+        return seg_pnotree_x, seg_pnotree_y
 
     def __getitem__(self, idx):
         db = self.db_pos[idx]
@@ -207,21 +207,21 @@ class DataSampleNpz:
         """
         used when inference
         """
-        pno_tree_x = []
-        pno_tree_y = []
+        pnotree_x = []
+        pnotree_y = []
         idx = 0
         i = 0
         while i < len(self):
-            seg_pno_tree_x, seg_pno_tree_y = self[i]
-            pno_tree_x.append(seg_pno_tree_x)
-            pno_tree_y.append(seg_pno_tree_y)
+            seg_pnotree_x, seg_pnotree_y = self[i]
+            pnotree_x.append(seg_pnotree_x)
+            pnotree_y.append(seg_pnotree_y)
 
             idx += SEG_LGTH_BIN
             while i < len(self) and self.db_pos[i] < idx:
                 i += 1
-        pno_tree_x = torch.from_numpy(np.array(pno_tree_x, dtype=np.int64))
-        pno_tree_y = torch.from_numpy(np.array(pno_tree_y, dtype=np.int64))
-        return pno_tree_x, pno_tree_y
+        pnotree_x = torch.from_numpy(np.array(pnotree_x, dtype=np.int64))
+        pnotree_y = torch.from_numpy(np.array(pnotree_y, dtype=np.int64))
+        return pnotree_x, pnotree_y
 
 
 class PianoOrchDataset(Dataset):
@@ -269,7 +269,7 @@ class PianoOrchDataset(Dataset):
 if __name__ == "__main__":
     test = "liszt_classical_archives-1"
     song = DataSampleNpz(test)
-    pno_tree_x, pno_tree_y = song.get_whole_song_data()
-    print(pno_tree_x.shape)
-    estx_to_midi_file(pno_tree_x, "exp/origin_x.mid")
-    estx_to_midi_file(pno_tree_y, "exp/origin_y.mid")
+    pnotree_x, pnotree_y = song.get_whole_song_data()
+    print(pnotree_x.shape)
+    estx_to_midi_file(pnotree_x, "exp/origin_x.mid")
+    estx_to_midi_file(pnotree_y, "exp/origin_y.mid")

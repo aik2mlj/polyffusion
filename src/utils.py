@@ -87,19 +87,19 @@ def nmat_to_pianotree_repr(
     Input: (N, 3), 3 for onset, pitch, duration. o and d are in time steps.
     """
 
-    pno_tree = np.ones((n_step, max_note_count, 6), dtype=np.int64) * dur_pad_ind
-    pno_tree[:, :, 0] = pitch_pad_ind
-    pno_tree[:, 0, 0] = pitch_sos_ind
+    pnotree = np.ones((n_step, max_note_count, 6), dtype=np.int64) * dur_pad_ind
+    pnotree[:, :, 0] = pitch_pad_ind
+    pnotree[:, 0, 0] = pitch_sos_ind
 
     cur_idx = np.ones(n_step, dtype=np.int64)
     for o, p, d in nmat:
-        pno_tree[o, cur_idx[o], 0] = p - min_pitch
+        pnotree[o, cur_idx[o], 0] = p - min_pitch
 
         # e.g., d = 4 -> bin_str = '00011'
         d = min(d, 32)
         bin_str = np.binary_repr(int(d) - 1, width=5)
-        pno_tree[o, cur_idx[o],
-                 1 :] = np.fromstring(" ".join(list(bin_str)), dtype=np.int64, sep=" ")
+        pnotree[o, cur_idx[o],
+                1 :] = np.fromstring(" ".join(list(bin_str)), dtype=np.int64, sep=" ")
 
         # FIXME: when more than `max_note_count` notes are played in one step
         if cur_idx[o] < max_note_count - 1:
@@ -107,14 +107,14 @@ def nmat_to_pianotree_repr(
         else:
             print(f"more than max_note_count {max_note_count} occur!")
 
-    pno_tree[np.arange(0, n_step), cur_idx, 0] = pitch_eos_ind
-    return pno_tree
+    pnotree[np.arange(0, n_step), cur_idx, 0] = pitch_eos_ind
+    return pnotree
 
 
-def pianotree_pitch_shift(pno_tree, shift):
-    pno_tree = pno_tree.copy()
-    pno_tree[pno_tree[:, :, 0] < 128, 0] += shift
-    return pno_tree
+def pianotree_pitch_shift(pnotree, shift):
+    pnotree = pnotree.copy()
+    pnotree[pnotree[:, :, 0] < 128, 0] += shift
+    return pnotree
 
 
 def pr_mat_pitch_shift(pr_mat, shift):

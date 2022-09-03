@@ -11,25 +11,23 @@ def collate_fn(batch):
     def sample_shift():
         return np.random.choice(np.arange(-6, 6), 1)[0]
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    pno_tree_x = []
-    pno_tree_y = []
+    pnotree_x = []
+    pnotree_y = []
     for b in batch:
-        seg_pno_tree_x, seg_pno_tree_y = b
+        seg_pnotree_x, seg_pnotree_y = b
 
         shift = sample_shift()
-        seg_pno_tree_x = pianotree_pitch_shift(seg_pno_tree_x, shift)
-        seg_pno_tree_y = pianotree_pitch_shift(seg_pno_tree_y, shift)
+        seg_pnotree_x = pianotree_pitch_shift(seg_pnotree_x, shift)
+        seg_pnotree_y = pianotree_pitch_shift(seg_pnotree_y, shift)
 
-        pno_tree_x.append(seg_pno_tree_x)
-        pno_tree_y.append(seg_pno_tree_y)
+        pnotree_x.append(seg_pnotree_x)
+        pnotree_y.append(seg_pnotree_y)
 
-    pno_tree_x = torch.Tensor(np.array(pno_tree_x))
-    pno_tree_y = torch.Tensor(np.array(pno_tree_y))
-    pno_tree_x = pno_tree_x.long().to(device)
-    pno_tree_y = pno_tree_y.long().to(device)
-    # print(pno_tree_x.shape)
-    return pno_tree_x, pno_tree_y
+    pnotree_x = torch.Tensor(np.array(pnotree_x))
+    pnotree_y = torch.Tensor(np.array(pnotree_y))
+    pnotree_x = pnotree_x.long()
+    pnotree_y = pnotree_y.long()
+    return pnotree_x, pnotree_y
 
 
 def get_train_val_dataloaders(batch_size):
@@ -37,3 +35,9 @@ def get_train_val_dataloaders(batch_size):
     train_dl = DataLoader(train_dataset, batch_size, True, collate_fn=collate_fn)
     val_dl = DataLoader(val_dataset, batch_size, True, collate_fn=collate_fn)
     return train_dl, val_dl
+
+
+if __name__ == "__main__":
+    train_dl, val_dl = get_train_val_dataloaders(128)
+    for batch in train_dl:
+        
