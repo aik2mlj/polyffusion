@@ -26,6 +26,8 @@ params = AttrDict(
     fp16=False,
 
     # Data params
+    num_workers=4,
+    pin_memory=True,
 
     # Model params
     beta=0.1,

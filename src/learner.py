@@ -109,7 +109,11 @@ class DiffproLearner:
             self.save_to_checkpoint()
 
     def train_step(self, batch):
-        self.optimizer.zero_grad()
+        # people say this is the better way to set zero grad
+        # instead of self.optimizer.zero_grad()
+        for param in self.model.parameters():
+            param.grad = None
+
         pnotree_x, pnotree_y = batch
 
         # here forward the model
@@ -131,7 +135,7 @@ def train(params, output_dir=None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = Diffpro(PT_PNOTREE_PATH, params).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
-    train_dl, val_dl = get_train_val_dataloaders(params.batch_size)
+    train_dl, val_dl = get_train_val_dataloaders(params.batch_size, params)
     output_dir = output_dir or f"result/{datetime.now().strftime('%m-%d_%H%M%S')}"
     learner = DiffproLearner(output_dir, model, train_dl, val_dl, optimizer, params)
     learner.train(max_epoch=params.max_epoch)

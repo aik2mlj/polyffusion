@@ -3,6 +3,7 @@ from torch.utils.data import DataLoader
 from dataset import PianoOrchDataset
 from utils import (pianotree_pitch_shift, estx_to_midi_file)
 import numpy as np
+from params import params
 
 
 def collate_fn(batch):
@@ -35,15 +36,29 @@ def collate_fn(batch):
         return pnotree_x, pnotree_y
 
 
-def get_train_val_dataloaders(batch_size, debug=False):
+def get_train_val_dataloaders(batch_size, params, debug=False):
     train_dataset, val_dataset = PianoOrchDataset.load_train_and_valid_sets(debug)
-    train_dl = DataLoader(train_dataset, batch_size, True, collate_fn=collate_fn)
-    val_dl = DataLoader(val_dataset, batch_size, True, collate_fn=collate_fn)
+    train_dl = DataLoader(
+        train_dataset,
+        batch_size,
+        True,
+        collate_fn=collate_fn,
+        num_workers=params.num_workers,
+        pin_memory=params.pin_memory
+    )
+    val_dl = DataLoader(
+        val_dataset,
+        batch_size,
+        True,
+        collate_fn=collate_fn,
+        num_workers=params.num_workers,
+        pin_memory=params.pin_memory
+    )
     return train_dl, val_dl
 
 
 if __name__ == "__main__":
-    train_dl, val_dl = get_train_val_dataloaders(128, debug=True)
+    train_dl, val_dl = get_train_val_dataloaders(128, params, debug=True)
     for batch in train_dl:
         print(len(batch))
         pnotree_x, pnotree_y, song_fn = batch
