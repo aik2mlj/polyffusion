@@ -2,6 +2,7 @@
 data/
 pretrained/
 result/
+exp/
 
 
 # Byte-compiled / optimized / DLL files

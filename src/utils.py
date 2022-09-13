@@ -164,7 +164,7 @@ def nmat_to_rhy_array(nmat, n_step=32):
     return pr_mat
 
 
-def estx_to_midi_file(est_x, fpath):
+def estx_to_midi_file(est_x, fpath, labels=None):
     # print(f"est_x with shape {est_x.shape} to midi file {fpath}")  # (#, 32, 15, 6)
     # pr_mat3d is a (32, max_note_count, 6) matrix. In the last dim,
     # the 0th column is for pitch, 1: 6 is for duration in binary repr. Output is
@@ -191,12 +191,20 @@ def estx_to_midi_file(est_x, fpath):
                 note = pm.Note(
                     velocity=80,
                     pitch=int(kth_key[0]),
-                    start=t,
-                    end=t + int(dur) * 1 / 8,
+                    start=t + step_ind * 1 / 8,
+                    end=min(t + (step_ind + int(dur)) * 1 / 8, t + 4),
                 )
                 piano.notes.append(note)
-            t += 1 / 8
+        t += 4
     midi.instruments.append(piano)
+
+    if labels is not None:
+        midi.lyrics.clear()
+        t = 0
+        for label in labels:
+            midi.lyrics.append(pm.Lyric(label, t))
+            t += 4
+
     midi.write(fpath)
 
 
