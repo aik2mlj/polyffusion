@@ -81,7 +81,7 @@ class DiffproLearner:
         torch.save(self.state_dict(), save_fpath)
         if os.path.islink(link_fpath):
             os.unlink(link_fpath)
-        os.symlink(save_fpath, link_fpath)
+        os.symlink(save_name, link_fpath)
 
     def train(self, max_epoch=None):
         while True:
@@ -132,6 +132,6 @@ def train(params, output_dir=None):
     model = Diffpro(PT_PNOTREE_PATH, params).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
     train_dl, val_dl = get_train_val_dataloaders(params.batch_size)
-    output_dir = f"result/{datetime.now().strftime('%m-%d_%H%M%S')}" if output_dir is None else output_dir
+    output_dir = output_dir or f"result/{datetime.now().strftime('%m-%d_%H%M%S')}"
     learner = DiffproLearner(output_dir, model, train_dl, val_dl, optimizer, params)
     learner.train(max_epoch=params.max_epoch)
