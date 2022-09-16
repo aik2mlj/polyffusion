@@ -158,7 +158,7 @@ class DiffproLearner:
 
 def train(params, output_dir=None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = Diffpro(PT_PNOTREE_PATH, params).to(device)
+    model = Diffpro(params, pt_pnotree_model_path=PT_PNOTREE_PATH).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
     train_dl, val_dl = get_train_val_dataloaders(params.batch_size, params)
     output_dir = output_dir or f"result/{datetime.now().strftime('%m-%d_%H%M%S')}"
