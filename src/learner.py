@@ -30,11 +30,12 @@ class DiffproLearner:
         self.autocast = torch.cuda.amp.autocast(enabled=params.fp16)
         self.scaler = torch.cuda.amp.GradScaler(enabled=params.fp16)
 
-    def _write_summary(self, step, losses: dict):
+    def _write_summary(self, step, losses: dict, type):
+        """type: train or val"""
+        summary_losses = losses
+        summary_losses["grad_norm"] = self.grad_norm
         writer = self.summary_writer or SummaryWriter(self.output_dir, purge_step=step)
-        for loss_name, loss in losses.items():
-            writer.add_scalar(loss_name, loss, step)
-        writer.add_scalar('grad_norm', self.grad_norm, step)
+        writer.add_scalars(type, losses, step)
         writer.flush()
         self.summary_writer = writer
 
@@ -84,6 +85,7 @@ class DiffproLearner:
         os.symlink(save_name, link_fpath)
 
     def train(self, max_epoch=None):
+        self.model.train()
         while True:
             self.epoch = self.step // len(self.train_dl)
             if max_epoch is not None and self.epoch >= max_epoch:
@@ -103,8 +105,24 @@ class DiffproLearner:
                             f"Detected NaN loss at step {self.step}, epoch {self.epoch}"
                         )
                 if self.step % 50 == 0:
-                    self._write_summary(self.step, losses)
+                    self._write_summary(self.step, losses, "train")
                 self.step += 1
+
+            # valid
+            losses = None
+            for batch in self.val_dl:
+                batch = nested_map(
+                    batch, lambda x: x.to(self.device)
+                    if isinstance(x, torch.Tensor) else x
+                )
+                current_losses = self.val_step(batch)
+                losses = losses or current_losses
+                for k, v in current_losses.items():
+                    losses[k] += v
+            assert losses is not None
+            for k, v in losses.items():
+                losses[k] /= len(self.val_dl)
+            self._write_summary(self.step, losses, "val")
 
             self.save_to_checkpoint()
 
@@ -128,6 +146,13 @@ class DiffproLearner:
         )
         self.scaler.step(self.optimizer)
         self.scaler.update()
+        return loss_dict
+
+    def val_step(self, batch):
+        with torch.no_grad():
+            pnotree_x, pnotree_y = batch
+            with self.autocast:
+                loss_dict = self.model.get_loss_dict(pnotree_x, pnotree_y)
         return loss_dict
 
 
