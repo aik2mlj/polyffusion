@@ -15,8 +15,12 @@ from utils import nested_map
 
 class DiffproLearner:
     def __init__(self, output_dir, model, train_dl, val_dl, optimizer, params):
-        os.makedirs(output_dir)
         self.output_dir = output_dir
+        self.log_dir = f"{output_dir}/logs"
+        self.checkpoint_dir = f"{output_dir}/chkpts"
+        os.makedirs(self.log_dir)
+        os.makedirs(self.checkpoint_dir)
+
         self.model = model
         self.train_dl = train_dl
         self.val_dl = val_dl
@@ -34,7 +38,7 @@ class DiffproLearner:
         """type: train or val"""
         summary_losses = losses
         summary_losses["grad_norm"] = self.grad_norm
-        writer = self.summary_writer or SummaryWriter(self.output_dir, purge_step=step)
+        writer = self.summary_writer or SummaryWriter(self.log_dir, purge_step=step)
         writer.add_scalars(type, losses, step)
         writer.flush()
         self.summary_writer = writer
@@ -66,7 +70,7 @@ class DiffproLearner:
 
     def restore_from_checkpoint(self, fname="weights"):
         try:
-            fpath = f"{self.output_dir}/{fname}.pt"
+            fpath = f"{self.checkpoint_dir}/{fname}.pt"
             checkpoint = torch.load(fpath)
             self.load_state_dict(checkpoint)
             print(f"restored from checkpoint {fpath}!")
@@ -77,8 +81,8 @@ class DiffproLearner:
 
     def save_to_checkpoint(self, fname="weights"):
         save_name = f"{fname}-{self.epoch}.pt"
-        save_fpath = f"{self.output_dir}/{save_name}"
-        link_fpath = f"{self.output_dir}/{fname}.pt"
+        save_fpath = f"{self.checkpoint_dir}/{save_name}"
+        link_fpath = f"{self.checkpoint_dir}/{fname}.pt"
         torch.save(self.state_dict(), save_fpath)
         if os.path.islink(link_fpath):
             os.unlink(link_fpath)
