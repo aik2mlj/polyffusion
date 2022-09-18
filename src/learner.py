@@ -9,7 +9,7 @@ from datetime import datetime
 
 from dataloader import get_train_val_dataloaders
 from dirs import *
-from model import Diffpro
+from model import Diffpro_diffwave
 from utils import nested_map
 
 
@@ -33,6 +33,10 @@ class DiffproLearner:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.autocast = torch.cuda.amp.autocast(enabled=params.fp16)
         self.scaler = torch.cuda.amp.GradScaler(enabled=params.fp16)
+
+        beta = np.array(self.params.noise_schedule)
+        noise_level = np.cumprod(1 - beta)
+        self.noise_level = torch.tensor(noise_level.astype(np.float32))
 
     def _write_summary(self, step, losses: dict, type):
         """type: train or val"""
@@ -140,7 +144,7 @@ class DiffproLearner:
 
         # here forward the model
         with self.autocast:
-            loss_dict = self.model.get_loss_dict(pnotree_x, pnotree_y)
+            loss_dict = self.model.get_loss_dict(pnotree_x, pnotree_y, self.noise_level)
 
         loss = loss_dict["loss"]
         self.scaler.scale(loss).backward()
@@ -162,7 +166,7 @@ class DiffproLearner:
 
 def train(params, output_dir=None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = Diffpro(params, pt_pnotree_model_path=PT_PNOTREE_PATH).to(device)
+    model = Diffpro_diffwave(params, pt_pnotree_model_path=PT_PNOTREE_PATH).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
     train_dl, val_dl = get_train_val_dataloaders(params.batch_size, params)
     if output_dir is not None:
