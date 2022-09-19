@@ -36,7 +36,9 @@ class DiffproLearner:
 
         beta = np.array(self.params.noise_schedule)
         noise_level = np.cumprod(1 - beta)
-        self.noise_level = torch.tensor(noise_level.astype(np.float32))
+        self.noise_level = torch.tensor(
+            noise_level.astype(np.float32), device=self.device
+        )
 
     def _write_summary(self, step, losses: dict, type):
         """type: train or val"""
@@ -164,7 +166,9 @@ class DiffproLearner:
         with torch.no_grad():
             pnotree_x, pnotree_y = batch
             with self.autocast:
-                loss_dict = self.model.get_loss_dict(pnotree_x, pnotree_y)
+                loss_dict = self.model.get_loss_dict(
+                    pnotree_x, pnotree_y, self.noise_level
+                )
         return loss_dict
 
 

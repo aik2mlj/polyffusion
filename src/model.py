@@ -138,6 +138,8 @@ class Diffpro_diffwave(nn.Module):
         self.output_projection = Conv1d(params.residual_channels, 1, 1)
         nn.init.zeros_(self.output_projection.weight)
 
+        self.loss_fn = nn.L1Loss()
+
     def _disable_grads_for_enc_dec(self):
         for param in self.pnotree_enc.parameters():
             param.requires_grad = False
@@ -150,7 +152,7 @@ class Diffpro_diffwave(nn.Module):
         return z
 
     def loss_function(self, noise, predicted):
-        loss = nn.L1Loss(noise, predicted)
+        loss = self.loss_fn(noise, predicted)
         return {"loss": loss}
 
     def forward(self, input, diffusion_step, pnotree_x):
@@ -164,8 +166,9 @@ class Diffpro_diffwave(nn.Module):
         x = F.relu(x)
 
         diffusion_step = self.diffusion_embedding(diffusion_step)
-        if self.params.unconditional:  # use conditional model
+        if not self.params.unconditional:  # use conditional model
             z_x = self.encode_z(pnotree_x, is_sampling=True)
+            z_x = z_x.unsqueeze(1)  # for Conv1d: input channel = 1
         else:
             z_x = None
 
