@@ -32,6 +32,7 @@ params = AttrDict(
     # Model params
     beta=0.1,
     weights=(1, 0.5),
+    z_dim=512,
     # ==== directly copied from diffwave
     residual_layers=30,
     residual_channels=64,
