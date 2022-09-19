@@ -140,6 +140,13 @@ class Diffpro_diffwave(nn.Module):
 
         self.loss_fn = nn.L1Loss()
 
+    @classmethod
+    def load_trained(cls, model_dir, params, max_simu_note=20):
+        model = cls(params, max_simu_note, None)
+        trained_leaner = torch.load(f"{model_dir}/weights.pt")
+        model.load_state_dict(trained_leaner["model"])
+        return model
+
     def _disable_grads_for_enc_dec(self):
         for param in self.pnotree_enc.parameters():
             param.requires_grad = False
@@ -280,15 +287,6 @@ class Diffpro(nn.Module):
 
         return self.loss_function(pnotree_y, recon_pitch, recon_dur, dist_x)
 
-    def output_to_numpy(self, recon_pitch, recon_dur):
-        est_pitch = recon_pitch.max(-1)[1].unsqueeze(-1)  # (B, 32, 20, 1)
-        est_dur = recon_dur.max(-1)[1]  # (B, 32, 11, 5)
-        est_x = torch.cat([est_pitch, est_dur], dim=-1)  # (B, 32, 20, 6)
-        est_x = est_x.cpu().numpy()
-        recon_pitch = recon_pitch.cpu().numpy()
-        recon_dur = recon_dur.cpu().numpy()
-        return est_x, recon_pitch, recon_dur
-
     def infer(self, pnotree_x, is_sampling=False):
         with torch.no_grad():
             dist_x, emb_x, _ = self.pnotree_enc(pnotree_x)
@@ -300,4 +298,4 @@ class Diffpro(nn.Module):
             # pianotree decoder
             recon_pitch, recon_dur = self.pnotree_dec(z, True, None, None, 0, 0)
 
-            return self.output_to_numpy(recon_pitch, recon_dur)
+            return output_to_numpy(recon_pitch, recon_dur)
