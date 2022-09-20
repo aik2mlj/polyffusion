@@ -23,10 +23,7 @@ class DataSampleNpz:
     it will be called in DataLoader
     """
     def __init__(self, song_fn) -> None:
-        self.song_fn = song_fn
-        self.dpath = os.path.join(DATA_DIR, song_fn)
-        self.fpath_x = os.path.join(self.dpath, "orchestra.npz")
-        self.fpath_y = os.path.join(self.dpath, "piano.npz")
+        self.fpath = os.path.join(MUSICALION_DATA_DIR, song_fn)
         """
         notes (onset_beat, onset_bin, duration, pitch, velocity)
         start_table : i-th row indicates the starting row of the "notes" array
@@ -39,7 +36,7 @@ class DataSampleNpz:
         dict : each downbeat corresponds to a SEG_LGTH-long segment
             nmat: note matrix (same format as input npz files)
             pr_mat: piano roll matrix (the format for texture decoder)
-            pianotree: pianotree format (used for calculating loss & teacher-forcing)
+            pnotree: pnotree format (used for calculating loss & teacher-forcing)
         """
 
         # self.notes = None
@@ -48,21 +45,16 @@ class DataSampleNpz:
         # self.db_pos = None
 
         # self._nmat_dict = None
-        # self._pianotree_dict = None
+        # self._pnotree_dict = None
         # self._pr_mat_dict = None
         # self._feat_dict = None
 
         # def load(self, use_chord=False):
         #     """ load data """
 
-        # TODO: multiple piano & orchestra versions
-        data_x = np.load(self.fpath_x, allow_pickle=True)
+        data_x = np.load(self.fpath, allow_pickle=True)
         self.notes_x = data_x["notes"]
         self.start_table_x = data_x["start_table"].item()
-
-        data_y = np.load(self.fpath_y, allow_pickle=True)
-        self.notes_y = data_y["notes"]
-        self.start_table_y = data_y["start_table"].item()
 
         # self.db_pos = data_x["db_pos"]
         self.db_pos_filter = data_x["db_pos_filter"]
@@ -72,14 +64,6 @@ class DataSampleNpz:
         self._pnotree_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._pr_mat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._feat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-
-        self._nmat_dict_y = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-        self._pnotree_dict_y = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-        self._pr_mat_dict_y = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-        self._feat_dict_y = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-
-        if len(self.start_table_x) != len(self.start_table_y):
-            print(song_fn)
 
         if len(self.db_pos) != 0:
             self.last_db = self.db_pos[-1]
@@ -100,23 +84,6 @@ class DataSampleNpz:
             SEG_LGTH_BIN] if db + SEG_LGTH_BIN <= self.last_db else self.start_table_x[
                 self.last_db]
         seg_mats = self.notes_x[s_ind : e_ind]
-        return seg_mats.copy()
-
-    def note_mat_seg_at_db_y(self, db):
-        """
-        Select rows (notes) of the note_mat which lie between beats
-        [db: db + 8].
-        """
-
-        try:
-            s_ind = self.start_table_y[db]
-            e_ind = self.start_table_y[
-                db + SEG_LGTH_BIN
-            ] if db + SEG_LGTH_BIN <= self.last_db else self.start_table_y[self.last_db]
-        except KeyError:
-            print(self.last_db, db)
-
-        seg_mats = self.notes_y[s_ind : e_ind]
         return seg_mats.copy()
 
     @staticmethod
@@ -151,54 +118,39 @@ class DataSampleNpz:
         nmat = self.format_reset_seg_mat(nmat)
         self._nmat_dict_x[db] = nmat
 
-    def store_nmat_seg_y(self, db):
+    def store_prmat_seg_x(self, db):
         """
-        Get note matrix (SEG_LGTH) of piano(y) at db position
+        Get piano roll format (SEG_LGTH) from note matrices at db position
         """
-        if self._nmat_dict_y[db] is not None:
+        if self._pr_mat_dict_x[db] is not None:
             return
 
-        nmat = self.note_mat_seg_at_db_y(db)
-        self.reset_db_to_zeros(nmat, db)
-
-        nmat = self.format_reset_seg_mat(nmat)
-        self._nmat_dict_y[db] = nmat
+        prmat = nmat_to_pr_mat_repr(self._nmat_dict_x[db])
+        self._pr_mat_dict_x[db] = prmat
 
     def store_pnotree_seg_x(self, db):
         """
-        Get PianoTree representation (SEG_LGTH) from nmat
+        Get pnotree representation (SEG_LGTH) from nmat
         """
         if self._pnotree_dict_x[db] is not None:
             return
 
         self._pnotree_dict_x[db] = nmat_to_pianotree_repr(self._nmat_dict_x[db])
 
-    def store_pnotree_seg_y(self, db):
-        """
-        Get PianoTree representation (SEG_LGTH) from nmat
-        """
-        if self._pnotree_dict_y[db] is not None:
-            return
-
-        self._pnotree_dict_y[db] = nmat_to_pianotree_repr(self._nmat_dict_y[db])
-
     def _store_seg(self, db):
         self.store_nmat_seg_x(db)
         self.store_pnotree_seg_x(db)
-        self.store_nmat_seg_y(db)
-        self.store_pnotree_seg_y(db)
 
     def _get_item_by_db(self, db):
         """
         Return segments of
-            pianotree_x, pianotree_y
+            pnotree_x, pnotree_y
         """
 
         self._store_seg(db)
 
         seg_pnotree_x = self._pnotree_dict_x[db]
-        seg_pnotree_y = self._pnotree_dict_y[db]
-        return seg_pnotree_x, seg_pnotree_y
+        return seg_pnotree_x, None
 
     def __getitem__(self, idx):
         db = self.db_pos[idx]
@@ -209,24 +161,21 @@ class DataSampleNpz:
         used when inference
         """
         pnotree_x = []
-        pnotree_y = []
         idx = 0
         i = 0
         while i < len(self):
-            seg_pnotree_x, seg_pnotree_y = self[i]
+            seg_pnotree_x, _ = self[i]
             pnotree_x.append(seg_pnotree_x)
-            pnotree_y.append(seg_pnotree_y)
 
             idx += SEG_LGTH_BIN
             while i < len(self) and self.db_pos[i] < idx:
                 i += 1
         pnotree_x = torch.from_numpy(np.array(pnotree_x, dtype=np.int64))
-        pnotree_y = torch.from_numpy(np.array(pnotree_y, dtype=np.int64))
-        return pnotree_x, pnotree_y
+        return pnotree_x, pnotree_x
 
 
 class PianoOrchDataset(Dataset):
-    def __init__(self, data_samples, debug=False):
+    def __init__(self, data_samples):
         super(PianoOrchDataset, self).__init__()
 
         # a list of DataSampleNpz
@@ -234,7 +183,6 @@ class PianoOrchDataset(Dataset):
 
         self.lgths = np.array([len(d) for d in self.data_samples], dtype=np.int64)
         self.lgth_cumsum = np.cumsum(self.lgths)
-        self.debug = debug
 
     def __len__(self):
         return self.lgth_cumsum[-1]
@@ -245,28 +193,32 @@ class PianoOrchDataset(Dataset):
         song_item = index - np.insert(self.lgth_cumsum, 0, 0)[song_no]
 
         song_data = self.data_samples[song_no]
-        if self.debug:
-            return *song_data[song_item], song_data.song_fn
-        else:
-            return song_data[song_item]
+        return song_data[song_item]
 
     @classmethod
-    def load_with_song_paths(cls, song_paths, debug):
-        data_samples = [DataSampleNpz(song_path) for song_path in song_paths]
-        return cls(data_samples, debug)
+    def load_with_song_paths(cls, song_paths, **kwargs):
+        print(f"Dataset kargs: {kwargs}")
+        data_samples = [DataSampleNpz(song_path, **kwargs) for song_path in song_paths]
+        return cls(data_samples)
 
     @classmethod
-    def load_train_and_valid_sets(cls, debug=False):
-        split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "split_dict.pickle"))
-        return cls.load_with_song_paths(split[0], debug), cls.load_with_song_paths(
-            split[1], debug
+    def load_train_and_valid_sets(cls, debug, **kwargs):
+        split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "musicalion.pickle"))
+        return cls.load_with_song_paths(split[0], **kwargs), cls.load_with_song_paths(
+            split[1], **kwargs
         )
+
+    @classmethod
+    def load_with_train_valid_paths(cls, tv_song_paths, **kwargs):
+        return cls.load_with_song_paths(tv_song_paths[0],
+                                        **kwargs), cls.load_with_song_paths(
+                                            tv_song_paths[1], **kwargs
+                                        )
 
 
 if __name__ == "__main__":
-    test = "liszt_classical_archives-1"
+    test = "ssccm172.npz"
     song = DataSampleNpz(test)
-    pnotree_x, pnotree_y = song.get_whole_song_data()
+    pnotree_x, _ = song.get_whole_song_data()
     print(pnotree_x.shape)
     estx_to_midi_file(pnotree_x, "exp/origin_x.mid")
-    estx_to_midi_file(pnotree_y, "exp/origin_y.mid")

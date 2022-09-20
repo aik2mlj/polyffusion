@@ -89,7 +89,7 @@ def predict(model_dir, is_sampling=False):
 
 
 def choose_song_from_val_dl():
-    split_fpath = join(TRAIN_SPLIT_DIR, "split_dict.pickle")
+    split_fpath = join(TRAIN_SPLIT_DIR, "musicalion.pickle")
     with open(split_fpath, "rb") as f:
         split = pickle.load(f)
     print(split[1])

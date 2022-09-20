@@ -21,7 +21,7 @@ params = AttrDict(
     # Training params
     batch_size=128,
     max_epoch=100,
-    learning_rate=1e-4,
+    learning_rate=2e-4,
     max_grad_norm=1e5,
     fp16=False,
 

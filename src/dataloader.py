@@ -11,29 +11,24 @@ def collate_fn(batch):
         return np.random.choice(np.arange(-6, 6), 1)[0]
 
     pnotree_x = []
-    pnotree_y = []
     song_fn = []
     for b in batch:
         # b[0]: seg_pnotree_x; b[1]: seg_pnotree_y
         seg_pnotree_x = b[0]
-        seg_pnotree_y = b[1]
 
         shift = sample_shift()
         seg_pnotree_x = pianotree_pitch_shift(seg_pnotree_x, shift)
-        seg_pnotree_y = pianotree_pitch_shift(seg_pnotree_y, shift)
 
         pnotree_x.append(b[0])
-        pnotree_y.append(b[1])
 
         if len(b) > 2:
             song_fn.append(b[2])
 
     pnotree_x = torch.Tensor(np.array(pnotree_x)).long()
-    pnotree_y = torch.Tensor(np.array(pnotree_y)).long()
     if len(song_fn) > 0:
-        return pnotree_x, pnotree_y, song_fn
+        return pnotree_x, pnotree_x, song_fn
     else:
-        return pnotree_x, pnotree_y
+        return pnotree_x, pnotree_x
 
 
 def get_train_val_dataloaders(batch_size, params, debug=False):
