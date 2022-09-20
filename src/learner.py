@@ -165,6 +165,10 @@ def train(params, output_dir=None):
     model = Diffpro(params, pt_pnotree_model_path=PT_PNOTREE_PATH).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
     train_dl, val_dl = get_train_val_dataloaders(params.batch_size, params)
-    output_dir = output_dir or f"result/{datetime.now().strftime('%m-%d_%H%M%S')}"
+    if output_dir is not None:
+        os.makedirs(f"{output_dir}", exist_ok=True)
+        output_dir = f"{output_dir}/{datetime.now().strftime('%m-%d_%H%M%S')}"
+    else:
+        output_dir = f"result/{datetime.now().strftime('%m-%d_%H%M%S')}"
     learner = DiffproLearner(output_dir, model, train_dl, val_dl, optimizer, params)
     learner.train(max_epoch=params.max_epoch)
