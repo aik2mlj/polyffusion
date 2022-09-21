@@ -93,6 +93,8 @@ def nmat_to_pianotree_repr(
 
     cur_idx = np.ones(n_step, dtype=np.int64)
     for o, p, d in nmat:
+        if o >= n_step:
+            continue
         pnotree[o, cur_idx[o], 0] = p - min_pitch
 
         # e.g., d = 4 -> bin_str = '00011'
