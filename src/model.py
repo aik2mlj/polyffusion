@@ -204,7 +204,10 @@ class Diffpro_diffwave(nn.Module):
         noise = torch.randn_like(z_y)
         noisy_z_y = noise_scale_sqrt * z_y + (1.0 - noise_scale)**0.5 * noise
 
-        predicted = self.forward(noisy_z_y, t, pnotree_x)
+        if not self.params.unconditional:
+            predicted = self.forward(noisy_z_y, t, pnotree_x)
+        else:
+            predicted = self.forward(noisy_z_y, t, None)
         return self.loss_function(noise, predicted)
 
 
