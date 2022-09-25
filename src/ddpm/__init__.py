@@ -8,7 +8,7 @@ from torch import nn
 from .utils import gather
 
 
-class DenoiseDiffusion:
+class DenoiseDiffusion(nn.Module):
     """
     ## Denoise Diffusion
     """
