@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from learner import train
+from learner import Configs
 from params import params
 
 if __name__ == "__main__":
@@ -11,4 +11,5 @@ if __name__ == "__main__":
         help='directory in which to store model checkpoints and training logs'
     )
     args = parser.parse_args()
-    train(params, args.output_dir)
+    config = Configs(params)
+    config.train(params, args.output_dir)

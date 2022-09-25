@@ -9,8 +9,12 @@ from datetime import datetime
 
 from dataloader import get_train_val_dataloaders
 from dirs import *
-from model import Diffpro
+from ddpm import DenoiseDiffusion
+from ddpm.unet import UNet
+from model import Diffpro_DDPM
 from utils import nested_map
+
+from typing import List
 
 
 class DiffproLearner:
@@ -140,11 +144,11 @@ class DiffproLearner:
         for param in self.model.parameters():
             param.grad = None
 
-        pnotree_x, pnotree_y = batch
+        pnotree, _ = batch
 
         # here forward the model
         with self.autocast:
-            loss_dict = self.model.get_loss_dict(pnotree_x, pnotree_y)
+            loss_dict = self.model.get_loss_dict(pnotree)
 
         loss = loss_dict["loss"]
         self.scaler.scale(loss).backward()
@@ -164,15 +168,72 @@ class DiffproLearner:
         return loss_dict
 
 
-def train(params, output_dir=None):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = Diffpro(params, pt_pnotree_model_path=PT_PNOTREE_PATH).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
-    train_dl, val_dl = get_train_val_dataloaders(params.batch_size, params)
-    if output_dir is not None:
-        os.makedirs(f"{output_dir}", exist_ok=True)
-        output_dir = f"{output_dir}/{datetime.now().strftime('%m-%d_%H%M%S')}"
-    else:
-        output_dir = f"result/{datetime.now().strftime('%m-%d_%H%M%S')}"
-    learner = DiffproLearner(output_dir, model, train_dl, val_dl, optimizer, params)
-    learner.train(max_epoch=params.max_epoch)
+class Configs():
+    # U-Net model for $\textcolor{lightgreen}{\epsilon_\theta}(x_t, t)$
+    eps_model: UNet
+    # [DDPM algorithm](index.html)
+    diffusion: DenoiseDiffusion
+
+    # Number of channels in the image. $3$ for RGB.
+    image_channels: int = 1
+    # Image size
+    image_size: int = 32
+    # Number of channels in the initial feature map
+    n_channels: int = 64
+    # The list of channel numbers at each resolution.
+    # The number of channels is `channel_multipliers[i] * n_channels`
+    channel_multipliers: List[int] = [1, 2, 2, 4]
+    # The list of booleans that indicate whether to use attention at each resolution
+    is_attention: List[int] = [False, False, False, True]
+
+    # Number of time steps $T$
+    n_steps: int = 1_000
+    # Batch size
+    batch_size: int = 64
+    # Number of samples to generate
+    n_samples: int = 16
+    # Learning rate
+    learning_rate: float = 2e-5
+
+    # Number of training epochs
+    epochs: int = 1_000
+
+    # Adam optimizer
+    optimizer: torch.optim.Adam
+
+    def __init__(self, params):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(self.device)
+        self.eps_model = UNet(
+            image_channels=self.image_channels,
+            n_channels=self.n_channels,
+            ch_mults=self.channel_multipliers,
+            is_attn=self.is_attention,
+        ).to(self.device)
+
+        # Create [DDPM class](index.html)
+        self.diffusion = DenoiseDiffusion(
+            eps_model=self.eps_model,
+            n_steps=self.n_steps,
+            device=self.device,
+        )
+
+        self.model = Diffpro_DDPM(self.diffusion, params)
+
+        # Create dataloader
+        self.train_dl, self.val_dl = get_train_val_dataloaders(self.batch_size, params)
+        # Create optimizer
+        self.optimizer = torch.optim.Adam(
+            self.eps_model.parameters(), lr=self.learning_rate
+        )
+
+    def train(self, params, output_dir=None):
+        if output_dir is not None:
+            os.makedirs(f"{output_dir}", exist_ok=True)
+            output_dir = f"{output_dir}/{datetime.now().strftime('%m-%d_%H%M%S')}"
+        else:
+            output_dir = f"result/{datetime.now().strftime('%m-%d_%H%M%S')}"
+        learner = DiffproLearner(
+            output_dir, self.model, self.train_dl, self.val_dl, self.optimizer, params
+        )
+        learner.train(max_epoch=params.max_epoch)
