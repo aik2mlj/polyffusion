@@ -52,19 +52,17 @@ class Diffpro_DDPM(nn.Module):
 
     @staticmethod
     def transform_to_2d(z):
-        # z: (512,)
+        # z: (B, 512,)
+        N = z.shape[0]
         z_padded = F.pad(z, (0, 512))
-        print(z_padded.shape)
-        z_2d = z_padded.reshape(32, 32)
-        z_2d = z_2d.unsqueeze(2)
-        print(z_padded.shape)
+        z_2d = z_padded.view(N, 32, 32)
+        z_2d = z_2d.unsqueeze(1)
         return z_2d
 
     def get_loss_dict(self, pnotree):
         """
         z_y is the stuff the diffusion model needs to learn
         """
-        N = pnotree.shape[0]
         z = self.encode_z(pnotree, is_sampling=True)
         z_2d = self.transform_to_2d(z)
         return {"loss": self.ddpm.loss(z_2d)}

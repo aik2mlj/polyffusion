@@ -21,8 +21,8 @@ params = AttrDict(
     # Training params
     batch_size=128,
     max_epoch=100,
-    learning_rate=2e-4,
-    max_grad_norm=1e5,
+    learning_rate=2e-5,
+    max_grad_norm=10,
     fp16=False,
 
     # Data params
@@ -33,5 +33,17 @@ params = AttrDict(
     beta=0.1,
     weights=(1, 0.5),
 
-    # unconditional sample len
+    # Number of channels in the image. $3$ for RGB.
+    image_channels=1,
+    # Image size
+    image_size=32,
+    # Number of channels in the initial feature map
+    n_channels=64,
+    # The list of channel numbers at each resolution.
+    # The number of channels is `channel_multipliers[i] * n_channels`
+    channel_multipliers=[1, 2, 2, 4],
+    # The list of booleans that indicate whether to use attention at each resolution
+    is_attention=[False, False, False, True],
+    # Number of time steps $T$
+    n_steps=1000,
 )

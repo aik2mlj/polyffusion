@@ -174,30 +174,6 @@ class Configs():
     # [DDPM algorithm](index.html)
     diffusion: DenoiseDiffusion
 
-    # Number of channels in the image. $3$ for RGB.
-    image_channels: int = 1
-    # Image size
-    image_size: int = 32
-    # Number of channels in the initial feature map
-    n_channels: int = 64
-    # The list of channel numbers at each resolution.
-    # The number of channels is `channel_multipliers[i] * n_channels`
-    channel_multipliers: List[int] = [1, 2, 2, 4]
-    # The list of booleans that indicate whether to use attention at each resolution
-    is_attention: List[int] = [False, False, False, True]
-
-    # Number of time steps $T$
-    n_steps: int = 1_000
-    # Batch size
-    batch_size: int = 64
-    # Number of samples to generate
-    n_samples: int = 16
-    # Learning rate
-    learning_rate: float = 2e-5
-
-    # Number of training epochs
-    epochs: int = 1_000
-
     # Adam optimizer
     optimizer: torch.optim.Adam
 
@@ -205,26 +181,28 @@ class Configs():
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(self.device)
         self.eps_model = UNet(
-            image_channels=self.image_channels,
-            n_channels=self.n_channels,
-            ch_mults=self.channel_multipliers,
-            is_attn=self.is_attention,
+            image_channels=params.image_channels,
+            n_channels=params.n_channels,
+            ch_mults=params.channel_multipliers,
+            is_attn=params.is_attention,
         ).to(self.device)
 
         # Create [DDPM class](index.html)
         self.diffusion = DenoiseDiffusion(
             eps_model=self.eps_model,
-            n_steps=self.n_steps,
+            n_steps=params.n_steps,
             device=self.device,
         )
 
-        self.model = Diffpro_DDPM(self.diffusion, params)
+        self.model = Diffpro_DDPM(self.diffusion, params).to(self.device)
 
         # Create dataloader
-        self.train_dl, self.val_dl = get_train_val_dataloaders(self.batch_size, params)
+        self.train_dl, self.val_dl = get_train_val_dataloaders(
+            params.batch_size, params
+        )
         # Create optimizer
         self.optimizer = torch.optim.Adam(
-            self.eps_model.parameters(), lr=self.learning_rate
+            self.eps_model.parameters(), lr=params.learning_rate
         )
 
     def train(self, params, output_dir=None):
