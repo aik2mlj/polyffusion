@@ -162,9 +162,9 @@ class DiffproLearner:
 
     def val_step(self, batch):
         with torch.no_grad():
-            pnotree_x, pnotree_y = batch
+            pnotree, _ = batch
             with self.autocast:
-                loss_dict = self.model.get_loss_dict(pnotree_x, pnotree_y)
+                loss_dict = self.model.get_loss_dict(pnotree)
         return loss_dict
 
 
