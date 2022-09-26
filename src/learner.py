@@ -110,25 +110,29 @@ class DiffproLearner:
                         )
                 if self.step % 50 == 0:
                     self._write_summary(self.step, losses, "train")
+                if self.step % 5000 == 0:
+                    self.valid()
                 self.step += 1
 
             # valid
-            losses = None
-            for batch in self.val_dl:
-                batch = nested_map(
-                    batch, lambda x: x.to(self.device)
-                    if isinstance(x, torch.Tensor) else x
-                )
-                current_losses = self.val_step(batch)
-                losses = losses or current_losses
-                for k, v in current_losses.items():
-                    losses[k] += v
-            assert losses is not None
-            for k, v in losses.items():
-                losses[k] /= len(self.val_dl)
-            self._write_summary(self.step, losses, "val")
+            self.valid()
 
-            self.save_to_checkpoint()
+    def valid(self):
+        losses = None
+        for batch in self.val_dl:
+            batch = nested_map(
+                batch, lambda x: x.to(self.device) if isinstance(x, torch.Tensor) else x
+            )
+            current_losses = self.val_step(batch)
+            losses = losses or current_losses
+            for k, v in current_losses.items():
+                losses[k] += v
+        assert losses is not None
+        for k, v in losses.items():
+            losses[k] /= len(self.val_dl)
+        self._write_summary(self.step, losses, "val")
+
+        self.save_to_checkpoint()
 
     def train_step(self, batch):
         # people say this is the better way to set zero grad
