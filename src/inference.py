@@ -93,7 +93,7 @@ def predict_diffwave(model_dir, fast_sampling=False, init_cond=False, init_step=
         # pianotree decoder
         y_prd = model.decode_z(z_y_prd)
 
-    output_stamp = f"diffwave+m_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
+    output_stamp = f"diffwave_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
     estx_to_midi_file(y_prd, f"exp/x_{output_stamp}")
 
 
@@ -119,4 +119,4 @@ if __name__ == "__main__":
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )
     args = parser.parse_args()
-    predict_diffwave(args.model_dir, fast_sampling=False, init_cond=True, init_step=700)
+    predict_diffwave(args.model_dir, fast_sampling=False)
