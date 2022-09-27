@@ -10,11 +10,12 @@ from model import Diffpro_diffwave, Diffpro
 from params import params
 import pickle
 import numpy as np
+from tqdm import tqdm
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def predict_diffwave(model_dir, fast_sampling=False):
+def predict_diffwave(model_dir, fast_sampling=False, init_cond=False, init_step=None):
     model = Diffpro_diffwave.load_trained(model_dir, params).to(device)
     model.eval()
     model.params.override(params)
@@ -49,32 +50,48 @@ def predict_diffwave(model_dir, fast_sampling=False):
                     break
         T = np.array(T, dtype=np.float32)
 
-        if not model.params.unconditional:
-            song_fn, pnotree_x, pnotree_y = choose_song_from_val_dl()
-            pnotree_x, pnotree_y = pnotree_x.to(device), pnotree_y.to(device)
-            z_y_prd = torch.randn(pnotree_y.shape[0], model.params.z_dim, device=device)
+        if not model.params.unconditional or init_cond:
+            song_fn, pnotree_x, _ = choose_song_from_val_dl()
+            pnotree_x = pnotree_x.to(device)
+            z_x = model.encode_z(pnotree_x, is_sampling=False)
+            if init_cond:
+                z_y_prd, _ = model.q_t(z_x, init_step)
+                estx_to_midi_file(
+                    model.decode_z(z_y_prd), f"exp/init_{init_step}_x.mid"
+                )
+            else:
+                z_y_prd = torch.randn(
+                    pnotree_x.shape[0], model.params.z_dim, device=device
+                )
+
         else:
             song_fn = "uncond"
             pnotree_x = None
+            z_x = None
             z_y_prd = torch.randn(16, model.params.z_dim, device=device)
-        noise_scale = torch.from_numpy(alpha_cum**0.5).float().unsqueeze(1).to(device)
 
-        for n in range(len(alpha) - 1, -1, -1):
+        init_step = init_step or len(alpha)
+        cond = None if model.params.unconditional else pnotree_x
+
+        for n in tqdm(range(init_step - 1, -1, -1), desc="Sampling"):
             c1 = 1 / alpha[n]**0.5
             c2 = beta[n] / (1 - alpha_cum[n])**0.5
             z_y_prd = c1 * (
                 z_y_prd -
-                c2 * model(z_y_prd, torch.tensor([T[n]], device=device), pnotree_x)
+                c2 * model(z_y_prd, torch.tensor([T[n]], device=device), cond)
             )
             if n > 0:
                 noise = torch.randn_like(z_y_prd)
                 sigma = ((1.0 - alpha_cum[n - 1]) / (1.0 - alpha_cum[n]) * beta[n])**0.5
                 z_y_prd += sigma * noise
-            z_y_prd = torch.clamp(z_y_prd, -1.0, 1.0)
+
+                # if ilvr:
+                #     z_x_filtered = model.q_t(z_x, n - 1)
+                #     z_y_prd =
+            # z_y_prd = torch.clamp(z_y_prd, -1.0, 1.0)
 
         # pianotree decoder
-        recon_pitch, recon_dur = model.pnotree_dec(z_y_prd, True, None, None, 0, 0)
-        y_prd, _, _ = output_to_numpy(recon_pitch, recon_dur)
+        y_prd = model.decode_z(z_y_prd)
 
     output_stamp = f"diffwave+m_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
     estx_to_midi_file(y_prd, f"exp/x_{output_stamp}")
@@ -102,4 +119,4 @@ if __name__ == "__main__":
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )
     args = parser.parse_args()
-    predict_diffwave(args.model_dir, fast_sampling=False)
+    predict_diffwave(args.model_dir, fast_sampling=False, init_cond=True, init_step=700)
