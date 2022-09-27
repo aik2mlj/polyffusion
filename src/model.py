@@ -50,6 +50,14 @@ class Diffpro_DDPM(nn.Module):
         z = dist.rsample() if is_sampling else dist.mean
         return z
 
+    def decode_z(self, z):
+        recon_pitch, recon_dur = self.pnotree_dec(z, True, None, None, 0, 0)
+        y_prd, _, _ = output_to_numpy(recon_pitch, recon_dur)
+        return y_prd
+
+    def p_sample(self, xt: torch.Tensor, t: torch.Tensor):
+        return self.ddpm.p_sample(xt, t)
+
     @staticmethod
     def transform_to_2d(z):
         # z: (B, 512,)
@@ -58,6 +66,14 @@ class Diffpro_DDPM(nn.Module):
         z_2d = z_padded.view(N, 32, 32)
         z_2d = z_2d.unsqueeze(1)
         return z_2d
+
+    @staticmethod
+    def transform_back_to_z(z_2d):
+        N = z_2d.shape[0]
+        z_2d = z_2d.squeeze(1)
+        z_padded = z_2d.view(N, 1024)
+        z = z_padded[:, : 512]
+        return z
 
     def get_loss_dict(self, pnotree):
         """

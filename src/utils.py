@@ -36,6 +36,16 @@ def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
     return pnotree_enc, pnotree_dec
 
 
+def output_to_numpy(recon_pitch, recon_dur):
+    est_pitch = recon_pitch.max(-1)[1].unsqueeze(-1)  # (B, 32, 20, 1)
+    est_dur = recon_dur.max(-1)[1]  # (B, 32, 11, 5)
+    est_x = torch.cat([est_pitch, est_dur], dim=-1)  # (B, 32, 20, 6)
+    est_x = est_x.cpu().numpy()
+    recon_pitch = recon_pitch.cpu().numpy()
+    recon_dur = recon_dur.cpu().numpy()
+    return est_x, recon_pitch, recon_dur
+
+
 def save_dict(path, dict_file):
     with open(path, "wb") as handle:
         pickle.dump(dict_file, handle, protocol=pickle.HIGHEST_PROTOCOL)
