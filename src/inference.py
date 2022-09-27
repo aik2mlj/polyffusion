@@ -15,8 +15,6 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def predict_diffwave(model_dir, fast_sampling=False):
-    song_fn, pnotree_x, pnotree_y = choose_song_from_val_dl()
-    pnotree_x, pnotree_y = pnotree_x.to(device), pnotree_y.to(device)
     model = Diffpro_diffwave.load_trained(model_dir, params).to(device)
     model.eval()
     model.params.override(params)
@@ -52,9 +50,13 @@ def predict_diffwave(model_dir, fast_sampling=False):
         T = np.array(T, dtype=np.float32)
 
         if not model.params.unconditional:
+            song_fn, pnotree_x, pnotree_y = choose_song_from_val_dl()
+            pnotree_x, pnotree_y = pnotree_x.to(device), pnotree_y.to(device)
             z_y_prd = torch.randn(pnotree_y.shape[0], model.params.z_dim, device=device)
         else:
-            z_y_prd = torch.randn(1, model.params.z_dim, device=device)
+            song_fn = "uncond"
+            pnotree_x = None
+            z_y_prd = torch.randn(16, model.params.z_dim, device=device)
         noise_scale = torch.from_numpy(alpha_cum**0.5).float().unsqueeze(1).to(device)
 
         for n in range(len(alpha) - 1, -1, -1):
@@ -74,17 +76,7 @@ def predict_diffwave(model_dir, fast_sampling=False):
         recon_pitch, recon_dur = model.pnotree_dec(z_y_prd, True, None, None, 0, 0)
         y_prd, _, _ = output_to_numpy(recon_pitch, recon_dur)
 
-    output_stamp = f"inf_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
-    estx_to_midi_file(y_prd, f"exp/x_{output_stamp}")
-
-
-def predict(model_dir, is_sampling=False):
-    song_fn, pnotree_x, pnotree_y = choose_song_from_val_dl()
-    pnotree_x, pnotree_y = pnotree_x.to(device), pnotree_y.to(device)
-    model = Diffpro.load_trained(model_dir, params).to(device)
-    model.eval()
-    y_prd, _, _ = model.infer(pnotree_x, is_sampling=is_sampling)
-    output_stamp = f"inf_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
+    output_stamp = f"diffwave+m_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
     estx_to_midi_file(y_prd, f"exp/x_{output_stamp}")
 
 
