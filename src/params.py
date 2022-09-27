@@ -37,8 +37,8 @@ params = AttrDict(
     residual_layers=30,
     residual_channels=64,
     dilation_cycle_length=10,
-    unconditional=False,
-    noise_schedule=np.linspace(1e-4, 0.05, 500).tolist(),
+    unconditional=True,
+    noise_schedule=np.linspace(1e-4, 0.05, 1000).tolist(),
     inference_noise_schedule=[0.0001, 0.001, 0.01, 0.05, 0.2, 0.5],
     # ====
 
