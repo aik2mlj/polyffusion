@@ -88,6 +88,9 @@ class Configs():
             )
             if t_ % 100 == 0:
                 self.show_image(xt[0], f"exp/x{t}.jpg")
+                z = self.model.transform_back_to_z(xt)
+                y_prd = self.model.decode_z(z)
+                estx_to_midi_file(y_prd, f"exp/x{t}.mid")
 
         # Return $x_0$
         return xt
