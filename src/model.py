@@ -140,6 +140,13 @@ class Diffpro_diffwave(nn.Module):
 
         self.loss_fn = nn.L1Loss()
 
+        beta = np.array(self.params.noise_schedule)
+        alpha_cum = np.cumprod(1 - beta)
+        self.alpha_cum = torch.tensor(alpha_cum.astype(np.float32), device=self.device)
+        self.noise_scale = self.alpha_cum.unsqueeze(1)
+        print(self.noise_scale.shape)
+        self.noise_scale_sqrt = self.noise_scale**0.5
+
     @classmethod
     def load_trained(cls, model_dir, params, max_simu_note=20):
         model = cls(params, max_simu_note, None)
@@ -157,6 +164,11 @@ class Diffpro_diffwave(nn.Module):
         dist, _, _ = self.pnotree_enc(pnotree)
         z = dist.rsample() if is_sampling else dist.mean
         return z
+
+    def decode_z(self, z):
+        recon_pitch, recon_dur = self.pnotree_dec(z, True, None, None, 0, 0)
+        y_prd, _, _ = output_to_numpy(recon_pitch, recon_dur)
+        return y_prd
 
     def loss_function(self, noise, predicted):
         loss = self.loss_fn(noise, predicted)
@@ -192,23 +204,25 @@ class Diffpro_diffwave(nn.Module):
         x = x.squeeze(1)  # NOTE: add squeeze here
         return x
 
-    def get_loss_dict(self, pnotree_x, pnotree_y, noise_level):
+    def get_loss_dict(self, pnotree_x, pnotree_y):
         """
         z_y is the stuff the diffusion model needs to learn
         """
         N = pnotree_x.shape[0]
         z_y = self.encode_z(pnotree_y, is_sampling=True)
         t = torch.randint(0, len(self.params.noise_schedule), [N], device=self.device)
-        noise_scale = noise_level[t].unsqueeze(1)
-        noise_scale_sqrt = noise_scale**0.5
-        noise = torch.randn_like(z_y)
-        noisy_z_y = noise_scale_sqrt * z_y + (1.0 - noise_scale)**0.5 * noise
+        noisy_z_y, noise = self.q_t(z_y, t)
 
         if not self.params.unconditional:
             predicted = self.forward(noisy_z_y, t, pnotree_x)
         else:
             predicted = self.forward(noisy_z_y, t, None)
         return self.loss_function(noise, predicted)
+
+    def q_t(self, z, t):
+        noise = torch.randn_like(z)
+        zt = self.noise_scale_sqrt[t] * z + (1.0 - self.noise_scale[t])**0.5 * noise
+        return zt, noise
 
 
 class Diffpro(nn.Module):

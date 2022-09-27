@@ -34,12 +34,6 @@ class DiffproLearner:
         self.autocast = torch.cuda.amp.autocast(enabled=params.fp16)
         self.scaler = torch.cuda.amp.GradScaler(enabled=params.fp16)
 
-        beta = np.array(self.params.noise_schedule)
-        noise_level = np.cumprod(1 - beta)
-        self.noise_level = torch.tensor(
-            noise_level.astype(np.float32), device=self.device
-        )
-
     def _write_summary(self, step, losses: dict, type):
         """type: train or val"""
         summary_losses = losses
@@ -146,7 +140,7 @@ class DiffproLearner:
 
         # here forward the model
         with self.autocast:
-            loss_dict = self.model.get_loss_dict(pnotree_x, pnotree_y, self.noise_level)
+            loss_dict = self.model.get_loss_dict(pnotree_x, pnotree_y)
 
         loss = loss_dict["loss"]
         self.scaler.scale(loss).backward()
@@ -162,9 +156,7 @@ class DiffproLearner:
         with torch.no_grad():
             pnotree_x, pnotree_y = batch
             with self.autocast:
-                loss_dict = self.model.get_loss_dict(
-                    pnotree_x, pnotree_y, self.noise_level
-                )
+                loss_dict = self.model.get_loss_dict(pnotree_x, pnotree_y)
         return loss_dict
 
 
