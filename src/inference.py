@@ -136,10 +136,10 @@ class Configs():
         with torch.no_grad():
             if not is_condition:
                 x0 = self.sample(n_samples)
-                # self.show_image(x0[0], "x0.jpg")
+                self.show_image(x0[0], "exp/x0.jpg")
                 z = self.model.transform_back_to_z(x0)
                 y_prd = self.model.decode_z(z)
-                output_stamp = f"inf_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
+                output_stamp = f"ddpm_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
                 estx_to_midi_file(y_prd, f"exp/x_{output_stamp}")
                 return y_prd
             else:
