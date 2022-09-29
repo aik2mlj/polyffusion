@@ -3,7 +3,7 @@ from os.path import join
 from argparse import ArgumentParser
 from params import params
 from datetime import datetime
-from dataset import DataSampleNpz
+from dataset_lop import DataSampleNpz
 from dirs import *
 from utils import estx_to_midi_file, output_to_numpy
 from model import Diffpro_diffwave, Diffpro
@@ -54,6 +54,8 @@ def predict_diffwave(model_dir, fast_sampling=False, init_cond=False, init_step=
             song_fn, pnotree_x, _ = choose_song_from_val_dl()
             pnotree_x = pnotree_x.to(device)
             z_x = model.encode_z(pnotree_x, is_sampling=False)
+            x_recon = model.decode_z(z_x)
+            estx_to_midi_file(x_recon, f"exp/recon_{song_fn}.mid")
             if init_cond:
                 z_y_prd, _ = model.q_t(z_x, init_step)
                 estx_to_midi_file(
@@ -89,6 +91,9 @@ def predict_diffwave(model_dir, fast_sampling=False, init_cond=False, init_step=
                 #     z_x_filtered = model.q_t(z_x, n - 1)
                 #     z_y_prd =
             # z_y_prd = torch.clamp(z_y_prd, -1.0, 1.0)
+            # if n % 100 == 0:
+            #     tmp = model.decode_z(z_y_prd)
+            #     estx_to_midi_file(tmp, f"exp/n_{n}.mid")
 
         # pianotree decoder
         y_prd = model.decode_z(z_y_prd)
@@ -98,7 +103,7 @@ def predict_diffwave(model_dir, fast_sampling=False, init_cond=False, init_step=
 
 
 def choose_song_from_val_dl():
-    split_fpath = join(TRAIN_SPLIT_DIR, "musicalion.pickle")
+    split_fpath = join(TRAIN_SPLIT_DIR, "split_dict.pickle")
     with open(split_fpath, "rb") as f:
         split = pickle.load(f)
     print(split[1])
@@ -119,4 +124,4 @@ if __name__ == "__main__":
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )
     args = parser.parse_args()
-    predict_diffwave(args.model_dir, fast_sampling=False, init_cond=True, init_step=700)
+    predict_diffwave(args.model_dir, fast_sampling=False)
