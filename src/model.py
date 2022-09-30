@@ -58,49 +58,6 @@ class DiffusionEmbedding(nn.Module):
         return table
 
 
-class ResidualBlock(nn.Module):
-    def __init__(self, residual_channels, dilation, uncond=False):
-        '''
-        :param residual_channels: audio conv
-        :param dilation: audio conv dilation
-        :param uncond: disable spectrogram conditional
-        '''
-        super().__init__()
-        self.dilated_conv = Conv1d(
-            residual_channels,
-            2 * residual_channels,
-            3,
-            padding=dilation,
-            dilation=dilation
-        )
-        self.diffusion_projection = Linear(512, residual_channels)
-        if not uncond:  # conditional model
-            self.conditioner_projection = Conv1d(1, 2 * residual_channels, 1)
-        else:  # unconditional model
-            self.conditioner_projection = None
-
-        self.output_projection = Conv1d(residual_channels, 2 * residual_channels, 1)
-
-    def forward(self, x, diffusion_step, conditioner=None):
-        assert (conditioner is None and self.conditioner_projection is None) or \
-               (conditioner is not None and self.conditioner_projection is not None)
-
-        diffusion_step = self.diffusion_projection(diffusion_step).unsqueeze(-1)
-        y = x + diffusion_step
-        if self.conditioner_projection is None:  # using a unconditional model
-            y = self.dilated_conv(y)
-        else:
-            conditioner = self.conditioner_projection(conditioner)
-            y = self.dilated_conv(y) + conditioner
-
-        gate, filter = torch.chunk(y, 2, dim=1)
-        y = torch.sigmoid(gate) * torch.tanh(filter)
-
-        y = self.output_projection(y)
-        residual, skip = torch.chunk(y, 2, dim=1)
-        return (x + residual) / sqrt(2.0), skip
-
-
 class Diffpro_diffwave(nn.Module):
     def __init__(self, params, max_simu_note=20, pt_pnotree_model_path=None):
         super().__init__()
@@ -123,18 +80,12 @@ class Diffpro_diffwave(nn.Module):
         self.input_projection = Conv1d(1, params.residual_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(len(params.noise_schedule))
 
-        self.residual_layers = nn.ModuleList(
-            [
-                ResidualBlock(
-                    params.residual_channels,
-                    2**(i % params.dilation_cycle_length),
-                    uncond=params.unconditional
-                ) for i in range(params.residual_layers)
-            ]
-        )
-        self.skip_projection = Conv1d(
-            params.residual_channels, params.residual_channels, 1
-        )
+        self.cond_projection = Conv1d(1, params.residual_channels, 1)
+        self.diffusion_projection = Linear(512, 64)
+        self.fc1 = Linear(512, 512)
+        self.fc2 = Linear(512, 512)
+        self.fc3 = Linear(512, 512)
+
         self.output_projection = Conv1d(params.residual_channels, 1, 1)
         nn.init.zeros_(self.output_projection.weight)
 
@@ -180,26 +131,31 @@ class Diffpro_diffwave(nn.Module):
         """
         assert (pnotree_x is None and self.params.unconditional) or \
                (pnotree_x is not None and not self.params.unconditional)
-        x = input.unsqueeze(1)
-        x = self.input_projection(x)
-        x = F.relu(x)
+        x = input.unsqueeze(1)  # (B, 1, 512)
+        x = self.input_projection(x)  # (B, 64, 512)
+        x = silu(x)
 
-        diffusion_step = self.diffusion_embedding(diffusion_step)
+        diffusion_step = self.diffusion_embedding(diffusion_step)  # (B, 512)
+        diffusion_step = self.diffusion_projection(diffusion_step).unsqueeze(-1)
+        x += diffusion_step
+        x = self.fc1(x)
+        x = silu(x)
         if not self.params.unconditional:  # use conditional model
             z_x = self.encode_z(pnotree_x, is_sampling=True)
-            z_x = z_x.unsqueeze(1)  # for Conv1d: input channel = 1
-        else:
-            z_x = None
+            z_x = z_x.unsqueeze(1)  # (B, 1, 512)
+            z_x = self.cond_projection(z_x)  # (B, 64, 512)
+            x += z_x
+        x = self.fc2(x)
+        x = silu(x)
+        x = self.fc3(x)
+        x = silu(x)
 
-        skip = None
-        for layer in self.residual_layers:
-            x, skip_connection = layer(x, diffusion_step, z_x)
-            skip = skip_connection if skip is None else skip_connection + skip
-        assert skip is not None
+        # skip = None
+        # for layer in self.residual_layers:
+        #     x, skip_connection = layer(x, diffusion_step, z_x)
+        #     skip = skip_connection if skip is None else skip_connection + skip
+        # assert skip is not None
 
-        x = skip / sqrt(len(self.residual_layers))
-        x = self.skip_projection(x)
-        x = F.relu(x)
         x = self.output_projection(x)
         x = x.squeeze(1)  # NOTE: add squeeze here
         return x

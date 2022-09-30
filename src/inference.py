@@ -6,7 +6,7 @@ from datetime import datetime
 from dataset import DataSampleNpz
 from dirs import *
 from utils import estx_to_midi_file, output_to_numpy
-from model import Diffpro_diffwave, Diffpro
+from model import Diffpro_diffwave
 from params import params
 import pickle
 import numpy as np
@@ -119,4 +119,4 @@ if __name__ == "__main__":
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )
     args = parser.parse_args()
-    predict_diffwave(args.model_dir, fast_sampling=False, init_cond=True, init_step=700)
+    predict_diffwave(args.model_dir, fast_sampling=False)
