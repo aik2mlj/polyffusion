@@ -88,6 +88,9 @@ def predict_diffwave(model_dir, fast_sampling=False, init_cond=False, init_step=
                 # if ilvr:
                 #     z_x_filtered = model.q_t(z_x, n - 1)
                 #     z_y_prd =
+            if n % 100 == 0:
+                y_prd = model.decode_z(z_y_prd)
+                estx_to_midi_file(y_prd, f"exp/n_{n}.mid")
             # z_y_prd = torch.clamp(z_y_prd, -1.0, 1.0)
 
         # pianotree decoder
