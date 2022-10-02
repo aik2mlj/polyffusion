@@ -24,6 +24,7 @@ class DataSampleNpz:
     """
     def __init__(self, song_fn) -> None:
         self.fpath = os.path.join(MUSICALION_DATA_DIR, song_fn)
+        self.song_fn = song_fn
         """
         notes (onset_beat, onset_bin, duration, pitch, velocity)
         start_table : i-th row indicates the starting row of the "notes" array
@@ -175,7 +176,7 @@ class DataSampleNpz:
 
 
 class PianoOrchDataset(Dataset):
-    def __init__(self, data_samples):
+    def __init__(self, data_samples, debug=False):
         super(PianoOrchDataset, self).__init__()
 
         # a list of DataSampleNpz
@@ -183,6 +184,7 @@ class PianoOrchDataset(Dataset):
 
         self.lgths = np.array([len(d) for d in self.data_samples], dtype=np.int64)
         self.lgth_cumsum = np.cumsum(self.lgths)
+        self.debug = debug
 
     def __len__(self):
         return self.lgth_cumsum[-1]
@@ -193,19 +195,21 @@ class PianoOrchDataset(Dataset):
         song_item = index - np.insert(self.lgth_cumsum, 0, 0)[song_no]
 
         song_data = self.data_samples[song_no]
-        return song_data[song_item]
+        if self.debug:
+            return *song_data[song_item], song_data.song_fn
+        else:
+            return song_data[song_item]
 
     @classmethod
-    def load_with_song_paths(cls, song_paths, **kwargs):
-        print(f"Dataset kargs: {kwargs}")
-        data_samples = [DataSampleNpz(song_path, **kwargs) for song_path in song_paths]
-        return cls(data_samples)
+    def load_with_song_paths(cls, song_paths, debug=False):
+        data_samples = [DataSampleNpz(song_path) for song_path in song_paths]
+        return cls(data_samples, debug)
 
     @classmethod
-    def load_train_and_valid_sets(cls, debug, **kwargs):
+    def load_train_and_valid_sets(cls, debug=False):
         split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "musicalion.pickle"))
-        return cls.load_with_song_paths(split[0], **kwargs), cls.load_with_song_paths(
-            split[1], **kwargs
+        return cls.load_with_song_paths(split[0], debug), cls.load_with_song_paths(
+            split[1], debug
         )
 
     @classmethod
