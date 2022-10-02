@@ -1,7 +1,7 @@
 # pyright: reportOptionalSubscript=false
 
 from torch.utils.data import Dataset
-from utils import (nmat_to_pianotree_repr, nmat_to_pr_mat_repr, estx_to_midi_file)
+from utils import (nmat_to_pianotree_repr, nmat_to_pr_mat_repr, prmat_to_midi_file)
 from utils import read_dict
 from dirs import *
 import os
@@ -140,18 +140,18 @@ class DataSampleNpz:
 
     def _store_seg(self, db):
         self.store_nmat_seg_x(db)
-        self.store_pnotree_seg_x(db)
+        self.store_prmat_seg_x(db)
 
     def _get_item_by_db(self, db):
         """
         Return segments of
-            pnotree_x, pnotree_y
+            prmat_x, prmat_y
         """
 
         self._store_seg(db)
 
-        seg_pnotree_x = self._pnotree_dict_x[db]
-        return seg_pnotree_x, None
+        seg_prmat_x = self._pr_mat_dict_x[db]
+        return seg_prmat_x, None
 
     def __getitem__(self, idx):
         db = self.db_pos[idx]
@@ -161,18 +161,18 @@ class DataSampleNpz:
         """
         used when inference
         """
-        pnotree_x = []
+        prmat_x = []
         idx = 0
         i = 0
         while i < len(self):
-            seg_pnotree_x, _ = self[i]
-            pnotree_x.append(seg_pnotree_x)
+            seg_prmat_x, _ = self[i]
+            prmat_x.append(seg_prmat_x)
 
             idx += SEG_LGTH_BIN
             while i < len(self) and self.db_pos[i] < idx:
                 i += 1
-        pnotree_x = torch.from_numpy(np.array(pnotree_x, dtype=np.int64))
-        return pnotree_x, pnotree_x
+        prmat_x = torch.from_numpy(np.array(prmat_x, dtype=np.int64))
+        return prmat_x, prmat_x
 
 
 class PianoOrchDataset(Dataset):
@@ -223,6 +223,6 @@ class PianoOrchDataset(Dataset):
 if __name__ == "__main__":
     test = "ssccm172.npz"
     song = DataSampleNpz(test)
-    pnotree_x, _ = song.get_whole_song_data()
-    print(pnotree_x.shape)
-    estx_to_midi_file(pnotree_x, "exp/origin_x.mid")
+    prmat_x, _ = song.get_whole_song_data()
+    print(prmat_x.shape)
+    prmat_to_midi_file(prmat_x, "exp/origin_x.mid")

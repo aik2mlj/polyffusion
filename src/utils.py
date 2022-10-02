@@ -220,6 +220,35 @@ def estx_to_midi_file(est_x, fpath, labels=None):
     midi.write(fpath)
 
 
+def prmat_to_midi_file(prmat, fpath, labels=None):
+    # prmat: (B, 32, 128)
+    midi = pm.PrettyMIDI()
+    piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
+    piano = pm.Instrument(program=piano_program)
+    t = 0
+    for two_bar_ind, two_bars in enumerate(prmat):
+        for step_ind, step in enumerate(two_bars):
+            for key, dur in enumerate(step):
+                dur = int(dur)
+                if dur > 0:
+                    note = pm.Note(
+                        velocity=80,
+                        pitch=key,
+                        start=t + step_ind * 1 / 8,
+                        end=min(t + (step_ind + int(dur)) * 1 / 8, t + 4)
+                    )
+                    piano.notes.append(note)
+        t += 4
+    midi.instruments.append(piano)
+    if labels is not None:
+        midi.lyrics.clear()
+        t = 0
+        for label in labels:
+            midi.lyrics.append(pm.Lyric(label, t))
+            t += 4
+    midi.write(fpath)
+
+
 if __name__ == "__main__":
     load_pretrained_pnotree_enc_dec(
         "../PianoTree-VAE/model20/train_20-last-model.pt", 20, None
