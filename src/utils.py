@@ -168,6 +168,18 @@ def nmat_to_pr_mat_repr(nmat, n_step=32):
     return pr_mat
 
 
+def normalize_prmat(prmat, n_step=128):
+    prmat_norm = prmat.astype(np.float32)
+    prmat_norm /= n_step
+    return prmat_norm
+
+
+def denormalize_prmat(prmat_norm, n_step=128):
+    prmat_rint = np.rint(prmat_norm * n_step)
+    prmat = prmat_rint.astype(np.int64)
+    return prmat
+
+
 def nmat_to_rhy_array(nmat, n_step=32):
     """Compute onset track of from melody note matrix."""
     pr_mat = np.zeros(n_step, dtype=np.int64)
@@ -220,14 +232,16 @@ def estx_to_midi_file(est_x, fpath, labels=None):
     midi.write(fpath)
 
 
-def prmat_to_midi_file(prmat, fpath, labels=None):
+def prmat_to_midi_file(prmat: np.ndarray, fpath, labels=None):
     # prmat: (B, 32, 128)
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
     piano = pm.Instrument(program=piano_program)
     t = 0
-    for two_bar_ind, two_bars in enumerate(prmat):
-        for step_ind, step in enumerate(two_bars):
+    n_step = prmat.shape[1]
+    t_bar = int(n_step / 8)
+    for bar_ind, bars in enumerate(prmat):
+        for step_ind, step in enumerate(bars):
             for key, dur in enumerate(step):
                 dur = int(dur)
                 if dur > 0:
@@ -235,17 +249,17 @@ def prmat_to_midi_file(prmat, fpath, labels=None):
                         velocity=80,
                         pitch=key,
                         start=t + step_ind * 1 / 8,
-                        end=min(t + (step_ind + int(dur)) * 1 / 8, t + 4)
+                        end=min(t + (step_ind + int(dur)) * 1 / 8, t + t_bar)
                     )
                     piano.notes.append(note)
-        t += 4
+        t += t_bar
     midi.instruments.append(piano)
     if labels is not None:
         midi.lyrics.clear()
         t = 0
         for label in labels:
             midi.lyrics.append(pm.Lyric(label, t))
-            t += 4
+            t += t_bar
     midi.write(fpath)
 
 

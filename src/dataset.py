@@ -1,14 +1,17 @@
 # pyright: reportOptionalSubscript=false
 
 from torch.utils.data import Dataset
-from utils import (nmat_to_pianotree_repr, nmat_to_pr_mat_repr, prmat_to_midi_file)
+from utils import (
+    nmat_to_pianotree_repr, nmat_to_pr_mat_repr, prmat_to_midi_file, normalize_prmat,
+    denormalize_prmat
+)
 from utils import read_dict
 from dirs import *
 import os
 import torch
 import numpy as np
 
-SEG_LGTH = 8
+SEG_LGTH = 32
 N_BIN = 4
 SEG_LGTH_BIN = SEG_LGTH * N_BIN
 
@@ -126,6 +129,7 @@ class DataSampleNpz:
             return
 
         prmat = nmat_to_pr_mat_repr(self._nmat_dict_x[db], SEG_LGTH_BIN)
+        prmat = normalize_prmat(prmat, SEG_LGTH_BIN)
         prmat = np.expand_dims(prmat, 0)
         self._pr_mat_dict_x[db] = prmat
 
@@ -171,7 +175,7 @@ class DataSampleNpz:
             idx += SEG_LGTH_BIN
             while i < len(self) and self.db_pos[i] < idx:
                 i += 1
-        prmat_x = torch.from_numpy(np.array(prmat_x, dtype=np.int64))
+        prmat_x = torch.from_numpy(np.array(prmat_x, dtype=np.float32))
         return prmat_x, prmat_x
 
 
@@ -225,4 +229,6 @@ if __name__ == "__main__":
     song = DataSampleNpz(test)
     prmat_x, _ = song.get_whole_song_data()
     print(prmat_x.shape)
+    prmat_x = prmat_x.squeeze(1).cpu().numpy()
+    prmat_x = denormalize_prmat(prmat_x)
     prmat_to_midi_file(prmat_x, "exp/origin_x.mid")

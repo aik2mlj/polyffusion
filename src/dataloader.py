@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from dataset import PianoOrchDataset
-from utils import (pr_mat_pitch_shift, prmat_to_midi_file)
+from utils import (pr_mat_pitch_shift, prmat_to_midi_file, denormalize_prmat)
 import numpy as np
 from params import params
 
@@ -24,7 +24,8 @@ def collate_fn(batch):
         if len(b) > 2:
             song_fn.append(b[2])
 
-    prmat_x = torch.Tensor(np.array(prmat_x)).long()
+    prmat_x = torch.Tensor(np.array(prmat_x, np.float32)).float()
+    # prmat_x = prmat_x.unsqueeze(1)  # (B, 1, 128, 128)
     if len(song_fn) > 0:
         return prmat_x, prmat_x, song_fn
     else:
@@ -53,9 +54,13 @@ def get_train_val_dataloaders(batch_size, params, debug=False):
 
 
 if __name__ == "__main__":
-    train_dl, val_dl = get_train_val_dataloaders(128, params, debug=True)
+    train_dl, val_dl = get_train_val_dataloaders(64, params, debug=True)
+    print(len(train_dl))
     for batch in train_dl:
         print(len(batch))
         prmat_x, _, song_fn = batch
+        print(prmat_x.shape)
+        prmat_x = prmat_x.squeeze(1).cpu().numpy()
+        prmat_x = denormalize_prmat(prmat_x)
         prmat_to_midi_file(prmat_x, f"exp/test_x.mid", song_fn)
         exit(0)

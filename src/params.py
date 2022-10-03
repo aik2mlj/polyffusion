@@ -36,7 +36,7 @@ params = AttrDict(
     # Number of channels in the image. $3$ for RGB.
     image_channels=1,
     # Image size
-    image_size=32,
+    image_size=128,
     # Number of channels in the initial feature map
     n_channels=64,
     # The list of channel numbers at each resolution.
