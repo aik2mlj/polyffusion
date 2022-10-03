@@ -55,19 +55,18 @@ class DataSampleNpz:
 
         data_x = np.load(self.fpath, allow_pickle=True)
         self.notes_x = data_x["notes"]
-        self.start_table_x = data_x["start_table"].item()
+        self.start_table_x: dict = data_x["start_table"].item()
 
-        # self.db_pos = data_x["db_pos"]
+        self.db_pos = data_x["db_pos"]
         self.db_pos_filter = data_x["db_pos_filter"]
-        self.db_pos = data_x["db_pos"][self.db_pos_filter]
+        self.db_pos = self.db_pos[self.db_pos_filter]
+        if len(self.db_pos) != 0:
+            self.last_db = self.db_pos[-1]
 
         self._nmat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._pnotree_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._pr_mat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._feat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-
-        if len(self.db_pos) != 0:
-            self.last_db = self.db_pos[-1]
 
     def __len__(self):
         """Return number of complete 8-beat segments in a song"""
@@ -80,11 +79,11 @@ class DataSampleNpz:
         """
 
         s_ind = self.start_table_x[db]
-        e_ind = self.start_table_x[
-            db +
-            SEG_LGTH_BIN] if db + SEG_LGTH_BIN <= self.last_db else self.start_table_x[
-                self.last_db]
-        seg_mats = self.notes_x[s_ind : e_ind]
+        if db + SEG_LGTH_BIN in self.start_table_x:
+            e_ind = self.start_table_x[db + SEG_LGTH_BIN]
+            seg_mats = self.notes_x[s_ind : e_ind]
+        else:
+            seg_mats = self.notes_x[s_ind :]  # NOTE: may be wrong
         return seg_mats.copy()
 
     @staticmethod
@@ -126,7 +125,8 @@ class DataSampleNpz:
         if self._pr_mat_dict_x[db] is not None:
             return
 
-        prmat = nmat_to_pr_mat_repr(self._nmat_dict_x[db])
+        prmat = nmat_to_pr_mat_repr(self._nmat_dict_x[db], SEG_LGTH_BIN)
+        prmat = np.expand_dims(prmat, 0)
         self._pr_mat_dict_x[db] = prmat
 
     def store_pnotree_seg_x(self, db):
