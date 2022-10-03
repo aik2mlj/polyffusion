@@ -19,7 +19,7 @@ def collate_fn(batch):
         shift = sample_shift()
         seg_prmat_x = pr_mat_pitch_shift(seg_prmat_x, shift)
 
-        prmat_x.append(b[0])
+        prmat_x.append(seg_prmat_x)
 
         if len(b) > 2:
             song_fn.append(b[2])
