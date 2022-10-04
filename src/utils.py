@@ -164,7 +164,8 @@ def onehot_to_chd(onehot):
 def nmat_to_pr_mat_repr(nmat, n_step=32):
     pr_mat = np.zeros((n_step, 128), dtype=np.int64)
     for o, p, d in nmat:
-        pr_mat[o, p] = d
+        if o < n_step:
+            pr_mat[o, p] = d
     return pr_mat
 
 
