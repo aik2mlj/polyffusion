@@ -11,7 +11,7 @@ import os
 import torch
 import numpy as np
 
-SEG_LGTH = 32
+SEG_LGTH = 8
 N_BIN = 4
 SEG_LGTH_BIN = SEG_LGTH * N_BIN
 
@@ -129,8 +129,8 @@ class DataSampleNpz:
             return
 
         prmat = nmat_to_pr_mat_repr(self._nmat_dict_x[db], SEG_LGTH_BIN)
-        prmat = normalize_prmat(prmat, SEG_LGTH_BIN)
         prmat = np.expand_dims(prmat, 0)
+        prmat = normalize_prmat(prmat)
         self._pr_mat_dict_x[db] = prmat
 
     def store_pnotree_seg_x(self, db):

@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from params import params
 from dataset import DataSampleNpz
 from dirs import *
-from utils import estx_to_midi_file
+from utils import prmat_to_midi_file, denormalize_prmat
 from ddpm import DenoiseDiffusion
 from ddpm.unet import UNet
 from ddpm.utils import gather
@@ -47,7 +47,8 @@ class Configs():
 
         # self.song_fn, self.pnotree, _ = choose_song_from_val_dl()
 
-        self.image_size = params.image_size
+        self.image_size_h = params.image_size_h
+        self.image_size_w = params.image_size_w
         self.image_channels = params.image_channels
         self.n_steps = params.n_steps
         # $\beta_t$
@@ -88,9 +89,9 @@ class Configs():
             )
             if t_ % 100 == 0:
                 self.show_image(xt[0], f"exp/x{t}.jpg")
-                z = self.model.transform_back_to_z(xt)
-                y_prd = self.model.decode_z(z)
-                estx_to_midi_file(y_prd, f"exp/x{t}.mid")
+                prmat_x = xt.squeeze(1).cpu().numpy()
+                prmat_x = denormalize_prmat(prmat_x)
+                prmat_to_midi_file(prmat_x, f"exp/x{t}.mid")
 
         # Return $x_0$
         return xt
@@ -101,7 +102,7 @@ class Configs():
         """
         # $x_T \sim p(x_T) = \mathcal{N}(x_T; \mathbf{0}, \mathbf{I})$
         xt = torch.randn(
-            [n_samples, self.image_channels, self.image_size, self.image_size],
+            [n_samples, self.image_channels, self.image_size_h, self.image_size_w],
             device=self.device
         )
 
@@ -137,11 +138,11 @@ class Configs():
             if not is_condition:
                 x0 = self.sample(n_samples)
                 self.show_image(x0[0], "exp/x0.jpg")
-                z = self.model.transform_back_to_z(x0)
-                y_prd = self.model.decode_z(z)
-                output_stamp = f"ddpm_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
-                estx_to_midi_file(y_prd, f"exp/x_{output_stamp}")
-                return y_prd
+                prmat_x = x0.squeeze(1).cpu().numpy()
+                prmat_x = denormalize_prmat(prmat_x)
+                output_stamp = f"ddpm_direct_[uncond_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
+                prmat_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+                return x0
             else:
                 raise NotImplementedError
 
@@ -162,10 +163,10 @@ def choose_song_from_val_dl():
     print(song_fn)
 
     song = DataSampleNpz(song_fn)
-    pnotree_x, pnotree_y = song.get_whole_song_data()
-    estx_to_midi_file(pnotree_x, "exp/origin_x.mid")
-    estx_to_midi_file(pnotree_y, "exp/origin_y.mid")
-    return song_fn, pnotree_x, pnotree_y
+    prmat_x, _ = song.get_whole_song_data()
+    prmat_x = prmat_x.squeeze(1).cpu().numpy()
+    prmat_to_midi_file(prmat_x, "exp/origin_x.mid")
+    return song_fn, prmat_x, prmat_x
 
 
 if __name__ == "__main__":

@@ -169,13 +169,15 @@ def nmat_to_pr_mat_repr(nmat, n_step=32):
     return pr_mat
 
 
-def normalize_prmat(prmat, n_step=128):
+def normalize_prmat(prmat):
+    n_step = prmat.shape[1]
     prmat_norm = prmat.astype(np.float32)
     prmat_norm /= n_step
     return prmat_norm
 
 
-def denormalize_prmat(prmat_norm, n_step=128):
+def denormalize_prmat(prmat_norm):
+    n_step = prmat_norm.shape[1]
     prmat_rint = np.rint(prmat_norm * n_step)
     prmat = prmat_rint.astype(np.int64)
     return prmat

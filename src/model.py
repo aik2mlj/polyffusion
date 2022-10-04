@@ -31,5 +31,4 @@ class Diffpro_DDPM(nn.Module):
         """
         z_y is the stuff the diffusion model needs to learn
         """
-        print(prmat.shape)
         return {"loss": self.ddpm.loss(prmat)}
