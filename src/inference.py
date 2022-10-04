@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from os.path import join
 from argparse import ArgumentParser
 import pickle
@@ -88,7 +89,7 @@ class Configs():
                 xt, xt.new_full((n_samples, ), t, dtype=torch.long)
             )
             if t_ % 100 == 0:
-                self.show_image(xt[0], f"exp/x{t}.jpg")
+                self.show_image(xt, f"exp/x{t}.jpg")
                 prmat_x = xt.squeeze().cpu().numpy()
                 prmat2c_to_midi_file(prmat_x, f"exp/x{t}.mid")
 
@@ -136,9 +137,9 @@ class Configs():
         with torch.no_grad():
             if not is_condition:
                 x0 = self.sample(n_samples)
-                self.show_image(x0[0], "exp/x0.jpg")
+                self.show_image(x0, "exp/x0.jpg")
                 prmat_x = x0.squeeze().cpu().numpy()
-                output_stamp = f"ddpm_direct_[uncond_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
+                output_stamp = f"ddpm_direct_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}"
                 prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
                 return x0
             else:
@@ -146,9 +147,19 @@ class Configs():
 
     def show_image(self, img, title=""):
         """Helper function to display an image"""
+        # (B, 2, 32, 128)
         img = img.clip(0, 1)
         img = img.cpu().numpy()
-        plt.imsave(title, img.transpose(1, 2, 0).repeat(3, 2))
+        if img.ndim == 4:
+            img = np.swapaxes(img, 1, 2)
+            img = np.concatenate(img, axis=0)
+            img = np.swapaxes(img, 0, 1)
+        print(img.shape)
+        h = img.shape[1]
+        w = img.shape[2]
+        img = np.append(img, np.zeros([1, h, w]), axis=0)
+        img = img.transpose(2, 1, 0)  # (128, 32, 3)
+        plt.imsave(title, img)
 
 
 def choose_song_from_val_dl():
