@@ -19,7 +19,7 @@ def collate_fn(batch):
         shift = sample_shift()
         seg_pnotree_x = pianotree_pitch_shift(seg_pnotree_x, shift)
 
-        pnotree_x.append(b[0])
+        pnotree_x.append(seg_pnotree_x)
 
         if len(b) > 2:
             song_fn.append(b[2])
