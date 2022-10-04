@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from params import params
 from dataset import DataSampleNpz
 from dirs import *
-from utils import prmat_to_midi_file, denormalize_prmat
+from utils import prmat2c_to_midi_file
 from ddpm import DenoiseDiffusion
 from ddpm.unet import UNet
 from ddpm.utils import gather
@@ -89,9 +89,8 @@ class Configs():
             )
             if t_ % 100 == 0:
                 self.show_image(xt[0], f"exp/x{t}.jpg")
-                prmat_x = xt.squeeze(1).cpu().numpy()
-                prmat_x = denormalize_prmat(prmat_x)
-                prmat_to_midi_file(prmat_x, f"exp/x{t}.mid")
+                prmat_x = xt.squeeze().cpu().numpy()
+                prmat2c_to_midi_file(prmat_x, f"exp/x{t}.mid")
 
         # Return $x_0$
         return xt
@@ -138,10 +137,9 @@ class Configs():
             if not is_condition:
                 x0 = self.sample(n_samples)
                 self.show_image(x0[0], "exp/x0.jpg")
-                prmat_x = x0.squeeze(1).cpu().numpy()
-                prmat_x = denormalize_prmat(prmat_x)
+                prmat_x = x0.squeeze().cpu().numpy()
                 output_stamp = f"ddpm_direct_[uncond_{datetime.now().strftime('%m-%d_%H%M%S')}.mid"
-                prmat_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+                prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
                 return x0
             else:
                 raise NotImplementedError
@@ -164,8 +162,8 @@ def choose_song_from_val_dl():
 
     song = DataSampleNpz(song_fn)
     prmat_x, _ = song.get_whole_song_data()
-    prmat_x = prmat_x.squeeze(1).cpu().numpy()
-    prmat_to_midi_file(prmat_x, "exp/origin_x.mid")
+    prmat_x = prmat_x.squeeze().cpu().numpy()
+    prmat2c_to_midi_file(prmat_x, "exp/origin_x.mid")
     return song_fn, prmat_x, prmat_x
 
 

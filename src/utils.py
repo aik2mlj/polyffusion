@@ -169,6 +169,17 @@ def nmat_to_pr_mat_repr(nmat, n_step=32):
     return pr_mat
 
 
+def nmat_to_prmat2c(nmat, n_step=32):
+    pr_mat = np.zeros((2, n_step, 128), dtype=np.float32)
+    for o, p, d in nmat:
+        if o < n_step:
+            pr_mat[0, o, p] = 1.
+            for dd in range(1, d):
+                if o + dd < n_step:
+                    pr_mat[1, o + dd, p] = 1.
+    return pr_mat
+
+
 def normalize_prmat(prmat):
     n_step = prmat.shape[1]
     prmat_norm = prmat.astype(np.float32)
@@ -253,6 +264,44 @@ def prmat_to_midi_file(prmat: np.ndarray, fpath, labels=None):
                         pitch=key,
                         start=t + step_ind * 1 / 8,
                         end=min(t + (step_ind + int(dur)) * 1 / 8, t + t_bar)
+                    )
+                    piano.notes.append(note)
+        t += t_bar
+    midi.instruments.append(piano)
+    if labels is not None:
+        midi.lyrics.clear()
+        t = 0
+        for label in labels:
+            midi.lyrics.append(pm.Lyric(label, t))
+            t += t_bar
+    midi.write(fpath)
+
+
+def prmat2c_to_midi_file(prmat: np.ndarray, fpath, labels=None):
+    # prmat2c: (B, 2, 32, 128)
+    midi = pm.PrettyMIDI()
+    piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
+    piano = pm.Instrument(program=piano_program)
+    t = 0
+    n_step = prmat.shape[2]
+    t_bar = int(n_step / 8)
+    for bar_ind, bars in enumerate(prmat):
+        onset = bars[0]
+        sustain = bars[1]
+        for step_ind, step in enumerate(onset):
+            for key, on in enumerate(step):
+                on = int(round(on))
+                if on > 0:
+                    dur = 1
+                    while step_ind + dur < n_step:
+                        if not (int(round(sustain[step_ind + dur, key])) > 0):
+                            break
+                        dur += 1
+                    note = pm.Note(
+                        velocity=80,
+                        pitch=key,
+                        start=t + step_ind * 1 / 8,
+                        end=min(t + (step_ind + dur) * 1 / 8, t + t_bar)
                     )
                     piano.notes.append(note)
         t += t_bar

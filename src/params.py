@@ -34,7 +34,7 @@ params = AttrDict(
     weights=(1, 0.5),
 
     # Number of channels in the image. $3$ for RGB.
-    image_channels=1,
+    image_channels=2,
     # Image size
     image_size_h=32,
     image_size_w=128,

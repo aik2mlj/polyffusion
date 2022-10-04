@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from dataset import PianoOrchDataset
-from utils import (pr_mat_pitch_shift, prmat_to_midi_file, denormalize_prmat)
+from utils import (pr_mat_pitch_shift, prmat2c_to_midi_file, denormalize_prmat)
 import numpy as np
 from params import params
 
@@ -60,7 +60,6 @@ if __name__ == "__main__":
         print(len(batch))
         prmat_x, _, song_fn = batch
         print(prmat_x.shape)
-        prmat_x = prmat_x.squeeze(1).cpu().numpy()
-        prmat_x = denormalize_prmat(prmat_x)
-        prmat_to_midi_file(prmat_x, f"exp/test_x.mid", song_fn)
+        prmat_x = prmat_x.cpu().numpy()
+        prmat2c_to_midi_file(prmat_x, f"exp/test_x.mid", song_fn)
         exit(0)
