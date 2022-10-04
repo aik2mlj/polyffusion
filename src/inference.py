@@ -96,18 +96,27 @@ class Configs():
         # Return $x_0$
         return xt
 
-    def sample(self, n_samples: int = 1):
+    def sample(self, n_samples: int = 1, init_cond=None, init_step=None):
         """
         #### Generate images
         """
         # $x_T \sim p(x_T) = \mathcal{N}(x_T; \mathbf{0}, \mathbf{I})$
-        xt = torch.randn(
-            [n_samples, self.image_channels, self.image_size_h, self.image_size_w],
-            device=self.device
-        )
+        if init_cond is not None:
+            init_cond = init_cond.to(self.device)
+            assert init_step is not None
+            xt = self.model.q_sample(
+                init_cond,
+                init_cond.new_full((init_cond.shape[0], ), init_step, dtype=torch.long)
+            )
+        else:
+            xt = torch.randn(
+                [n_samples, self.image_channels, self.image_size_h, self.image_size_w],
+                device=self.device
+            )
 
+        init_step = init_step or self.n_steps
         # $$x_0 \sim \textcolor{lightgreen}{p_\theta}(x_0|x_t)$$
-        x0 = self._sample_x0(xt, self.n_steps)
+        x0 = self._sample_x0(xt, init_step)
 
         return x0
 
@@ -132,18 +141,24 @@ class Configs():
         # Sample
         return mean + (var**.5) * eps
 
-    def predict(self, n_samples: int = 16, is_condition=False):
+    def predict(self, n_samples: int = 16, init_cond=False, init_step=None):
         self.model.eval()
         with torch.no_grad():
-            if not is_condition:
+            if not init_cond:
                 x0 = self.sample(n_samples)
                 self.show_image(x0, "exp/x0.jpg")
                 prmat_x = x0.squeeze().cpu().numpy()
-                output_stamp = f"ddpm_direct_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}"
+                output_stamp = f"ddpm_prmat2d_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}"
                 prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
                 return x0
             else:
-                raise NotImplementedError
+                song_fn, x_init, _ = choose_song_from_val_dl()
+                x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
+                self.show_image(x0, "exp/x0.jpg")
+                prmat_x = x0.squeeze().cpu().numpy()
+                output_stamp = f"ddpm_prmat2d_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
+                prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+                return x0
 
     def show_image(self, img, title=""):
         """Helper function to display an image"""
@@ -173,8 +188,8 @@ def choose_song_from_val_dl():
 
     song = DataSampleNpz(song_fn)
     prmat_x, _ = song.get_whole_song_data()
-    prmat_x = prmat_x.squeeze().cpu().numpy()
-    prmat2c_to_midi_file(prmat_x, "exp/origin_x.mid")
+    prmat_x_np = prmat_x.squeeze().cpu().numpy()
+    prmat2c_to_midi_file(prmat_x_np, "exp/origin_x.mid")
     return song_fn, prmat_x, prmat_x
 
 
@@ -185,4 +200,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     config = Configs(params, args.model_dir)
-    config.predict(n_samples=16, is_condition=False)
+    config.predict(n_samples=16, init_cond=False, init_step=100)

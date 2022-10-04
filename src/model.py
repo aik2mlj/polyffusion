@@ -27,6 +27,9 @@ class Diffpro_DDPM(nn.Module):
     def p_sample(self, xt: torch.Tensor, t: torch.Tensor):
         return self.ddpm.p_sample(xt, t)
 
+    def q_sample(self, x0: torch.Tensor, t: torch.Tensor):
+        return self.ddpm.q_sample(x0, t)
+
     def get_loss_dict(self, prmat):
         """
         z_y is the stuff the diffusion model needs to learn
