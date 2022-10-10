@@ -11,7 +11,7 @@ import os
 import torch
 import numpy as np
 
-SEG_LGTH = 8
+SEG_LGTH = 32
 N_BIN = 4
 SEG_LGTH_BIN = SEG_LGTH * N_BIN
 
