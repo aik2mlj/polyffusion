@@ -11,25 +11,29 @@ def collate_fn(batch):
         return np.random.choice(np.arange(-6, 6), 1)[0]
 
     prmat_x = []
+    density = []
     song_fn = []
     for b in batch:
         # b[0]: seg_pnotree_x; b[1]: seg_pnotree_y
         seg_prmat_x = b[0]
+        seg_density = b[1]
 
         shift = sample_shift()
         seg_prmat_x = pr_mat_pitch_shift(seg_prmat_x, shift)
 
         prmat_x.append(seg_prmat_x)
+        density.append(seg_density)
 
         if len(b) > 2:
             song_fn.append(b[2])
 
     prmat_x = torch.Tensor(np.array(prmat_x, np.float32)).float()
+    density = torch.Tensor(np.array(density, np.float32)).float()
     # prmat_x = prmat_x.unsqueeze(1)  # (B, 1, 128, 128)
     if len(song_fn) > 0:
-        return prmat_x, prmat_x, song_fn
+        return prmat_x, density, song_fn
     else:
-        return prmat_x, prmat_x
+        return prmat_x, density
 
 
 def get_train_val_dataloaders(batch_size, params, debug=False):

@@ -3,7 +3,7 @@
 from torch.utils.data import Dataset
 from utils import (
     nmat_to_pianotree_repr, prmat2c_to_midi_file, normalize_prmat, denormalize_prmat,
-    nmat_to_prmat2c
+    nmat_to_prmat2c, compute_prmat2c_density
 )
 from utils import read_dict
 from dirs import *
@@ -153,7 +153,9 @@ class DataSampleNpz:
         self._store_seg(db)
 
         seg_prmat_x = self._pr_mat_dict_x[db]
-        return seg_prmat_x, None
+        density = compute_prmat2c_density(seg_prmat_x)
+
+        return seg_prmat_x, density
 
     def __getitem__(self, idx):
         db = self.db_pos[idx]
@@ -164,17 +166,20 @@ class DataSampleNpz:
         used when inference
         """
         prmat_x = []
+        density = []
         idx = 0
         i = 0
         while i < len(self):
-            seg_prmat_x, _ = self[i]
+            seg_prmat_x, seg_density = self[i]
             prmat_x.append(seg_prmat_x)
+            density.append(seg_density)
 
             idx += SEG_LGTH_BIN
             while i < len(self) and self.db_pos[i] < idx:
                 i += 1
         prmat_x = torch.from_numpy(np.array(prmat_x, dtype=np.float32))
-        return prmat_x, prmat_x
+        density = torch.from_numpy(np.array(density, dtype=np.float32))
+        return prmat_x, density
 
 
 class PianoOrchDataset(Dataset):
@@ -226,7 +231,11 @@ if __name__ == "__main__":
     test = "ssccm172.npz"
     song = DataSampleNpz(test)
     os.system(f"cp {MUSICALION_DATA_DIR}/{test[:-4]}_flated.mid exp/copy_x.mid")
-    prmat_x, _ = song.get_whole_song_data()
+    prmat_x, density = song.get_whole_song_data()
     print(prmat_x.shape)
+    print(density.shape)
     prmat_x = prmat_x.cpu().numpy()
-    prmat2c_to_midi_file(prmat_x, "exp/origin_x.mid")
+    density = density.cpu().tolist()
+    density = [str(x) for x in density]
+    print(density)
+    prmat2c_to_midi_file(prmat_x, "exp/origin_x.mid", density)

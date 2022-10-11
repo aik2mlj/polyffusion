@@ -180,6 +180,23 @@ def nmat_to_prmat2c(nmat, n_step=32):
     return pr_mat
 
 
+def compute_prmat2c_density(prmat2c):
+    # only consider onset
+    onset = prmat2c[0]
+    onset = np.round(onset).astype(np.int8)
+    count = np.count_nonzero(onset)
+    size = onset.size
+    ratio = count / size
+    if ratio < 0.004:
+        return 0
+    elif ratio < 0.008:
+        return 1
+    elif ratio < 0.012:
+        return 2
+    else:
+        return 3
+
+
 def normalize_prmat(prmat):
     n_step = prmat.shape[1]
     prmat_norm = prmat.astype(np.float32)
