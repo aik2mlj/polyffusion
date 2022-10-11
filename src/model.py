@@ -15,9 +15,9 @@ def Conv1d(*args, **kwargs):
     return layer
 
 
-@torch.jit.script
-def silu(x):
-    return x * torch.sigmoid(x)
+class Swish(nn.Module):
+    def forward(self, x):
+        return x * torch.sigmoid(x)
 
 
 class DiffusionEmbedding(nn.Module):
@@ -30,7 +30,9 @@ class DiffusionEmbedding(nn.Module):
             'embedding', self._build_embedding(max_steps), persistent=False
         )
         self.projection1 = Linear(128, 512)
+        self.act1 = Swish()
         self.projection2 = Linear(512, 512)
+        self.act2 = Swish()
 
     def forward(self, diffusion_step):
         if diffusion_step.dtype in [torch.int32, torch.int64]:
@@ -38,9 +40,9 @@ class DiffusionEmbedding(nn.Module):
         else:
             x = self._lerp_embedding(diffusion_step)
         x = self.projection1(x)
-        x = silu(x)
+        x = self.act1(x)
         x = self.projection2(x)
-        x = silu(x)
+        x = self.act2(x)
         return x
 
     def _lerp_embedding(self, t):
@@ -85,6 +87,9 @@ class Diffpro_diffwave(nn.Module):
         self.fc1 = Linear(512, 512)
         self.fc2 = Linear(512, 512)
         self.fc3 = Linear(512, 512)
+        self.act1 = Swish()
+        self.act2 = Swish()
+        self.act3 = Swish()
 
         self.output_projection = Conv1d(params.residual_channels, 1, 1)
         nn.init.zeros_(self.output_projection.weight)
@@ -133,22 +138,24 @@ class Diffpro_diffwave(nn.Module):
                (pnotree_x is not None and not self.params.unconditional)
         x = input.unsqueeze(1)  # (B, 1, 512)
         x = self.input_projection(x)  # (B, 64, 512)
-        x = silu(x)
+        x = F.relu(x)
 
         diffusion_step = self.diffusion_embedding(diffusion_step)  # (B, 512)
-        diffusion_step = self.diffusion_projection(diffusion_step).unsqueeze(-1)
-        x += diffusion_step
-        x = self.fc1(x)
-        x = silu(x)
+        diffusion_step = self.diffusion_projection(diffusion_step).unsqueeze(
+            -1
+        )  # (B, 64, 1)
+        y = x + diffusion_step
+        y = self.fc1(y)
+        y = self.act1(y)
         if not self.params.unconditional:  # use conditional model
             z_x = self.encode_z(pnotree_x, is_sampling=True)
             z_x = z_x.unsqueeze(1)  # (B, 1, 512)
             z_x = self.cond_projection(z_x)  # (B, 64, 512)
-            x += z_x
-        x = self.fc2(x)
-        x = silu(x)
-        x = self.fc3(x)
-        x = silu(x)
+            y += z_x
+        y = self.fc2(y)
+        y = self.act2(y)
+        y = self.fc3(y)
+        y = self.act3(y)
 
         # skip = None
         # for layer in self.residual_layers:
@@ -156,9 +163,10 @@ class Diffpro_diffwave(nn.Module):
         #     skip = skip_connection if skip is None else skip_connection + skip
         # assert skip is not None
 
-        x = self.output_projection(x)
-        x = x.squeeze(1)  # NOTE: add squeeze here
-        return x
+        output = (x + y) / sqrt(2.)
+        output = self.output_projection(output)
+        output = output.squeeze(1)
+        return output
 
     def get_loss_dict(self, pnotree_x, pnotree_y):
         """
