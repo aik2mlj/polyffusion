@@ -25,8 +25,8 @@ class DataSampleNpz:
     `__getitem__` is used for retrieving ready-made input segments to the model
     it will be called in DataLoader
     """
-    def __init__(self, song_fn) -> None:
-        self.fpath = os.path.join(MUSICALION_DATA_DIR, song_fn)
+    def __init__(self, song_fn, use_track=[1, 2]) -> None:
+        self.fpath = os.path.join(POP909_DATA_DIR, song_fn)
         self.song_fn = song_fn
         """
         notes (onset_beat, onset_bin, duration, pitch, velocity)
@@ -55,10 +55,13 @@ class DataSampleNpz:
 
         # def load(self, use_chord=False):
         #     """ load data """
+        self.use_track = use_track  # which tracks to use when converting to prmat2c
 
         data_x = np.load(self.fpath, allow_pickle=True)
-        self.notes_x = data_x["notes"]
-        self.start_table_x: dict = data_x["start_table"].item()
+        self.notes_x = np.array(
+            data_x["notes"]
+        )  # NOTE: here we have 3 tracks: melody, bridge and piano
+        self.start_table_x = data_x["start_table"]  # NOTE: same here
 
         self.db_pos = data_x["db_pos"]
         self.db_pos_filter = data_x["db_pos_filter"]
@@ -75,26 +78,36 @@ class DataSampleNpz:
         """Return number of complete 8-beat segments in a song"""
         return len(self.db_pos)
 
-    def note_mat_seg_at_db_x(self, db):
+    def note_mats_seg_at_db_x(self, db):
         """
         Select rows (notes) of the note_mat which lie between beats
         [db: db + 8].
         """
 
-        s_ind = self.start_table_x[db]
-        if db + SEG_LGTH_BIN in self.start_table_x:
-            e_ind = self.start_table_x[db + SEG_LGTH_BIN]
-            seg_mats = self.notes_x[s_ind : e_ind]
-        else:
-            seg_mats = self.notes_x[s_ind :]  # NOTE: may be wrong
-        return seg_mats.copy()
+        seg_mats = []
+        for notes, start_table in zip(self.notes_x, self.start_table_x):
+            s_ind = start_table[db]
+            if db + SEG_LGTH_BIN in start_table:
+                e_ind = start_table[db + SEG_LGTH_BIN]
+                note_seg = np.array(notes[s_ind : e_ind])
+            else:
+                note_seg = np.array(notes[s_ind :])  # NOTE: may be wrong
+            if note_seg.size == 0:
+                note_seg = np.zeros([0, 5])
+            seg_mats.append(note_seg)
+        return seg_mats
 
     @staticmethod
-    def reset_db_to_zeros(note_mat, db):
-        note_mat[:, 0] -= db
+    def cat_note_mats(note_mats):
+        return np.concatenate(note_mats, 0)
 
     @staticmethod
-    def format_reset_seg_mat(seg_mat):
+    def reset_db_to_zeros(note_mats, db):
+        for mat in note_mats:
+            mat[:, 0] -= db
+
+    @staticmethod
+    def format_reset_seg_mats(seg_mats):
         """
         The input seg_mat is (N, 5)
             onset, pitch, duration, velocity, program = note
@@ -102,11 +115,14 @@ class DataSampleNpz:
         Onset ranges between range(0, 32).
         """
 
-        output_mat = np.zeros((len(seg_mat), 3), dtype=np.int64)
-        output_mat[:, 0] = seg_mat[:, 0]
-        output_mat[:, 1] = seg_mat[:, 1]
-        output_mat[:, 2] = seg_mat[:, 2]
-        return output_mat
+        output_mats = []
+        for seg in seg_mats:
+            mat = np.zeros((len(seg), 3), dtype=np.int64)
+            mat[:, 0] = seg[:, 0]
+            mat[:, 1] = seg[:, 1]
+            mat[:, 2] = seg[:, 2]
+            output_mats.append(mat)
+        return output_mats
 
     def store_nmat_seg_x(self, db):
         """
@@ -115,10 +131,10 @@ class DataSampleNpz:
         if self._nmat_dict_x[db] is not None:
             return
 
-        nmat = self.note_mat_seg_at_db_x(db)
+        nmat = self.note_mats_seg_at_db_x(db)
         self.reset_db_to_zeros(nmat, db)
 
-        nmat = self.format_reset_seg_mat(nmat)
+        nmat = self.format_reset_seg_mats(nmat)
         self._nmat_dict_x[db] = nmat
 
     def store_prmat_seg_x(self, db):
@@ -128,7 +144,9 @@ class DataSampleNpz:
         if self._pr_mat_dict_x[db] is not None:
             return
 
-        prmat = nmat_to_prmat2c(self._nmat_dict_x[db], SEG_LGTH_BIN)
+        prmat = nmat_to_prmat2c(
+            self._nmat_dict_x[db], SEG_LGTH_BIN, use_track=self.use_track
+        )
         self._pr_mat_dict_x[db] = prmat
 
     def store_pnotree_seg_x(self, db):
@@ -209,7 +227,7 @@ class PianoOrchDataset(Dataset):
 
     @classmethod
     def load_train_and_valid_sets(cls, debug=False):
-        split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "musicalion.pickle"))
+        split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "pop909.pickle"))
         return cls.load_with_song_paths(split[0], debug), cls.load_with_song_paths(
             split[1], debug
         )
@@ -223,9 +241,9 @@ class PianoOrchDataset(Dataset):
 
 
 if __name__ == "__main__":
-    test = "ssccm172.npz"
+    test = "660.npz"
     song = DataSampleNpz(test)
-    os.system(f"cp {MUSICALION_DATA_DIR}/{test[:-4]}_flated.mid exp/copy_x.mid")
+    os.system(f"cp {POP909_DATA_DIR}/{test[:-4]}_flated.mid exp/copy_x.mid")
     prmat_x, _ = song.get_whole_song_data()
     print(prmat_x.shape)
     prmat_x = prmat_x.cpu().numpy()

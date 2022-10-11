@@ -169,14 +169,23 @@ def nmat_to_pr_mat_repr(nmat, n_step=32):
     return pr_mat
 
 
-def nmat_to_prmat2c(nmat, n_step=32):
+def nmat_to_prmat2c(nmat, n_step=32, use_track=None):
     pr_mat = np.zeros((2, n_step, 128), dtype=np.float32)
-    for o, p, d in nmat:
-        if o < n_step:
-            pr_mat[0, o, p] = 1.
-            for dd in range(1, d):
-                if o + dd < n_step:
-                    pr_mat[1, o + dd, p] = 1.
+    if use_track:
+        for track_idx in use_track:
+            for o, p, d in nmat[track_idx]:
+                if o < n_step:
+                    pr_mat[0, o, p] = 1.
+                    for dd in range(1, d):
+                        if o + dd < n_step:
+                            pr_mat[1, o + dd, p] = 1.
+    else:
+        for o, p, d in nmat:
+            if o < n_step:
+                pr_mat[0, o, p] = 1.
+                for dd in range(1, d):
+                    if o + dd < n_step:
+                        pr_mat[1, o + dd, p] = 1.
     return pr_mat
 
 

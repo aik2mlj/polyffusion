@@ -5,6 +5,7 @@ DATA_DIR = "data/LOP_4_bin_pnt"
 TRAIN_SPLIT_DIR = "data/train_split_pnt"
 
 MUSICALION_DATA_DIR = "data/musicalion_solo_piano_4_bin_pnt"
+POP909_DATA_DIR = "data/POP909_4_bin_pnt_8bar"
 
 # pretrained path
 PT_PNOTREE_PATH = "pretrained/pnotree_20/train_20-last-model.pt"
