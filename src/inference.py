@@ -88,10 +88,10 @@ class Configs():
             xt = self.model.p_sample(
                 xt, xt.new_full((n_samples, ), t, dtype=torch.long)
             )
-            if t_ % 100 == 0:
+            if t_ % 100 == 0 or (t_ >= 900 and t_ % 25 == 0):
                 self.show_image(xt, f"exp/x{t}.jpg")
                 prmat_x = xt.squeeze().cpu().numpy()
-                prmat2c_to_midi_file(prmat_x, f"exp/x{t}.mid")
+                prmat2c_to_midi_file(prmat_x, f"exp/x{t + 1}.mid")
 
         # Return $x_0$
         return xt
@@ -148,7 +148,7 @@ class Configs():
                 x0 = self.sample(n_samples)
                 self.show_image(x0, "exp/x0.jpg")
                 prmat_x = x0.squeeze().cpu().numpy()
-                output_stamp = f"ddpm_prmat2d_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}"
+                output_stamp = f"ddpm_prmat2c_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}"
                 prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
                 return x0
             else:
@@ -156,7 +156,7 @@ class Configs():
                 x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
                 self.show_image(x0, "exp/x0.jpg")
                 prmat_x = x0.squeeze().cpu().numpy()
-                output_stamp = f"ddpm_prmat2d_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
+                output_stamp = f"ddpm_prmat2c_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
                 prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
                 return x0
 

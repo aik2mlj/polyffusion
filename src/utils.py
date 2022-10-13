@@ -303,7 +303,14 @@ def prmat_to_midi_file(prmat: np.ndarray, fpath, labels=None):
     midi.write(fpath)
 
 
-def prmat2c_to_midi_file(prmat: np.ndarray, fpath, labels=None):
+def custom_round(x):
+    if x > 0.95 and x < 1.05:
+        return 1
+    else:
+        return 0
+
+
+def prmat2c_to_midi_file(prmat: np.ndarray, fpath, labels=None, is_custom_round=True):
     # prmat2c: (B, 2, 32, 128)
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
@@ -316,7 +323,10 @@ def prmat2c_to_midi_file(prmat: np.ndarray, fpath, labels=None):
         sustain = bars[1]
         for step_ind, step in enumerate(onset):
             for key, on in enumerate(step):
-                on = int(round(on))
+                if is_custom_round:
+                    on = int(custom_round(on))
+                else:
+                    on = int(round(on))
                 if on > 0:
                     dur = 1
                     while step_ind + dur < n_step:
