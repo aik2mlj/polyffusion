@@ -208,7 +208,7 @@ class DataSampleNpz:
                 i += 1
         prmat_x = torch.from_numpy(np.array(prmat_x, dtype=np.float32))
         density = torch.from_numpy(np.array(density, dtype=np.float32))
-        chord = torch.from_numpy(np.array(chord, dtype=np.float32))
+        chord = torch.from_numpy(np.array(chord, dtype=np.int32))
 
         return prmat_x, density, chord
 
