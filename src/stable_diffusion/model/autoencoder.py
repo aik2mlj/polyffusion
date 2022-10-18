@@ -21,6 +21,12 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from ..losses import LPIPSWithDiscriminator
+
+loss_class = LPIPSWithDiscriminator(
+    disc_start=50001, kl_weight=0.000001, disc_weight=0.5
+)
+
 
 class Autoencoder(nn.Module):
     """
@@ -40,6 +46,7 @@ class Autoencoder(nn.Module):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
+        self.loss = loss_class
         # Convolution to map from embedding space to
         # quantized embedding space moments (mean and log variance)
         self.quant_conv = nn.Conv2d(2 * z_channels, 2 * emb_channels, 1)
@@ -70,6 +77,36 @@ class Autoencoder(nn.Module):
         z = self.post_quant_conv(z)
         # Decode the image of shape `[batch_size, channels, height, width]`
         return self.decoder(z)
+
+    def forward(self, input, sample_posterior=True):
+        posterior = self.encode(input)
+        if sample_posterior:
+            z = posterior.sample()
+        else:
+            raise RuntimeError
+        dec = self.decode(z)
+        return dec, posterior
+
+    def get_last_layer(self):
+        return self.decoder.conv_out.weight
+
+    def get_loss_dict(self, batch, step):
+        img = batch[0]
+        reconstructions, posterior = self(img)
+
+        # train encoder+decoder+logvar
+        aeloss, log_dict_ae = self.loss(
+            img,
+            reconstructions,
+            posterior,
+            0,
+            step,
+            last_layer=self.get_last_layer(),
+            split="train"
+        )
+        return {
+            "loss": aeloss,
+        }
 
 
 class Encoder(nn.Module):
