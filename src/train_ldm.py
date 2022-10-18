@@ -8,32 +8,17 @@ from stable_diffusion.latent_diffusion import LatentDiffusion
 from model_sdf import Diffpro_SDF
 from dataloader import get_train_val_dataloaders
 from dirs import *
-from params import AttrDict
-
-params = AttrDict(
-    # Training params
-    batch_size=16,
-    max_epoch=100,
-    learning_rate=5e-5,
-    max_grad_norm=10,
-    fp16=False,
-
-    # Data params
-    num_workers=4,
-    pin_memory=True,
-)
+from params_sdf import params
 
 
 class LDM_TrainConfig():
     optimizer: torch.optim.Adam
 
-    batch_size = 16
-    learning_rate = 5e-5
-
-    def __init__(self, use_autoencoder=False) -> None:
+    def __init__(self, params, use_autoencoder=False) -> None:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(self.device)
         self.autoencoder = None
+        self.params = params
         if use_autoencoder:
             # encoder = Encoder(
             #     in_channels=2,
@@ -57,22 +42,22 @@ class LDM_TrainConfig():
             raise NotImplementedError
 
         self.unet_model = UNetModel(
-            in_channels=2,
-            out_channels=2,
-            channels=64,
-            attention_levels=[3],
-            n_res_blocks=2,
-            channel_multipliers=[1, 2, 4, 4],
-            n_heads=1,
-            tf_layers=1,
-            d_cond=36
+            in_channels=params.in_channels,
+            out_channels=params.out_channels,
+            channels=params.channels,
+            attention_levels=params.attention_levels,
+            n_res_blocks=params.n_res_blocks,
+            channel_multipliers=params.channel_multipliers,
+            n_heads=params.n_heads,
+            tf_layers=params.tf_layers,
+            d_cond=params.d_cond
         )
 
         self.ldm_model = LatentDiffusion(
-            linear_start=0.00085,
-            linear_end=0.0120,
-            n_steps=1000,
-            latent_scaling_factor=0.18215,
+            linear_start=params.linear_start,
+            linear_end=params.linear_end,
+            n_steps=params.n_steps,
+            latent_scaling_factor=params.latent_scaling_factor,
             autoencoder=self.autoencoder,
             unet_model=self.unet_model
         )
@@ -84,10 +69,10 @@ class LDM_TrainConfig():
         print(total_params)
 
         # Create dataloader
-        self.train_dl, self.val_dl = get_train_val_dataloaders(self.batch_size)
+        self.train_dl, self.val_dl = get_train_val_dataloaders(params.batch_size)
         # Create optimizer
         self.optimizer = torch.optim.Adam(
-            self.model.parameters(), lr=self.learning_rate
+            self.model.parameters(), lr=params.learning_rate
         )
 
     def train(self, output_dir=None):
@@ -97,9 +82,10 @@ class LDM_TrainConfig():
         else:
             output_dir = f"result/{datetime.now().strftime('%m-%d_%H%M%S')}"
         learner = DiffproLearner(
-            output_dir, self.model, self.train_dl, self.val_dl, self.optimizer, params
+            output_dir, self.model, self.train_dl, self.val_dl, self.optimizer,
+            self.params
         )
-        learner.train(max_epoch=params.max_epoch)
+        learner.train(max_epoch=self.params.max_epoch)
 
 
 from argparse import ArgumentParser
@@ -112,5 +98,5 @@ if __name__ == "__main__":
         help='directory in which to store model checkpoints and training logs'
     )
     args = parser.parse_args()
-    config = LDM_TrainConfig()
+    config = LDM_TrainConfig(params)
     config.train(args.output_dir)
