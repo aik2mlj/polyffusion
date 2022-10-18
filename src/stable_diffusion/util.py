@@ -19,10 +19,10 @@ from PIL import Image
 
 from labml import monit
 from labml.logger import inspect
-from latent_diffusion import LatentDiffusion
-from model.autoencoder import Encoder, Decoder, Autoencoder
+from .latent_diffusion import LatentDiffusion
+from .model.autoencoder import Encoder, Decoder, Autoencoder
 # from model.clip_embedder import CLIPTextEmbedder
-from model.unet import UNetModel
+from .model.unet import UNetModel
 
 
 def set_seed(seed: int):

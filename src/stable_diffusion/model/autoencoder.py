@@ -23,10 +23,6 @@ from torch import nn
 
 from ..losses import LPIPSWithDiscriminator
 
-loss_class = LPIPSWithDiscriminator(
-    disc_start=50001, kl_weight=0.000001, disc_weight=0.5
-)
-
 
 class Autoencoder(nn.Module):
     """
@@ -46,7 +42,10 @@ class Autoencoder(nn.Module):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
-        self.loss = loss_class
+        self.loss = LPIPSWithDiscriminator(
+            disc_start=50001, kl_weight=0.000001, disc_weight=0.5
+        )
+
         # Convolution to map from embedding space to
         # quantized embedding space moments (mean and log variance)
         self.quant_conv = nn.Conv2d(2 * z_channels, 2 * emb_channels, 1)
