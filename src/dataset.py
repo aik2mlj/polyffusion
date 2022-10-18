@@ -3,7 +3,7 @@
 from torch.utils.data import Dataset
 from utils import (
     nmat_to_pianotree_repr, prmat2c_to_midi_file, normalize_prmat, denormalize_prmat,
-    nmat_to_prmat2c, compute_prmat2c_density
+    nmat_to_prmat2c, compute_prmat2c_density, chd_to_midi_file
 )
 from utils import read_dict
 from dirs import *
@@ -68,6 +68,8 @@ class DataSampleNpz:
         self.db_pos = self.db_pos[self.db_pos_filter]
         if len(self.db_pos) != 0:
             self.last_db = self.db_pos[-1]
+
+        self.chord = data_x["chord"].astype(int)
 
         self._nmat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._pnotree_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
@@ -172,8 +174,11 @@ class DataSampleNpz:
 
         seg_prmat_x = self._pr_mat_dict_x[db]
         density = compute_prmat2c_density(seg_prmat_x)
+        chord = self.chord[db // N_BIN : db // N_BIN + SEG_LGTH]
+        if chord.shape[0] < SEG_LGTH:
+            chord = np.append(chord, np.zeros([SEG_LGTH - chord.shape[0], 14]), axis=0)
 
-        return seg_prmat_x, density
+        return seg_prmat_x, density, chord
 
     def __getitem__(self, idx):
         db = self.db_pos[idx]
@@ -185,19 +190,23 @@ class DataSampleNpz:
         """
         prmat_x = []
         density = []
+        chord = []
         idx = 0
         i = 0
         while i < len(self):
-            seg_prmat_x, seg_density = self[i]
+            seg_prmat_x, seg_density, seg_chord = self[i]
             prmat_x.append(seg_prmat_x)
             density.append(seg_density)
+            chord.append(seg_chord)
 
             idx += SEG_LGTH_BIN
             while i < len(self) and self.db_pos[i] < idx:
                 i += 1
         prmat_x = torch.from_numpy(np.array(prmat_x, dtype=np.float32))
         density = torch.from_numpy(np.array(density, dtype=np.float32))
-        return prmat_x, density
+        chord = torch.from_numpy(np.array(chord, dtype=np.float32))
+
+        return prmat_x, density, chord
 
 
 class PianoOrchDataset(Dataset):
@@ -246,14 +255,16 @@ class PianoOrchDataset(Dataset):
 
 
 if __name__ == "__main__":
-    test = "660.npz"
+    test = "661.npz"
     song = DataSampleNpz(test)
     os.system(f"cp {POP909_DATA_DIR}/{test[:-4]}_flated.mid exp/copy_x.mid")
-    prmat_x, _ = song.get_whole_song_data()
+    prmat_x, density, chord = song.get_whole_song_data()
     print(prmat_x.shape)
     print(density.shape)
+    print(chord.shape)
     prmat_x = prmat_x.cpu().numpy()
     density = density.cpu().tolist()
+    chord = chord.cpu().numpy()
     density = [str(x) for x in density]
-    print(density)
     prmat2c_to_midi_file(prmat_x, "exp/origin_x.mid", density)
+    chd_to_midi_file(chord, "exp/chord.mid")

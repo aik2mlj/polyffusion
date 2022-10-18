@@ -145,7 +145,7 @@ def chd_pitch_shift(chd, shift):
 
 def chd_to_onehot(chd):
     n_step = chd.shape[0]
-    onehot_chd = np.zeros((n_step, 36), dtype=np.int64)
+    onehot_chd = np.zeros((n_step, 36), dtype=np.float32)
     onehot_chd[np.arange(n_step), chd[:, 0]] = 1
     onehot_chd[:, 12 : 24] = chd[:, 1 : 13]
     onehot_chd[np.arange(n_step), 24 + chd[:, -1]] = 1
@@ -154,7 +154,7 @@ def chd_to_onehot(chd):
 
 def onehot_to_chd(onehot):
     n_step = onehot.shape[0]
-    chd = np.zeros((n_step, 14), dtype=np.int64)
+    chd = np.zeros((n_step, 14), dtype=np.float32)
     chd[:, 0] = np.argmax(onehot[:, 0 : 12], axis=1)
     chd[:, 1 : 13] = onehot[:, 12 : 24]
     chd[:, 13] = np.argmax(onehot[:, 24 : 36], axis=1)
@@ -349,6 +349,37 @@ def prmat2c_to_midi_file(prmat: np.ndarray, fpath, labels=None, is_custom_round=
             midi.lyrics.append(pm.Lyric(label, t))
             t += t_bar
     midi.write(fpath)
+
+
+def chd_to_midi_file(chords, output_fpath, one_beat=0.5):
+    """
+    retrieve midi from chords
+    """
+    midi = pm.PrettyMIDI()
+    piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
+    piano = pm.Instrument(program=piano_program)
+    t = 0.
+    for seg in chords:
+        for beat, chord in enumerate(seg):
+            root = int(chord[0])
+            chroma = chord[1 : 13].astype(int)
+            bass = int(chord[13])
+
+            chroma = np.roll(chroma, -bass)
+            c3 = 48
+            for i, n in enumerate(chroma):
+                if n == 1:
+                    note = pm.Note(
+                        velocity=80,
+                        pitch=c3 + i + bass,
+                        start=t * one_beat,
+                        end=(t + 1) * one_beat
+                    )
+                    piano.notes.append(note)
+            t += 1
+
+    midi.instruments.append(piano)
+    midi.write(output_fpath)
 
 
 if __name__ == "__main__":
