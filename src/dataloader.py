@@ -44,29 +44,29 @@ def collate_fn(batch):
         return prmat_x, density, chord
 
 
-def get_train_val_dataloaders(batch_size, params, debug=False):
+def get_train_val_dataloaders(batch_size, num_workers=4, pin_memory=True, debug=False):
     train_dataset, val_dataset = PianoOrchDataset.load_train_and_valid_sets(debug)
     train_dl = DataLoader(
         train_dataset,
         batch_size,
         True,
         collate_fn=collate_fn,
-        num_workers=params.num_workers,
-        pin_memory=params.pin_memory
+        num_workers=num_workers,
+        pin_memory=pin_memory
     )
     val_dl = DataLoader(
         val_dataset,
         batch_size,
         True,
         collate_fn=collate_fn,
-        num_workers=params.num_workers,
-        pin_memory=params.pin_memory
+        num_workers=num_workers,
+        pin_memory=pin_memory
     )
     return train_dl, val_dl
 
 
 if __name__ == "__main__":
-    train_dl, val_dl = get_train_val_dataloaders(64, params, debug=True)
+    train_dl, val_dl = get_train_val_dataloaders(64, debug=True)
     print(len(train_dl))
     for batch in train_dl:
         print(len(batch))

@@ -144,11 +144,9 @@ class DiffproLearner:
         for param in self.model.parameters():
             param.grad = None
 
-        pnotree, _ = batch
-
         # here forward the model
         with self.autocast:
-            loss_dict = self.model.get_loss_dict(pnotree)
+            loss_dict = self.model.get_loss_dict(batch, self.step)
 
         loss = loss_dict["loss"]
         self.scaler.scale(loss).backward()
@@ -162,9 +160,8 @@ class DiffproLearner:
 
     def val_step(self, batch):
         with torch.no_grad():
-            pnotree, _ = batch
             with self.autocast:
-                loss_dict = self.model.get_loss_dict(pnotree)
+                loss_dict = self.model.get_loss_dict(batch, self.step)
         return loss_dict
 
 
@@ -197,9 +194,7 @@ class Configs():
         self.model = Diffpro_DDPM(self.diffusion, params).to(self.device)
 
         # Create dataloader
-        self.train_dl, self.val_dl = get_train_val_dataloaders(
-            params.batch_size, params
-        )
+        self.train_dl, self.val_dl = get_train_val_dataloaders(params.batch_size)
         # Create optimizer
         self.optimizer = torch.optim.Adam(
             self.eps_model.parameters(), lr=params.learning_rate
