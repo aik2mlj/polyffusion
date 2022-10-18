@@ -15,6 +15,7 @@ from model import Diffpro_DDPM
 from utils import nested_map
 
 from typing import List
+import json
 
 
 class DiffproLearner:
@@ -30,6 +31,9 @@ class DiffproLearner:
         self.val_dl = val_dl
         self.optimizer = optimizer
         self.params = params
+        print(params)
+        with open(f"{output_dir}/params.json", "w") as params_file:
+            json.dump(params, params_file)
 
         self.step = 0
         self.epoch = 0
