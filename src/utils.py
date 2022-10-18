@@ -7,6 +7,7 @@ import torch
 from dl_modules import PianoTreeEncoder, PianoTreeDecoder
 from collections import OrderedDict
 from torch.distributions import Normal, kl_divergence
+import matplotlib.pyplot as plt
 
 
 def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
@@ -380,6 +381,23 @@ def chd_to_midi_file(chords, output_fpath, one_beat=0.5):
 
     midi.instruments.append(piano)
     midi.write(output_fpath)
+
+
+def show_image(img: torch.Tensor, title=""):
+    """Helper function to display an image"""
+    # (B, 2, 32, 128)
+    img = img.clip(0, 1)
+    img = img.cpu().numpy()
+    if img.ndim == 4:
+        img = np.swapaxes(img, 1, 2)
+        img = np.concatenate(img, axis=0)
+        img = np.swapaxes(img, 0, 1)
+    print(img.shape)
+    h = img.shape[1]
+    w = img.shape[2]
+    img = np.append(img, np.zeros([1, h, w]), axis=0)
+    img = img.transpose(2, 1, 0)  # (128, 32, 3)
+    plt.imsave(title, img)
 
 
 if __name__ == "__main__":

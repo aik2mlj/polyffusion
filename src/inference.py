@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from params import params
 from dataset import DataSampleNpz
 from dirs import *
-from utils import prmat2c_to_midi_file
+from utils import prmat2c_to_midi_file, show_image
 from ddpm import DenoiseDiffusion
 from ddpm.unet import UNet
 from ddpm.utils import gather
@@ -89,7 +89,7 @@ class Configs():
                 xt, xt.new_full((n_samples, ), t, dtype=torch.long)
             )
             if t_ % 100 == 0 or (t_ >= 900 and t_ % 25 == 0):
-                self.show_image(xt, f"exp/x{t}.jpg")
+                show_image(xt, f"exp/x{t}.jpg")
                 prmat_x = xt.squeeze().cpu().numpy()
                 prmat2c_to_midi_file(prmat_x, f"exp/x{t + 1}.mid")
 
@@ -146,7 +146,7 @@ class Configs():
         with torch.no_grad():
             if not init_cond:
                 x0 = self.sample(n_samples)
-                self.show_image(x0, "exp/x0.jpg")
+                show_image(x0, "exp/x0.jpg")
                 prmat_x = x0.squeeze().cpu().numpy()
                 output_stamp = f"ddpm_prmat2c_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}"
                 prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
@@ -154,27 +154,11 @@ class Configs():
             else:
                 song_fn, x_init, _ = choose_song_from_val_dl()
                 x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
-                self.show_image(x0, "exp/x0.jpg")
+                show_image(x0, "exp/x0.jpg")
                 prmat_x = x0.squeeze().cpu().numpy()
                 output_stamp = f"ddpm_prmat2c_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
                 prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
                 return x0
-
-    def show_image(self, img, title=""):
-        """Helper function to display an image"""
-        # (B, 2, 32, 128)
-        img = img.clip(0, 1)
-        img = img.cpu().numpy()
-        if img.ndim == 4:
-            img = np.swapaxes(img, 1, 2)
-            img = np.concatenate(img, axis=0)
-            img = np.swapaxes(img, 0, 1)
-        print(img.shape)
-        h = img.shape[1]
-        w = img.shape[2]
-        img = np.append(img, np.zeros([1, h, w]), axis=0)
-        img = img.transpose(2, 1, 0)  # (128, 32, 3)
-        plt.imsave(title, img)
 
 
 def choose_song_from_val_dl():
