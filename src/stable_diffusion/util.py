@@ -62,10 +62,6 @@ def load_model(path: Path = None) -> LatentDiffusion:
             emb_channels=4, encoder=encoder, decoder=decoder, z_channels=4
         )
 
-    # Initialize the CLIP text embedder
-    with monit.section('Initialize CLIP Embedder'):
-        clip_text_embedder = CLIPTextEmbedder()
-
     # Initialize the U-Net
     with monit.section('Initialize U-Net'):
         unet_model = UNetModel(
@@ -88,7 +84,6 @@ def load_model(path: Path = None) -> LatentDiffusion:
             n_steps=1000,
             latent_scaling_factor=0.18215,
             autoencoder=autoencoder,
-            clip_embedder=clip_text_embedder,
             unet_model=unet_model
         )
 

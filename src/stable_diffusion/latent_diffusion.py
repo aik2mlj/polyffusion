@@ -59,13 +59,11 @@ class LatentDiffusion(nn.Module):
     """
     model: DiffusionWrapper
     first_stage_model: Autoencoder
-    cond_stage_model: CLIPTextEmbedder
 
     def __init__(
         self,
         unet_model: UNetModel,
         autoencoder: Autoencoder,
-        clip_embedder: CLIPTextEmbedder,
         latent_scaling_factor: float,
         n_steps: int,
         linear_start: float,
@@ -89,8 +87,6 @@ class LatentDiffusion(nn.Module):
         # Auto-encoder and scaling factor
         self.first_stage_model = autoencoder
         self.latent_scaling_factor = latent_scaling_factor
-        # [CLIP embeddings generator](model/clip_embedder.html)
-        self.cond_stage_model = clip_embedder
 
         # Number of steps $T$
         self.n_steps = n_steps
@@ -112,12 +108,6 @@ class LatentDiffusion(nn.Module):
         ### Get model device
         """
         return next(iter(self.model.parameters())).device
-
-    def get_text_conditioning(self, prompts: List[str]):
-        """
-        ### Get [CLIP embeddings](model/clip_embedder.html) for a list of text prompts
-        """
-        return self.cond_stage_model(prompts)
 
     def autoencoder_encode(self, image: torch.Tensor):
         """
