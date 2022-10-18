@@ -69,7 +69,7 @@ class DataSampleNpz:
         if len(self.db_pos) != 0:
             self.last_db = self.db_pos[-1]
 
-        self.chord = data_x["chord"].astype(int)
+        self.chord = data_x["chord"].astype(np.int32)
 
         self._nmat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
         self._pnotree_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
@@ -176,7 +176,11 @@ class DataSampleNpz:
         density = compute_prmat2c_density(seg_prmat_x)
         chord = self.chord[db // N_BIN : db // N_BIN + SEG_LGTH]
         if chord.shape[0] < SEG_LGTH:
-            chord = np.append(chord, np.zeros([SEG_LGTH - chord.shape[0], 14]), axis=0)
+            chord = np.append(
+                chord,
+                np.zeros([SEG_LGTH - chord.shape[0], 14], dtype=np.int32),
+                axis=0
+            )
 
         return seg_prmat_x, density, chord
 
