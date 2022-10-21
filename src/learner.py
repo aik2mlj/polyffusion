@@ -1,21 +1,13 @@
 import numpy as np
 import os
 import torch
+import json
 import torch.nn as nn
 from tqdm import tqdm
 from torch.utils.tensorboard.writer import SummaryWriter
-from os.path import join
-from datetime import datetime
 
-from dataloader import get_train_val_dataloaders
 from dirs import *
-from ddpm import DenoiseDiffusion
-from ddpm.unet import UNet
-from model import Diffpro_DDPM
 from utils import nested_map
-
-from typing import List
-import json
 
 
 class DiffproLearner:
@@ -23,24 +15,29 @@ class DiffproLearner:
         self.output_dir = output_dir
         self.log_dir = f"{output_dir}/logs"
         self.checkpoint_dir = f"{output_dir}/chkpts"
-        os.makedirs(self.log_dir)
-        os.makedirs(self.checkpoint_dir)
-
         self.model = model
         self.train_dl = train_dl
         self.val_dl = val_dl
         self.optimizer = optimizer
         self.params = params
-        print(params)
-        with open(f"{output_dir}/params.json", "w") as params_file:
-            json.dump(params, params_file)
-
         self.step = 0
         self.epoch = 0
         self.summary_writer = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.autocast = torch.cuda.amp.autocast(enabled=params.fp16)
         self.scaler = torch.cuda.amp.GradScaler(enabled=params.fp16)
+
+        # restore if directory exists
+        if os.path.exists(self.output_dir):
+            self.restore_from_checkpoint()
+        else:
+            os.makedirs(self.output_dir)
+            os.makedirs(self.log_dir)
+            os.makedirs(self.checkpoint_dir)
+            with open(f"{output_dir}/params.json", "w") as params_file:
+                json.dump(self.params, params_file)
+
+        print(json.dumps(self.params, sort_keys=True, indent=4))
 
     def _write_summary(self, step, losses: dict, type):
         """type: train or val"""
@@ -81,7 +78,7 @@ class DiffproLearner:
             fpath = f"{self.checkpoint_dir}/{fname}.pt"
             checkpoint = torch.load(fpath)
             self.load_state_dict(checkpoint)
-            print(f"restored from checkpoint {fpath}!")
+            print(f"Restored from checkpoint {fpath} --> {fname}-{self.epoch}.pt!")
             return True
         except FileNotFoundError:
             print("No checkpoint found. Starting from scratch...")
