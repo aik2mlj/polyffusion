@@ -14,16 +14,20 @@ We use same notations for $\alpha_t$, $\beta_t$ schedules, etc.
 """
 
 from typing import Optional, List
+import numpy as np
 
 import numpy as np
 import torch
+import json
+import random
 
 from labml import monit
 from stable_diffusion.latent_diffusion import LatentDiffusion
 from stable_diffusion.sampler import DiffusionSampler
 from stable_diffusion.model.unet import UNetModel
 from model_sdf import Diffpro_SDF
-from params_sdf import params
+# from params_sdf import params
+from params import AttrDict
 
 from os.path import join
 from argparse import ArgumentParser
@@ -34,6 +38,11 @@ from datetime import datetime
 from dataset import DataSampleNpz
 from dirs import *
 from utils import prmat2c_to_midi_file, show_image, chd_to_midi_file, chd_to_onehot
+
+SEED = 7890
+torch.manual_seed(SEED)
+np.random.seed(SEED)
+random.seed(SEED)
 
 
 class DDPMSampler(DiffusionSampler):
@@ -61,7 +70,7 @@ class DDPMSampler(DiffusionSampler):
 
     model: LatentDiffusion
 
-    def __init__(self, model: LatentDiffusion, params):
+    def __init__(self, model: LatentDiffusion, params, is_show_image=False):
         """
         :param model: is the model to predict noise $\epsilon_\text{cond}(x_t, c)$
         """
@@ -72,6 +81,8 @@ class DDPMSampler(DiffusionSampler):
         self.time_steps = np.asarray(list(range(self.n_steps)))
 
         self.params = params
+
+        self.is_show_image = is_show_image
 
         with torch.no_grad():
             # $\bar\alpha_t$
@@ -153,10 +164,11 @@ class DDPMSampler(DiffusionSampler):
                 uncond_cond=uncond_cond
             )
             s1 = step + 1
-            if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
-                show_image(x, f"exp/x{s1}.jpg")
-                prmat_x = x.squeeze().cpu().numpy()
-                prmat2c_to_midi_file(prmat_x, f"exp/x{s1}.mid")
+            if self.is_show_image:
+                if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
+                    show_image(x, f"exp/x{s1}.jpg")
+                    prmat_x = x.squeeze().cpu().numpy()
+                    prmat2c_to_midi_file(prmat_x, f"exp/x{s1}.mid")
 
         # Return $x_0$
         return x
@@ -263,30 +275,33 @@ class DDPMSampler(DiffusionSampler):
         # Sample from $\mathcal{N} \Big(x_t; \sqrt{\bar\alpha_t} x_0, (1-\bar\alpha_t) \mathbf{I} \Big)$
         return self.sqrt_alpha_bar[index] * x0 + self.sqrt_1m_alpha_bar[index] * noise
 
-    def predict(self, cond: torch.Tensor, init_cond=False, init_step=None):
+    def predict(self, cond: torch.Tensor, uncond_scale=1.):
         n_samples = cond.shape[0]
         shape = [
             n_samples, self.params.out_channels, self.params.img_h, self.params.img_w
         ]
-        print(shape)
+        uncond_cond = (-torch.ones_like(cond)).to(self.device)  # a bunch of -1
+        print(f"predicting {shape} with uncond_scale = {uncond_scale}")
         self.model.eval()
         with torch.no_grad():
-            if not init_cond:
-                x0 = self.sample(shape, cond)
+            x0 = self.sample(
+                shape, cond, uncond_scale=uncond_scale, uncond_cond=uncond_cond
+            )
+            if self.is_show_image:
                 show_image(x0, "exp/x0.jpg")
-                prmat_x = x0.squeeze().cpu().numpy()
-                output_stamp = f"sdf+pop909_[cond]_{datetime.now().strftime('%m-%d_%H%M%S')}"
-                prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
-                return x0
-            else:
-                # song_fn, x_init, _ = choose_song_from_val_dl()
-                # x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
-                # show_image(x0, "exp/x0.jpg")
-                # prmat_x = x0.squeeze().cpu().numpy()
-                # output_stamp = f"sdf+pop909_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
-                # prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
-                # return x0
-                raise NotImplementedError
+            prmat_x = x0.squeeze().cpu().numpy()
+            output_stamp = f"sdf+pop909_[scale:{uncond_scale}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
+            prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+            return x0
+            # else:
+            # song_fn, x_init, _ = choose_song_from_val_dl()
+            # x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
+            # show_image(x0, "exp/x0.jpg")
+            # prmat_x = x0.squeeze().cpu().numpy()
+            # output_stamp = f"sdf+pop909_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
+            # prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+            # return x0
+            # raise NotImplementedError
 
 
 def choose_song_from_val_dl():
@@ -314,6 +329,10 @@ if __name__ == "__main__":
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )
     args = parser.parse_args()
+
+    with open(f"{args.model_dir}/params.json", "r") as params_file:
+        params = json.load(params_file)
+    params = AttrDict(params)
     autoencoder = None
     unet_model = UNetModel(
         in_channels=params.in_channels,
@@ -336,10 +355,10 @@ if __name__ == "__main__":
         unet_model=unet_model
     )
 
-    model = Diffpro_SDF.load_trained(ldm_model, args.model_dir).to(device)
-    config = DDPMSampler(model.ldm, params)
+    model = Diffpro_SDF.load_trained(ldm_model, f"{args.model_dir}/chkpts").to(device)
+    config = DDPMSampler(model.ldm, params, is_show_image=False)
 
     _, _, cond = choose_song_from_val_dl()
     print(cond.shape)
     cond = torch.Tensor(np.array([chd_to_onehot(chord) for chord in cond])).to(device)
-    config.predict(cond, init_cond=False, init_step=100)
+    config.predict(cond, uncond_scale=3.)
