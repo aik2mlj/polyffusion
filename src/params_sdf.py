@@ -32,4 +32,7 @@ params = AttrDict(
     # img
     img_h=128,
     img_w=128,
+
+    # conditional
+    cond_mode="mix"  # {mix, cond, uncond}
 )
