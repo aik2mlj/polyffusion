@@ -25,7 +25,7 @@ from labml import monit
 from stable_diffusion.latent_diffusion import LatentDiffusion
 from stable_diffusion.sampler import DiffusionSampler
 from stable_diffusion.model.unet import UNetModel
-from model_sdf import Diffpro_SDF
+from models.model_sdf import Diffpro_SDF
 # from params_sdf import params
 from params import AttrDict
 
@@ -328,6 +328,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )
+    parser.add_argument("--uncond_scale", default=1., help="unconditional scale")
     args = parser.parse_args()
 
     with open(f"{args.model_dir}/params.json", "r") as params_file:
@@ -361,4 +362,4 @@ if __name__ == "__main__":
     _, _, cond = choose_song_from_val_dl()
     print(cond.shape)
     cond = torch.Tensor(np.array([chd_to_onehot(chord) for chord in cond])).to(device)
-    config.predict(cond, uncond_scale=3.)
+    config.predict(cond, uncond_scale=float(args.uncond_scale))

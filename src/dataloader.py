@@ -6,7 +6,6 @@ from utils import (
     chd_pitch_shift, onehot_to_chd, chd_to_midi_file
 )
 import numpy as np
-from params import params
 
 
 def collate_fn(batch):

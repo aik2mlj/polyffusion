@@ -8,9 +8,8 @@ sys.path.insert(0, "..")
 from . import *
 from stable_diffusion.model.unet import UNetModel
 from stable_diffusion.latent_diffusion import LatentDiffusion
-from model_sdf import Diffpro_SDF
+from models.model_sdf import Diffpro_SDF
 from dataloader import get_train_val_dataloaders
-# from ..params_sdf import params
 
 
 class LDM_TrainConfig(TrainConfig):
@@ -69,15 +68,3 @@ class LDM_TrainConfig(TrainConfig):
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), lr=params.learning_rate
         )
-
-
-# if __name__ == "__main__":
-#     parser = ArgumentParser(description='train (or resume training) a Diffpro model')
-#     parser.add_argument(
-#         "--output_dir",
-#         default=None,
-#         help='directory in which to store model checkpoints and training logs'
-#     )
-#     args = parser.parse_args()
-#     config = LDM_TrainConfig(params, args.output_dir)
-#     config.train()

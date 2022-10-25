@@ -1,11 +1,13 @@
 from argparse import ArgumentParser
+import sys
+
+sys.path.insert(0, "..")
 
 from . import *
-from ..params import params
-from ..ddpm.unet import UNet
-from ..ddpm import DenoiseDiffusion
-from ..model import Diffpro_DDPM
-from ..dataloader import get_train_val_dataloaders
+from ddpm.unet import UNet
+from ddpm import DenoiseDiffusion
+from models.model_ddpm import Diffpro_DDPM
+from dataloader import get_train_val_dataloaders
 
 
 class DDPM_TrainConfig(TrainConfig):
@@ -41,15 +43,3 @@ class DDPM_TrainConfig(TrainConfig):
         self.optimizer = torch.optim.Adam(
             self.eps_model.parameters(), lr=params.learning_rate
         )
-
-
-if __name__ == "__main__":
-    parser = ArgumentParser(description='train (or resume training) a Diffpro model')
-    parser.add_argument(
-        "--output_dir",
-        default=None,
-        help='directory in which to store model checkpoints and training logs'
-    )
-    args = parser.parse_args()
-    config = DDPM_TrainConfig(params, args.output_dir)
-    config.train()

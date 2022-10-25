@@ -1,4 +1,4 @@
-from params import AttrDict
+from . import AttrDict
 
 params = AttrDict(
     # Training params
@@ -19,7 +19,7 @@ params = AttrDict(
     attention_levels=[2, 3],
     n_res_blocks=2,
     channel_multipliers=[1, 2, 4, 4],
-    n_heads=4,
+    n_heads=8,
     tf_layers=1,
     d_cond=36,
 

@@ -1,85 +1,50 @@
 import torch
 from datetime import datetime
+import sys
 
+sys.path.insert(0, "..")
+from . import TrainConfig
 from learner import DiffproLearner
 from stable_diffusion.model.autoencoder import Autoencoder, Encoder, Decoder
 from dataloader import get_train_val_dataloaders
 from dirs import *
-from params import AttrDict
-
-params = AttrDict(
-    # Training params
-    batch_size=16,
-    max_epoch=100,
-    learning_rate=5e-5,
-    max_grad_norm=10,
-    fp16=False,
-
-    # Data params
-    num_workers=4,
-    pin_memory=True,
-)
+from models.model_autoencoder import Diffpro_Autoencoder
 
 
-class Autoencoder_TrainConfig():
-    autoencoder: Autoencoder
+class Autoencoder_TrainConfig(TrainConfig):
+    model: Autoencoder
     optimizer: torch.optim.Adam
 
-    batch_size = 16
-    learning_rate = 5e-5
-
-    def __init__(self) -> None:
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.device = torch.device(self.device)
+    def __init__(self, params, output_dir) -> None:
+        super().__init__(params, output_dir)
         encoder = Encoder(
-            in_channels=2,
-            z_channels=4,
-            channels=64,
-            channel_multipliers=[1, 2, 4, 4],
-            n_resnet_blocks=2
+            in_channels=params.in_channels,
+            z_channels=params.z_channels,
+            channels=params.channels,
+            channel_multipliers=params.channel_multipliers,
+            n_resnet_blocks=params.n_res_blocks
         )
 
         decoder = Decoder(
-            out_channels=2,
-            z_channels=4,
-            channels=64,
-            channel_multipliers=[1, 2, 4, 4],
-            n_resnet_blocks=2
+            out_channels=params.out_channels,
+            z_channels=params.z_channels,
+            channels=params.channels,
+            channel_multipliers=params.channel_multipliers,
+            n_resnet_blocks=params.n_res_blocks
         )
 
-        self.autoencoder = Autoencoder(
-            emb_channels=4, encoder=encoder, decoder=decoder, z_channels=4
-        ).to(self.device)
+        autoencoder = Autoencoder(
+            encoder=encoder,
+            decoder=decoder,
+            emb_channels=params.emb_channels,
+            z_channels=params.z_channels
+        )
+
+        self.model = Diffpro_Autoencoder(autoencoder).to(self.device)
 
         # Create dataloader
-        self.train_dl, self.val_dl = get_train_val_dataloaders(self.batch_size)
+        self.train_dl, self.val_dl = get_train_val_dataloaders(params.batch_size)
         # Create optimizer
         self.optimizer = torch.optim.Adam(
-            self.autoencoder.parameters(), lr=self.learning_rate
+            self.model.parameters(), lr=params.learning_rate
         )
-
-    def train(self, output_dir=None):
-        if output_dir is not None:
-            os.makedirs(f"{output_dir}", exist_ok=True)
-            output_dir = f"{output_dir}/{datetime.now().strftime('%m-%d_%H%M%S')}"
-        else:
-            output_dir = f"result/{datetime.now().strftime('%m-%d_%H%M%S')}"
-        learner = DiffproLearner(
-            output_dir, self.autoencoder, self.train_dl, self.val_dl, self.optimizer,
-            params
-        )
-        learner.train(max_epoch=params.max_epoch)
-
-
-from argparse import ArgumentParser
-
-if __name__ == "__main__":
-    parser = ArgumentParser(description='train (or resume training) a Diffpro model')
-    parser.add_argument(
-        "--output_dir",
-        default=None,
-        help='directory in which to store model checkpoints and training logs'
-    )
-    args = parser.parse_args()
-    config = Autoencoder_TrainConfig()
-    config.train(args.output_dir)

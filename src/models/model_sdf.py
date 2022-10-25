@@ -1,5 +1,8 @@
 import torch
 import torch.nn as nn
+import sys
+
+sys.path.insert(0, "..")
 from utils import *
 from stable_diffusion.latent_diffusion import LatentDiffusion
 import torch.nn.functional as F
