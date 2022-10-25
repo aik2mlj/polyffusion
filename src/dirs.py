@@ -10,6 +10,9 @@ POP909_DATA_DIR = "data/POP909_4_bin_pnt_8bar"
 # pretrained path
 PT_PNOTREE_PATH = "pretrained/pnotree_20/train_20-last-model.pt"
 
+PT_POLYDIS_PATH = "pretrained/polydis/model_master_final.pt"
+PT_A2S_PATH = "pretrained/a2s/a2s-stage3a.pt"
+
 # the path to store demo.
 DEMO_FOLDER = "./demo"
 

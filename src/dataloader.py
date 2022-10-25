@@ -65,17 +65,17 @@ def get_train_val_dataloaders(batch_size, num_workers=4, pin_memory=True, debug=
 
 
 if __name__ == "__main__":
-    train_dl, val_dl = get_train_val_dataloaders(64, debug=True)
+    train_dl, val_dl = get_train_val_dataloaders(16)
     print(len(train_dl))
     for batch in train_dl:
         print(len(batch))
-        prmat_x, density, chord, song_fn = batch
+        prmat_x, density, chord = batch
         print(prmat_x.shape)
         print(density.shape)
         print(chord.shape)
         prmat_x = prmat_x.cpu().numpy()
         chord = chord.cpu().numpy()
-        chord = [onehot_to_chd(onehot) for onehot in chord]
-        prmat2c_to_midi_file(prmat_x, f"exp/test_x.mid", song_fn)
+        # chord = [onehot_to_chd(onehot) for onehot in chord]
+        prmat2c_to_midi_file(prmat_x, f"exp/test_x.mid")
         chd_to_midi_file(chord, "exp/chord.mid")
         exit(0)

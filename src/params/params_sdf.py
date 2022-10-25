@@ -1,12 +1,20 @@
 from . import AttrDict
 
+use_chd_enc = True
+chd_z_dim = 128
+
+if use_chd_enc:
+    d_cond = chd_z_dim
+else:
+    d_cond = 36
+
 params = AttrDict(
     # Training params
     batch_size=16,
     max_epoch=100,
     learning_rate=5e-5,
     max_grad_norm=10,
-    fp16=False,
+    fp16=True,
 
     # Data params
     num_workers=4,
@@ -19,9 +27,9 @@ params = AttrDict(
     attention_levels=[2, 3],
     n_res_blocks=2,
     channel_multipliers=[1, 2, 4, 4],
-    n_heads=8,
+    n_heads=4,
     tf_layers=1,
-    d_cond=36,
+    d_cond=d_cond,
 
     # ldm
     linear_start=0.00085,
@@ -34,5 +42,11 @@ params = AttrDict(
     img_w=128,
 
     # conditional
-    cond_mode="mix"  # {mix, cond, uncond}
+    cond_mode="mix",  # {mix, cond, uncond}
+
+    # whether to use chord encoder from polydis
+    use_chd_enc=use_chd_enc,
+    chd_input_dim=36,
+    chd_hidden_dim=256,
+    chd_z_dim=chd_z_dim
 )

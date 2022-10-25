@@ -356,15 +356,22 @@ def chd_to_midi_file(chords, output_fpath, one_beat=0.5):
     """
     retrieve midi from chords
     """
+    if "Tensor" in str(type(chords)):
+        chords = chords.cpu().detach().numpy()
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
     piano = pm.Instrument(program=piano_program)
     t = 0.
     for seg in chords:
         for beat, chord in enumerate(seg):
-            root = int(chord[0])
-            chroma = chord[1 : 13].astype(int)
-            bass = int(chord[13])
+            if chord.shape[0] == 14:
+                root = int(chord[0])
+                chroma = chord[1 : 13].astype(int)
+                bass = int(chord[13])
+            elif chord.shape[0] == 36:
+                root = int(chord[0 : 12].argmax())
+                chroma = chord[12 : 24].astype(int)
+                bass = int(chord[24 :].argmax())
 
             chroma = np.roll(chroma, -bass)
             c3 = 48
