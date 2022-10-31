@@ -34,8 +34,10 @@ class Diffpro_SDF(nn.Module):
                 param.requires_grad = False
 
     @classmethod
-    def load_trained(cls, ldm, model_dir):
-        model = cls(ldm)
+    def load_trained(
+        cls, ldm, model_dir, cond_mode="cond", chord_enc=None, chord_dec=None
+    ):
+        model = cls(ldm, cond_mode, chord_enc, chord_dec)
         trained_leaner = torch.load(f"{model_dir}/weights.pt")
         model.load_state_dict(trained_leaner["model"])
         return model
@@ -97,4 +99,10 @@ class Diffpro_SDF(nn.Module):
         elif self.cond_mode == "mix":
             if random.random() < 0.2:
                 cond = (-torch.ones_like(cond)).to(self.device)  # a bunch of -1
-        return {"loss": self.ldm.loss(prmat, cond)}
+
+        # if self.is_autoregressive:
+        #     concat, x = prmat.split(64, -2)
+        #     loss = self.ldm.loss(x, cond, concat=concat, concat_axis=-2)
+        # else:
+        loss = self.ldm.loss(prmat, cond)
+        return {"loss": loss}

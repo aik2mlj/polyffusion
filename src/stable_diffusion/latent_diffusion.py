@@ -196,7 +196,9 @@ class LatentDiffusion(nn.Module):
         self,
         x0: torch.Tensor,
         cond: torch.Tensor,
-        noise: Optional[torch.Tensor] = None
+        noise: Optional[torch.Tensor] = None,
+        concat: Optional[torch.Tensor] = None,
+        concat_axis = 0,
     ):
         """
         #### Simplified Loss
@@ -217,7 +219,12 @@ class LatentDiffusion(nn.Module):
         # Sample $x_t$ for $q(x_t|x_0)$
         xt = self.q_sample(x0, t, eps=noise)
         # Get $\textcolor{lightgreen}{\epsilon_\theta}(\sqrt{\bar\alpha_t} x_0 + \sqrt{1-\bar\alpha_t}\epsilon, t)$
-        eps_theta = self.eps_model(xt, t, cond)
+        if concat is not None:
+            xt_concat = torch.concat([concat, xt], dim=concat_axis) 
+            eps_theta = self.eps_model(xt_concat, t, cond)
+            eps_theta = eps_theta.split(xt.shape[concat_axis], concat_axis)[1]
+        else:
+            eps_theta = self.eps_model(xt, t, cond)
 
         # MSE loss
         return F.mse_loss(noise, eps_theta)

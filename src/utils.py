@@ -313,6 +313,7 @@ def custom_round(x):
 
 def prmat2c_to_midi_file(prmat: np.ndarray, fpath, labels=None, is_custom_round=True):
     # prmat2c: (B, 2, 32, 128)
+    print(f"prmat : {prmat.shape}")
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
     piano = pm.Instrument(program=piano_program)
@@ -399,7 +400,7 @@ def show_image(img: torch.Tensor, title=""):
         img = np.swapaxes(img, 1, 2)
         img = np.concatenate(img, axis=0)
         img = np.swapaxes(img, 0, 1)
-    print(img.shape)
+    print(f"img: {img.shape}")
     h = img.shape[1]
     w = img.shape[2]
     img = np.append(img, np.zeros([1, h, w]), axis=0)
