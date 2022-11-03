@@ -361,8 +361,8 @@ class DDPMSampler(DiffusionSampler):
                 ]
                 last = None  # this is the last inpainted 4-bar
                 mask = torch.zeros(single_shape, device=self.device)
-                mask[:, :,
-                     0 : half_len, :] = 1.  # the first half is masked for inpainting
+                # the first half is masked for inpainting
+                mask[:, :, 0 : half_len, :] = 1.
 
                 # squeeze the first two dimensions of the condition,
                 # for convenience in getting an arbitrary 8-bar (i.e. [1, 4, 128])
@@ -370,6 +370,7 @@ class DDPMSampler(DiffusionSampler):
                 cond_sqz = cond.view(cond.shape[0] * cond.shape[1], cond.shape[2])
                 print(cond_sqz.shape)  # [#B * 4, 128]
                 cond_len = cond.shape[-2]  # 4
+                uncond_cond_seg = uncond_cond[0].unsqueeze(0)
 
                 gen = []  # the generated
                 for idx in range(n_samples * 2 - 1):  # inpaint a 4-bar each time
@@ -378,7 +379,7 @@ class DDPMSampler(DiffusionSampler):
                             single_shape,
                             cond[idx].unsqueeze(0),
                             uncond_scale=uncond_scale,
-                            uncond_cond=uncond_cond
+                            uncond_cond=uncond_cond_seg
                         )
                         gen.append(x0[:, :, 0 : half_len, :])
                     else:
@@ -397,9 +398,11 @@ class DDPMSampler(DiffusionSampler):
                             mask=mask,
                             orig_noise=orig_noise,
                             uncond_scale=uncond_scale,
-                            uncond_cond=uncond_cond
+                            uncond_cond=uncond_cond_seg
                         )
                     last = torch.zeros_like(x0)
+                    # the last fixed half should have not changed
+                    assert x0[:, :, 0 : half_len, :] == last[:, :, 0 : half_len, :]
                     new_inpainted_half = x0[:, :, half_len :, :]
                     last[:, :, 0 : half_len, :] = new_inpainted_half
                     gen.append(new_inpainted_half)
@@ -407,8 +410,8 @@ class DDPMSampler(DiffusionSampler):
                 gen = torch.cat(gen, dim=0)
                 print(f"piano_roll: {gen.shape}")
                 assert gen.shape[0] == n_samples * 2
-                gen.view(n_samples, gen.shape[1], half_len * 2, gen.shape[-1])
-                print(f"piano_roll: {gen.shape}")
+                # gen = gen.view(n_samples, gen.shape[1], half_len * 2, gen.shape[-1])
+                # print(f"piano_roll: {gen.shape}")
 
             else:
                 gen = self.sample(
@@ -416,7 +419,7 @@ class DDPMSampler(DiffusionSampler):
                 )
 
         if self.is_show_image:
-            show_image(gen, "exp/x0.jpg")
+            show_image(gen, "exp/img/gen.jpg")
         prmat_x = gen.cpu().numpy()
         output_stamp = f"sdf+pop909_[scale:{uncond_scale},autoreg={self.is_autoreg}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
         prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
@@ -508,6 +511,6 @@ if __name__ == "__main__":
     print(cond.shape)
     cond = torch.Tensor(np.array([chd_to_onehot(chord) for chord in cond])).to(device)
     cond = model._encode_chord(cond)
-    # cond = cond[: 3]
+    cond = cond[: 6]
     print(cond.shape)
     config.predict(cond, uncond_scale=float(args.uncond_scale))
