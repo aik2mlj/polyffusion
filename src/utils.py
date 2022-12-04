@@ -190,6 +190,37 @@ def nmat_to_prmat2c(nmat, n_step=32, use_track=None):
     return pr_mat
 
 
+def prmat2c_to_prmat(prmat2c, n_step=32):
+    """
+    prmat2c: (N, 2, 32*ratio, 128)
+    prmat: (N*ratio, 32, 128)
+    """
+    if "Tensor" in str(type(prmat2c)):
+        prmat2c = prmat2c.cpu().detach().numpy()
+    assert prmat2c.ndim == 4
+    N = prmat2c.shape[0]
+    prmat2c_step = prmat2c.shape[2]  # 128 (normal), 64 (autoregressive)
+    ratio = prmat2c_step // n_step
+    prmat = np.zeros((N * ratio, n_step, 128), dtype=np.int64)
+    # t_bar = int(prmat2c_step / 8)
+    # notes = []
+    for bar_ind, bars in enumerate(prmat2c):
+        onset = bars[0]
+        sustain = bars[1]
+        for step_ind, step in enumerate(onset):
+            for key, on in enumerate(step):
+                on = int(round(on))
+                if on > 0:
+                    dur = 1
+                    while step_ind + dur < prmat2c_step:
+                        if not (int(round(sustain[step_ind + dur, key])) > 0):
+                            break
+                        dur += 1
+                    prmat[bar_ind * ratio + step_ind // n_step, step_ind % n_step,
+                          key] = dur
+    return prmat
+
+
 def compute_prmat2c_density(prmat2c):
     # only consider onset
     onset = prmat2c[0]

@@ -37,8 +37,9 @@ from datetime import datetime
 
 from dataset import DataSampleNpz
 from dirs import *
-from utils import prmat2c_to_midi_file, show_image, chd_to_midi_file, chd_to_onehot
+from utils import prmat2c_to_midi_file, prmat_to_midi_file, show_image, chd_to_midi_file, chd_to_onehot, prmat2c_to_prmat
 from train.train_ldm import load_pretrained_chd_enc_dec
+from polydis_aftertouch import PolydisAftertouch
 
 SEED = 7890
 torch.manual_seed(SEED)
@@ -345,7 +346,13 @@ class DDPMSampler(DiffusionSampler):
                     # prmat2c_to_midi_file(prmat_x, f"exp/x{s1}.mid")
         return x
 
-    def predict(self, cond: torch.Tensor, uncond_scale=1.):
+    def predict(
+        self,
+        cond: torch.Tensor,
+        uncond_scale=1.,
+        polydis_recon=False,
+        polydis_chd=None
+    ):
         n_samples = cond.shape[0]
         shape = [
             n_samples, self.params.out_channels, self.params.img_h, self.params.img_w
@@ -402,7 +409,7 @@ class DDPMSampler(DiffusionSampler):
                         )
                     last = torch.zeros_like(x0)
                     # the last fixed half should have not changed
-                    assert x0[:, :, 0 : half_len, :] == last[:, :, 0 : half_len, :]
+                    # assert x0[:, :, 0 : half_len, :] == last[:, :, 0 : half_len, :]
                     new_inpainted_half = x0[:, :, half_len :, :]
                     last[:, :, 0 : half_len, :] = new_inpainted_half
                     gen.append(new_inpainted_half)
@@ -423,6 +430,14 @@ class DDPMSampler(DiffusionSampler):
         prmat_x = gen.cpu().numpy()
         output_stamp = f"sdf+pop909_[scale:{uncond_scale},autoreg={self.is_autoreg}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
         prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+        if polydis_recon:
+            aftertouch = PolydisAftertouch()
+            prmat = prmat2c_to_prmat(prmat_x)
+            print(prmat.shape)
+            prmat_to_midi_file(prmat, f"exp/{output_stamp}_prmat.mid")
+            prmat = torch.from_numpy(prmat)
+            chd = polydis_chd
+            aftertouch.reconstruct(prmat, chd, f"exp/{output_stamp}")
         return gen
         # else:
         # song_fn, x_init, _ = choose_song_from_val_dl()
@@ -466,6 +481,12 @@ if __name__ == "__main__":
         default=False,
         help="whether to show the images of generated piano-roll"
     )
+    parser.add_argument(
+        "--polydis_recon",
+        default=False,
+        help=
+        "whether to use polydis to reconstruct the generated midi from diffusion model"
+    )
     args = parser.parse_args()
 
     with open(f"{args.model_dir}/params.json", "r") as params_file:
@@ -507,10 +528,18 @@ if __name__ == "__main__":
         model.ldm, params, is_show_image=args.show_image, is_autoreg=args.is_autoreg
     )
 
-    _, _, cond = choose_song_from_val_dl()
-    print(cond.shape)
-    cond = torch.Tensor(np.array([chd_to_onehot(chord) for chord in cond])).to(device)
-    cond = model._encode_chord(cond)
-    cond = cond[: 6]
-    print(cond.shape)
-    config.predict(cond, uncond_scale=float(args.uncond_scale))
+    _, _, chd = choose_song_from_val_dl()
+    chd = torch.Tensor(np.array([chd_to_onehot(chord) for chord in chd])).to(device)
+    chd = chd[: 6]
+    print(chd.shape)
+    chd_enc = model._encode_chord(chd)
+    print(chd_enc.shape)
+
+    polydis_chd = chd.view(-1, 8, 36)  # 2-bars
+    print(polydis_chd.shape)
+    config.predict(
+        chd_enc,
+        uncond_scale=float(args.uncond_scale),
+        polydis_recon=args.polydis_recon,
+        polydis_chd=polydis_chd
+    )
