@@ -19,9 +19,10 @@ class TrainConfig():
     val_dl: DataLoader
     optimizer: Optimizer
 
-    def __init__(self, params, output_dir) -> None:
+    def __init__(self, params, param_scheduler, output_dir) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.params = params
+        self.param_scheduler = param_scheduler
         self.output_dir = output_dir
         if os.path.exists(f"{output_dir}/params.json"):
             with open(f"{output_dir}/params.json", "r") as params_file:
@@ -45,6 +46,6 @@ class TrainConfig():
             print(f"Creating new log folder as {output_dir}")
         learner = DiffproLearner(
             output_dir, self.model, self.train_dl, self.val_dl, self.optimizer,
-            self.params
+            self.params, self.param_scheduler
         )
         learner.train(max_epoch=self.params.max_epoch)

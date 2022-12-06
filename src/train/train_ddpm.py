@@ -7,7 +7,7 @@ from . import *
 from ddpm.unet import UNet
 from ddpm import DenoiseDiffusion
 from models.model_ddpm import Diffpro_DDPM
-from dataloader import get_train_val_dataloaders
+from data.dataloader import get_train_val_dataloaders
 
 
 class DDPM_TrainConfig(TrainConfig):

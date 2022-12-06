@@ -1,3 +1,5 @@
+# This file is unused
+
 import torch
 from datetime import datetime
 import sys
@@ -6,7 +8,7 @@ sys.path.insert(0, "..")
 from . import TrainConfig
 from learner import DiffproLearner
 from stable_diffusion.model.autoencoder import Autoencoder, Encoder, Decoder
-from dataloader import get_train_val_dataloaders
+from data.dataloader import get_train_val_dataloaders
 from dirs import *
 from models.model_autoencoder import Diffpro_Autoencoder
 

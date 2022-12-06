@@ -1,15 +1,16 @@
 import torch
 from argparse import ArgumentParser
 import sys
+import os
 
-sys.path.insert(0, "..")
+sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 
 # from stable_diffusion.model.autoencoder import Autoencoder, Encoder, Decoder
 from . import *
 from stable_diffusion.model.unet import UNetModel
 from stable_diffusion.latent_diffusion import LatentDiffusion
 from models.model_sdf import Diffpro_SDF
-from dataloader import get_train_val_dataloaders
+from data.dataloader import get_train_val_dataloaders
 from dl_modules import ChordEncoder, ChordDecoder
 from dirs import PT_A2S_PATH
 

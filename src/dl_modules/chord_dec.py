@@ -65,7 +65,7 @@ class ChordDecoder(nn.Module):
         recon_root = torch.cat(recon_root, dim=1)
         recon_chroma = torch.cat(recon_chroma, dim=1)
         recon_bass = torch.cat(recon_bass, dim=1)
-        print(recon_root.shape, recon_chroma.shape, recon_bass.shape)
+        # print(recon_root.shape, recon_chroma.shape, recon_bass.shape)
         return recon_root, recon_chroma, recon_bass
 
     def recon_loss(self, c, recon_root, recon_chroma, recon_bass):

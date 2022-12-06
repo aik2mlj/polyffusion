@@ -5,13 +5,16 @@ import json
 import torch.nn as nn
 from tqdm import tqdm
 from torch.utils.tensorboard.writer import SummaryWriter
+from typing import Optional
 
 from dirs import *
 from utils import nested_map
 
 
 class DiffproLearner:
-    def __init__(self, output_dir, model, train_dl, val_dl, optimizer, params):
+    def __init__(
+        self, output_dir, model, train_dl, val_dl, optimizer, params, param_scheduler
+    ):
         self.output_dir = output_dir
         self.log_dir = f"{output_dir}/logs"
         self.checkpoint_dir = f"{output_dir}/chkpts"
@@ -20,6 +23,7 @@ class DiffproLearner:
         self.val_dl = val_dl
         self.optimizer = optimizer
         self.params = params
+        self.param_scheduler = param_scheduler  # teacher-forcing stuff
         self.step = 0
         self.epoch = 0
         self.summary_writer = None
@@ -39,12 +43,17 @@ class DiffproLearner:
 
         print(json.dumps(self.params, sort_keys=True, indent=4))
 
-    def _write_summary(self, step, losses: dict, type):
+    def _write_summary(self, losses: dict, scheduled_params: Optional[dict], type):
         """type: train or val"""
         summary_losses = losses
         summary_losses["grad_norm"] = self.grad_norm
-        writer = self.summary_writer or SummaryWriter(self.log_dir, purge_step=step)
-        writer.add_scalars(type, losses, step)
+        if scheduled_params is not None:
+            for k, v in scheduled_params.items():
+                summary_losses[f"sched_{k}"] = v
+        writer = self.summary_writer or SummaryWriter(
+            self.log_dir, purge_step=self.step
+        )
+        writer.add_scalars(type, summary_losses, self.step)
         writer.flush()
         self.summary_writer = writer
 
@@ -94,8 +103,11 @@ class DiffproLearner:
         os.symlink(save_name, link_fpath)
 
     def train(self, max_epoch=None):
-        self.model.train()
         while True:
+            self.model.train()
+            if self.param_scheduler is not None:
+                self.param_scheduler.train()
+
             self.epoch = self.step // len(self.train_dl)
             if max_epoch is not None and self.epoch >= max_epoch:
                 return
@@ -105,7 +117,7 @@ class DiffproLearner:
                     batch, lambda x: x.to(self.device)
                     if isinstance(x, torch.Tensor) else x
                 )
-                losses = self.train_step(batch)
+                losses, scheduled_params = self.train_step(batch)
                 # check NaN
                 for loss_value in list(losses.values()):
                     if isinstance(loss_value,
@@ -114,7 +126,7 @@ class DiffproLearner:
                             f"Detected NaN loss at step {self.step}, epoch {self.epoch}"
                         )
                 if self.step % 50 == 0:
-                    self._write_summary(self.step, losses, "train")
+                    self._write_summary(losses, scheduled_params, "train")
                 if self.step % 5000 == 0:
                     self.valid()
                 self.step += 1
@@ -123,19 +135,22 @@ class DiffproLearner:
             self.valid()
 
     def valid(self):
+        # self.model.eval()
+        if self.param_scheduler is not None:
+            self.param_scheduler.eval()
         losses = None
         for batch in self.val_dl:
             batch = nested_map(
                 batch, lambda x: x.to(self.device) if isinstance(x, torch.Tensor) else x
             )
-            current_losses = self.val_step(batch)
+            current_losses, _ = self.val_step(batch)
             losses = losses or current_losses
             for k, v in current_losses.items():
                 losses[k] += v
         assert losses is not None
         for k, v in losses.items():
             losses[k] /= len(self.val_dl)
-        self._write_summary(self.step, losses, "val")
+        self._write_summary(losses, None, "val")
 
         self.save_to_checkpoint()
 
@@ -147,7 +162,14 @@ class DiffproLearner:
 
         # here forward the model
         with self.autocast:
-            loss_dict = self.model.get_loss_dict(batch, self.step)
+            if self.param_scheduler is not None:
+                scheduled_params = self.param_scheduler.step()
+                loss_dict = self.model.get_loss_dict(
+                    batch, self.step, **scheduled_params
+                )
+            else:
+                scheduled_params = None
+                loss_dict = self.model.get_loss_dict(batch, self.step)
 
         loss = loss_dict["loss"]
         self.scaler.scale(loss).backward()
@@ -157,10 +179,18 @@ class DiffproLearner:
         )
         self.scaler.step(self.optimizer)
         self.scaler.update()
-        return loss_dict
+        return loss_dict, scheduled_params
 
     def val_step(self, batch):
         with torch.no_grad():
             with self.autocast:
-                loss_dict = self.model.get_loss_dict(batch, self.step)
-        return loss_dict
+                if self.param_scheduler is not None:
+                    scheduled_params = self.param_scheduler.step()
+                    loss_dict = self.model.get_loss_dict(
+                        batch, self.step, **scheduled_params
+                    )
+                else:
+                    scheduled_params = None
+                    loss_dict = self.model.get_loss_dict(batch, self.step)
+
+        return loss_dict, scheduled_params
