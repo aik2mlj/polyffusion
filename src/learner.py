@@ -26,6 +26,7 @@ class DiffproLearner:
         self.param_scheduler = param_scheduler  # teacher-forcing stuff
         self.step = 0
         self.epoch = 0
+        self.grad_norm = 0.
         self.summary_writer = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.autocast = torch.cuda.amp.autocast(enabled=params.fp16)
@@ -103,11 +104,11 @@ class DiffproLearner:
         os.symlink(save_name, link_fpath)
 
     def train(self, max_epoch=None):
+        self.model.train()
+
         while True:
-            self.model.train()
             if self.param_scheduler is not None:
                 self.param_scheduler.train()
-
             self.epoch = self.step // len(self.train_dl)
             if max_epoch is not None and self.epoch >= max_epoch:
                 return

@@ -11,14 +11,19 @@ from stable_diffusion.model.unet import UNetModel
 from stable_diffusion.latent_diffusion import LatentDiffusion
 from models.model_sdf import Diffpro_SDF
 from data.dataloader import get_train_val_dataloaders
+from data.dataloader_musicalion import get_train_val_dataloaders as get_train_val_dataloaders_musicalion
 from dl_modules import ChordEncoder, ChordDecoder
-from dirs import PT_A2S_PATH
+from dirs import PT_A2S_PATH, PT_CHD_8BAR_PATH
 
 
-def load_pretrained_chd_enc_dec(fpath, input_dim, hidden_dim, z_dim):
+def load_pretrained_chd_enc_dec(
+    fpath, input_dim, z_input_dim, hidden_dim, z_dim, n_step
+):
     chord_enc = ChordEncoder(input_dim, hidden_dim, z_dim)
-    chord_dec = ChordDecoder(z_dim=z_dim)
+    chord_dec = ChordDecoder(input_dim, z_input_dim, hidden_dim, z_dim, n_step)
     checkpoint = torch.load(fpath)
+    if "model" in checkpoint:
+        checkpoint = checkpoint["model"]
     from collections import OrderedDict
     enc_chkpt = OrderedDict()
     dec_chkpt = OrderedDict()
@@ -36,7 +41,7 @@ def load_pretrained_chd_enc_dec(fpath, input_dim, hidden_dim, z_dim):
 
 class LDM_TrainConfig(TrainConfig):
     def __init__(self, params, output_dir, use_autoencoder=False) -> None:
-        super().__init__(params, output_dir)
+        super().__init__(params, None, output_dir)
         self.autoencoder = None
 
         if use_autoencoder:
@@ -84,8 +89,8 @@ class LDM_TrainConfig(TrainConfig):
 
         if params.use_chd_enc:
             self.chord_enc, self.chord_dec = load_pretrained_chd_enc_dec(
-                PT_A2S_PATH, params.chd_input_dim, params.chd_hidden_dim,
-                params.chd_z_dim
+                PT_CHD_8BAR_PATH, params.chd_input_dim, params.chd_z_input_dim,
+                params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
             )
         else:
             self.chord_enc, self.chord_dec = None, None

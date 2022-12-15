@@ -266,6 +266,7 @@ def estx_to_midi_file(est_x, fpath, labels=None):
     # the 0th column is for pitch, 1: 6 is for duration in binary repr. Output is
     # padded with <sos> and <eos> tokens in the pitch column, but with pad token
     # for dur columns.
+    n_step = est_x.shape[1]  # 32, or 128
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
     piano = pm.Instrument(program=piano_program)
@@ -288,10 +289,10 @@ def estx_to_midi_file(est_x, fpath, labels=None):
                     velocity=80,
                     pitch=int(kth_key[0]),
                     start=t + step_ind * 1 / 8,
-                    end=min(t + (step_ind + int(dur)) * 1 / 8, t + 4),
+                    end=min(t + (step_ind + int(dur)) * 1 / 8, t + n_step / 8),
                 )
                 piano.notes.append(note)
-        t += 4
+        t += n_step / 8
     midi.instruments.append(piano)
 
     if labels is not None:
@@ -299,7 +300,7 @@ def estx_to_midi_file(est_x, fpath, labels=None):
         t = 0
         for label in labels:
             midi.lyrics.append(pm.Lyric(label, t))
-            t += 4
+            t += n_step / 8
 
     midi.write(fpath)
 

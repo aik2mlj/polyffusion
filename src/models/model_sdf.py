@@ -11,7 +11,12 @@ import random
 
 class Diffpro_SDF(nn.Module):
     def __init__(
-        self, ldm: LatentDiffusion, cond_mode="cond", chord_enc=None, chord_dec=None
+        self,
+        ldm: LatentDiffusion,
+        cond_mode="cond",
+        chord_enc=None,
+        chord_dec=None,
+        pnotree_enc=None
     ):
         """
         cond_mode: {cond, mix, uncond}
@@ -24,6 +29,7 @@ class Diffpro_SDF(nn.Module):
         self.cond_mode = cond_mode
         self.chord_enc = chord_enc
         self.chord_dec = chord_dec
+        self.pnotree_enc = pnotree_enc
 
         # Freeze params for pretrained chord enc and dec
         if self.chord_enc is not None:
@@ -31,6 +37,9 @@ class Diffpro_SDF(nn.Module):
                 param.requires_grad = False
         if self.chord_dec is not None:
             for param in self.chord_dec.parameters():
+                param.requires_grad = False
+        if self.pnotree_enc is not None:
+            for param in self.pnotree_enc.parameters():
                 param.requires_grad = False
 
     @classmethod
@@ -50,47 +59,67 @@ class Diffpro_SDF(nn.Module):
 
     def _encode_chord(self, chord):
         if self.chord_enc is not None:
-            z_list = []
-            for chord_seg in chord.split(8, 1):  # (#B, 8, 36) * 4
-                # print(f"chord seg {chord_seg.shape}")
-                z_seg = self.chord_enc(chord_seg).mean
-                # print(f"chord seg z {chord_seg_z.shape}")
-                z_list.append(z_seg)
-            z = torch.stack(z_list, dim=1)
+            # z_list = []
+            # for chord_seg in chord.split(8, 1):  # (#B, 8, 36) * 4
+            #     z_seg = self.chord_enc(chord_seg).mean
+            #     z_list.append(z_seg)
+            # z = torch.stack(z_list, dim=1)
+            z = self.chord_enc(chord).mean
             return z
         else:
             return chord
 
     def _decode_chord(self, z):
         if self.chord_dec is not None:
-            chord_list = []
-            for z_seg in z.split(1, 1):
-                z_seg = z_seg.squeeze()
-                # print(f"z_seg {z_seg.shape}")
-                recon_root, recon_chroma, recon_bass = self.chord_dec(
-                    z_seg, inference=True, tfr=0.
-                )
-                recon_root = F.one_hot(recon_root.max(-1)[-1], num_classes=12)
-                recon_chroma = recon_chroma.max(-1)[-1]
-                recon_bass = F.one_hot(recon_bass.max(-1)[-1], num_classes=12)
-                # print(recon_root.shape, recon_chroma.shape, recon_bass.shape)
-                chord_seg = torch.cat([recon_root, recon_chroma, recon_bass], dim=-1)
-                # print(f"chord seg {chord_seg.shape}")
-                chord_list.append(chord_seg)
-            chord = torch.cat(chord_list, dim=1)
+            # chord_list = []
+            # for z_seg in z.split(1, 1):
+            #     z_seg = z_seg.squeeze()
+            #     # print(f"z_seg {z_seg.shape}")
+            #     recon_root, recon_chroma, recon_bass = self.chord_dec(
+            #         z_seg, inference=True, tfr=0.
+            #     )
+            #     recon_root = F.one_hot(recon_root.max(-1)[-1], num_classes=12)
+            #     recon_chroma = recon_chroma.max(-1)[-1]
+            #     recon_bass = F.one_hot(recon_bass.max(-1)[-1], num_classes=12)
+            #     # print(recon_root.shape, recon_chroma.shape, recon_bass.shape)
+            #     chord_seg = torch.cat([recon_root, recon_chroma, recon_bass], dim=-1)
+            #     # print(f"chord seg {chord_seg.shape}")
+            #     chord_list.append(chord_seg)
+            # chord = torch.cat(chord_list, dim=1)
             # print(f"chord {chord.shape}")
+            recon_root, recon_chroma, recon_bass = self.chord_dec(
+                z, inference=True, tfr=0.
+            )
+            recon_root = F.one_hot(recon_root.max(-1)[-1], num_classes=12)
+            recon_chroma = recon_chroma.max(-1)[-1]
+            recon_bass = F.one_hot(recon_bass.max(-1)[-1], num_classes=12)
+            # print(recon_root.shape, recon_chroma.shape, recon_bass.shape)
+            chord = torch.cat([recon_root, recon_chroma, recon_bass], dim=-1)
             return chord
         else:
+            return z
+
+    def _encode_pnotree(self, pnotree):
+        if self.pnotree_enc is not None:
+            z_list = []
+            for pnotree_seg in pnotree.split(8, 1):  # (#B, 32, 20, 6) * 4
+                print(f"pnotree seg {pnotree_seg.shape}")
+                z_seg = self.pnotree_enc(pnotree_seg)[0].mean
+                print(f"pnotree seg z {z_seg.shape}")
+                z_list.append(z_seg)
+            z = torch.stack(z_list, dim=1)
             return z
 
     def get_loss_dict(self, batch, step):
         """
         z_y is the stuff the diffusion model needs to learn
         """
-        prmat, _, chord = batch
+        prmat, pnotree, chord = batch
+        # estx_to_midi_file(pnotree, "exp/pnotree.mid")
         # chd_to_midi_file(chord, "exp/chd_origin.mid")
         cond = self._encode_chord(chord)
-        # recon_chord = self._decode_chord(chord_z)
+        cond = cond.unsqueeze(1)
+        # recon_chord = self._decode_chord(cond)
         # chd_to_midi_file(recon_chord, "exp/chd_recon.mid")
         # exit(0)
 

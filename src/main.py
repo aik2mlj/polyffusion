@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from params.params_sdf import params as params_sdf
+from params.params_sdf_chd8bar import params as params_sdf
 from params.params_ddpm import params as params_ddpm
 from params.params_autoencoder import params as params_autoencoder
 from params.params_chd_8bar import params as params_chd_8bar
