@@ -13,7 +13,8 @@ from models.model_sdf import Diffpro_SDF
 from data.dataloader import get_train_val_dataloaders
 from data.dataloader_musicalion import get_train_val_dataloaders as get_train_val_dataloaders_musicalion
 from dl_modules import ChordEncoder, ChordDecoder
-from dirs import PT_A2S_PATH, PT_CHD_8BAR_PATH
+from dirs import PT_A2S_PATH, PT_CHD_8BAR_PATH, PT_PNOTREE_PATH
+from utils import load_pretrained_pnotree_enc_dec
 
 
 def load_pretrained_chd_enc_dec(
@@ -40,7 +41,9 @@ def load_pretrained_chd_enc_dec(
 
 
 class LDM_TrainConfig(TrainConfig):
-    def __init__(self, params, output_dir, use_autoencoder=False) -> None:
+    def __init__(
+        self, params, output_dir, use_autoencoder=False, use_musicalion=False
+    ) -> None:
         super().__init__(params, None, output_dir)
         self.autoencoder = None
 
@@ -87,22 +90,38 @@ class LDM_TrainConfig(TrainConfig):
             unet_model=self.unet_model
         )
 
-        if params.use_chd_enc:
-            self.chord_enc, self.chord_dec = load_pretrained_chd_enc_dec(
-                PT_CHD_8BAR_PATH, params.chd_input_dim, params.chd_z_input_dim,
-                params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
+        self.pnotree_enc, self.pnotree_dec = None, None
+        self.chord_enc, self.chord_dec = None, None
+        if params.cond_type == "pnotree":
+            self.pnotree_enc, self.pnotree_dec = load_pretrained_pnotree_enc_dec(
+                PT_PNOTREE_PATH, 20, self.device
             )
+        elif params.cond_type == "chord":
+            if params.use_chd_enc:
+                self.chord_enc, self.chord_dec = load_pretrained_chd_enc_dec(
+                    PT_CHD_8BAR_PATH, params.chd_input_dim, params.chd_z_input_dim,
+                    params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
+                )
         else:
-            self.chord_enc, self.chord_dec = None, None
+            raise NotImplementedError
 
         self.model = Diffpro_SDF(
             self.ldm_model,
+            cond_type=params.cond_type,
             cond_mode=params.cond_mode,
             chord_enc=self.chord_enc,
-            chord_dec=self.chord_dec
+            chord_dec=self.chord_dec,
+            pnotree_enc=self.pnotree_enc,
+            pnotree_dec=self.pnotree_dec
         ).to(self.device)
         # Create dataloader
-        self.train_dl, self.val_dl = get_train_val_dataloaders(params.batch_size)
+        if use_musicalion:
+            self.train_dl, self.val_dl = get_train_val_dataloaders_musicalion(
+                params.batch_size
+            )
+        else:
+            self.train_dl, self.val_dl = get_train_val_dataloaders(params.batch_size)
+
         # Create optimizer
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), lr=params.learning_rate

@@ -40,7 +40,7 @@ def collate_fn(batch):
             song_fn.append(b[3])
 
     prmat_x = torch.Tensor(np.array(prmat_x, np.float32)).float()
-    pnotree_x = torch.Tensor(np.array(pnotree_x, np.int64)).int()
+    pnotree_x = torch.Tensor(np.array(pnotree_x, np.int64)).long()
     chord = torch.Tensor(np.array(chord, np.float32)).float()
     # prmat_x = prmat_x.unsqueeze(1)  # (B, 1, 128, 128)
     if len(song_fn) > 0:

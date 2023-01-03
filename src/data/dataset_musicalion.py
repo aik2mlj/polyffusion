@@ -9,7 +9,7 @@ sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 from torch.utils.data import Dataset
 from utils import (
     nmat_to_pianotree_repr, prmat2c_to_midi_file, normalize_prmat, denormalize_prmat,
-    nmat_to_prmat2c
+    nmat_to_prmat2c, estx_to_midi_file
 )
 from utils import read_dict
 from dirs import *
@@ -141,7 +141,9 @@ class DataSampleNpz_Musicalion:
         if self._pnotree_dict_x[db] is not None:
             return
 
-        self._pnotree_dict_x[db] = nmat_to_pianotree_repr(self._nmat_dict_x[db])
+        self._pnotree_dict_x[db] = nmat_to_pianotree_repr(
+            self._nmat_dict_x[db], n_step=SEG_LGTH_BIN
+        )
 
     def _store_seg(self, db):
         self.store_nmat_seg_x(db)
@@ -234,7 +236,10 @@ if __name__ == "__main__":
     test = "ssccm172.npz"
     song = DataSampleNpz_Musicalion(test)
     os.system(f"cp {MUSICALION_DATA_DIR}/{test[:-4]}_flated.mid exp/copy_x.mid")
-    prmat_x, _ = song.get_whole_song_data()
+    prmat_x, pnotree_x = song.get_whole_song_data()
     print(prmat_x.shape)
+    print(pnotree_x.shape)
     prmat_x = prmat_x.cpu().numpy()
+    pnotree_x = pnotree_x.cpu().numpy()
     prmat2c_to_midi_file(prmat_x, "exp/origin_x.mid")
+    estx_to_midi_file(pnotree_x, "exp/pnotree_x.mid")

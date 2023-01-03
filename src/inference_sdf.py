@@ -35,9 +35,13 @@ import pickle
 from tqdm import tqdm
 from datetime import datetime
 
-from dataset import DataSampleNpz
+from data.dataset import DataSampleNpz
+from data.dataset_musicalion import DataSampleNpz_Musicalion
 from dirs import *
-from utils import prmat2c_to_midi_file, prmat_to_midi_file, show_image, chd_to_midi_file, chd_to_onehot, prmat2c_to_prmat
+from utils import (
+    prmat2c_to_midi_file, prmat_to_midi_file, show_image, chd_to_midi_file,
+    chd_to_onehot, prmat2c_to_prmat, load_pretrained_pnotree_enc_dec, estx_to_midi_file
+)
 from train.train_ldm import load_pretrained_chd_enc_dec
 from polydis_aftertouch import PolydisAftertouch
 
@@ -45,6 +49,8 @@ SEED = 7890
 torch.manual_seed(SEED)
 np.random.seed(SEED)
 random.seed(SEED)
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 class DDPMSampler(DiffusionSampler):
@@ -374,7 +380,9 @@ class DDPMSampler(DiffusionSampler):
                 # squeeze the first two dimensions of the condition,
                 # for convenience in getting an arbitrary 8-bar (i.e. [1, 4, 128])
                 print(cond.shape)  # [#B, 4, 128]
-                cond_sqz = cond.view(cond.shape[0] * cond.shape[1], cond.shape[2])
+                cond_sqz = cond.view(
+                    cond.shape[0] * cond.shape[1], cond.shape[2]
+                )  # FIXME: cond
                 print(cond_sqz.shape)  # [#B * 4, 128]
                 cond_len = cond.shape[-2]  # 4
                 uncond_cond_seg = uncond_cond[0].unsqueeze(0)
@@ -460,32 +468,54 @@ def choose_song_from_val_dl():
     print(song_fn)
 
     song = DataSampleNpz(song_fn)
-    prmat, density, chord = song.get_whole_song_data()
+    prmat, pnotree, chord = song.get_whole_song_data()
     prmat_np = prmat.squeeze().cpu().numpy()
+    pnotree_np = pnotree.cpu().numpy()
     chord_np = chord.cpu().numpy()
     prmat2c_to_midi_file(prmat_np, "exp/origin_x.mid")
+    estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
     chd_to_midi_file(chord_np, "exp/chord.mid")
-    return song_fn, prmat, chord
+    return prmat.to(device), pnotree.to(device), chord.to(device)
+
+
+def choose_song_from_val_dl_musicalion():
+    split_fpath = join(TRAIN_SPLIT_DIR, "musicalion.pickle")
+    with open(split_fpath, "rb") as f:
+        split = pickle.load(f)
+    print(split[1])
+    num = int(input("choose one:"))
+    song_fn = split[1][num]
+    print(song_fn)
+
+    song = DataSampleNpz_Musicalion(song_fn)
+    prmat, pnotree = song.get_whole_song_data()
+    prmat_np = prmat.squeeze().cpu().numpy()
+    pnotree_np = pnotree.cpu().numpy()
+    prmat2c_to_midi_file(prmat_np, "exp/origin_x.mid")
+    estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
+    return prmat.to(device), pnotree.to(device), None
 
 
 if __name__ == "__main__":
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     parser = ArgumentParser(description='inference a Diffpro model')
     parser.add_argument(
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )
     parser.add_argument("--uncond_scale", default=1., help="unconditional scale")
-    parser.add_argument("--is_autoreg", default=False, help="is autoregressive")
+    parser.add_argument("--is_autoreg", action="store_true", help="is autoregressive")
     parser.add_argument(
         "--show_image",
-        default=False,
+        action="store_true",
         help="whether to show the images of generated piano-roll"
     )
     parser.add_argument(
         "--polydis_recon",
-        default=False,
+        action="store_true",
         help=
         "whether to use polydis to reconstruct the generated midi from diffusion model"
+    )
+    parser.add_argument(
+        "--musicalion", action="store_true", help="use musicalion dataset"
     )
     args = parser.parse_args()
 
@@ -514,31 +544,52 @@ if __name__ == "__main__":
         unet_model=unet_model
     )
 
-    if params.use_chd_enc:
-        chord_enc, chord_dec = load_pretrained_chd_enc_dec(
-            PT_A2S_PATH, params.chd_input_dim, params.chd_hidden_dim, params.chd_z_dim
+    pnotree_enc, pnotree_dec = None, None
+    chord_enc, chord_dec = None, None
+    if params.cond_type == "pnotree":
+        pnotree_enc, pnotree_dec = load_pretrained_pnotree_enc_dec(
+            PT_PNOTREE_PATH, 20, device
         )
+    elif params.cond_type == "chord":
+        if params.use_chd_enc:
+            chord_enc, chord_dec = load_pretrained_chd_enc_dec(
+                PT_CHD_8BAR_PATH, params.chd_input_dim, params.chd_z_input_dim,
+                params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
+            )
     else:
-        chord_enc, chord_dec = None, None
+        raise NotImplementedError
 
     model = Diffpro_SDF.load_trained(
-        ldm_model, f"{args.model_dir}/chkpts", params.cond_mode, chord_enc, chord_dec
+        ldm_model, f"{args.model_dir}/chkpts", params.cond_type, params.cond_mode,
+        chord_enc, chord_dec, pnotree_enc, pnotree_dec
     ).to(device)
     config = DDPMSampler(
         model.ldm, params, is_show_image=args.show_image, is_autoreg=args.is_autoreg
     )
 
-    _, _, chd = choose_song_from_val_dl()
-    chd = torch.Tensor(np.array([chd_to_onehot(chord) for chord in chd])).to(device)
-    chd = chd[: 6]
-    print(chd.shape)
-    chd_enc = model._encode_chord(chd)
-    print(chd_enc.shape)
+    if args.musicalion:
+        _, pnotree, _ = choose_song_from_val_dl_musicalion()
+        assert params.cond_type == "pnotree"
+    else:
+        _, pnotree, chd = choose_song_from_val_dl()
+    polydis_chd = None
+    if params.cond_type == "pnotree":
+        cond = model._encode_pnotree(pnotree)
+        pnotree_recon = model._decode_pnotree(cond)
+        estx_to_midi_file(pnotree_recon, f"exp/pnotree_recon.mid")
+    elif params.cond_type == "chord":
+        chd = torch.Tensor(np.array([chd_to_onehot(chord) for chord in chd])).to(device)
+        chd = chd[: 6]
+        # print(chd.shape)
+        cond = model._encode_chord(chd)
+        # print(chd_enc.shape)
+        polydis_chd = chd.view(-1, 8, 36)  # 2-bars
+        # print(polydis_chd.shape)
+    else:
+        raise NotImplementedError
 
-    polydis_chd = chd.view(-1, 8, 36)  # 2-bars
-    print(polydis_chd.shape)
     config.predict(
-        chd_enc,
+        cond,
         uncond_scale=float(args.uncond_scale),
         polydis_recon=args.polydis_recon,
         polydis_chd=polydis_chd

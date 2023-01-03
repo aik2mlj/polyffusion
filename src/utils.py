@@ -266,6 +266,8 @@ def estx_to_midi_file(est_x, fpath, labels=None):
     # the 0th column is for pitch, 1: 6 is for duration in binary repr. Output is
     # padded with <sos> and <eos> tokens in the pitch column, but with pad token
     # for dur columns.
+    if "Tensor" in str(type(est_x)):
+        est_x = est_x.cpu().detach().numpy()
     n_step = est_x.shape[1]  # 32, or 128
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")

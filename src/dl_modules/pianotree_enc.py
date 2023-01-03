@@ -84,7 +84,7 @@ class PianoTreeEncoder(nn.Module):
                 dtype=torch.float,
             ).to(self.device)
 
-            out[range(0, out.size(0)), ind_x[:, :, :, 0].view(-1)] = 1.0
+            out[range(0, out.size(0)), ind_x[:, :, :, 0].reshape(-1)] = 1.0
             out = out.view(-1, 32, self.max_simu_note, self.pitch_range + 1)
             out = torch.cat([out[:, :, :, 0 : self.pitch_range], dur_part], dim=-1)
         return out

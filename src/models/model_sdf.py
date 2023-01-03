@@ -13,12 +13,15 @@ class Diffpro_SDF(nn.Module):
     def __init__(
         self,
         ldm: LatentDiffusion,
+        cond_type,
         cond_mode="cond",
         chord_enc=None,
         chord_dec=None,
-        pnotree_enc=None
+        pnotree_enc=None,
+        pnotree_dec=None
     ):
         """
+        cond_type: {chord, texture}
         cond_mode: {cond, mix, uncond}
             mix: use a special condition for unconditional learning with probability of 0.2
         use_enc: whether to use pretrained chord encoder to generate encoded condition
@@ -26,10 +29,12 @@ class Diffpro_SDF(nn.Module):
         super(Diffpro_SDF, self).__init__()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.ldm = ldm
+        self.cond_type = cond_type
         self.cond_mode = cond_mode
         self.chord_enc = chord_enc
         self.chord_dec = chord_dec
         self.pnotree_enc = pnotree_enc
+        self.pnotree_dec = pnotree_dec
 
         # Freeze params for pretrained chord enc and dec
         if self.chord_enc is not None:
@@ -41,12 +46,25 @@ class Diffpro_SDF(nn.Module):
         if self.pnotree_enc is not None:
             for param in self.pnotree_enc.parameters():
                 param.requires_grad = False
+        if self.pnotree_dec is not None:
+            for param in self.pnotree_dec.parameters():
+                param.requires_grad = False
 
     @classmethod
     def load_trained(
-        cls, ldm, model_dir, cond_mode="cond", chord_enc=None, chord_dec=None
+        cls,
+        ldm,
+        model_dir,
+        cond_type,
+        cond_mode="cond",
+        chord_enc=None,
+        chord_dec=None,
+        pnotree_enc=None,
+        pnotree_dec=None
     ):
-        model = cls(ldm, cond_mode, chord_enc, chord_dec)
+        model = cls(
+            ldm, cond_type, cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec
+        )
         trained_leaner = torch.load(f"{model_dir}/weights.pt")
         model.load_state_dict(trained_leaner["model"])
         return model
@@ -65,6 +83,7 @@ class Diffpro_SDF(nn.Module):
             #     z_list.append(z_seg)
             # z = torch.stack(z_list, dim=1)
             z = self.chord_enc(chord).mean
+            z = z.unsqueeze(1)  # (#B, 1, 512)
             return z
         else:
             return chord
@@ -100,15 +119,34 @@ class Diffpro_SDF(nn.Module):
             return z
 
     def _encode_pnotree(self, pnotree):
-        if self.pnotree_enc is not None:
-            z_list = []
-            for pnotree_seg in pnotree.split(8, 1):  # (#B, 32, 20, 6) * 4
-                print(f"pnotree seg {pnotree_seg.shape}")
-                z_seg = self.pnotree_enc(pnotree_seg)[0].mean
-                print(f"pnotree seg z {z_seg.shape}")
-                z_list.append(z_seg)
-            z = torch.stack(z_list, dim=1)
-            return z
+        z_list = []
+        assert self.pnotree_enc is not None
+        # print(f"pnotree {pnotree.shape}")
+        for pnotree_seg in pnotree.split(32, 1):  # (#B, 32, 20, 6) * 4
+            # print(f"pnotree seg {pnotree_seg.shape}")
+            z_seg = self.pnotree_enc(pnotree_seg)[0].mean
+            # print(f"pnotree seg z {z_seg.shape}")
+            z_list.append(z_seg)
+        z = torch.stack(z_list, dim=1)
+        # print(f"pnotree z: {z.shape}")
+        return z
+
+    def _decode_pnotree(self, z):
+        pnotree_list = []
+        assert self.pnotree_dec is not None
+        for z_seg in z.split(1, 1):
+            z_seg = z_seg.squeeze()
+            # print(f"z_seg {z_seg.shape}")
+            recon_pitch, recon_dur = self.pnotree_dec(z_seg, True, None, None, 0., 0.)
+
+            est_pitch = recon_pitch.max(-1)[1].unsqueeze(-1)  # (B, 32, 20, 1)
+            est_dur = recon_dur.max(-1)[1]  # (B, 32, 11, 5)
+            pnotree_seg = torch.cat([est_pitch, est_dur], dim=-1)  # (B, 32, 20, 6)
+            # print(f"chord seg {chord_seg.shape}")
+            pnotree_list.append(pnotree_seg)
+        pnotree = torch.cat(pnotree_list, dim=1)
+        # print(f"pnotree decoded {pnotree.shape}")
+        return pnotree
 
     def get_loss_dict(self, batch, step):
         """
@@ -117,8 +155,15 @@ class Diffpro_SDF(nn.Module):
         prmat, pnotree, chord = batch
         # estx_to_midi_file(pnotree, "exp/pnotree.mid")
         # chd_to_midi_file(chord, "exp/chd_origin.mid")
-        cond = self._encode_chord(chord)
-        cond = cond.unsqueeze(1)
+        if self.cond_type == "chord":
+            cond = self._encode_chord(chord)
+        elif self.cond_type == "pnotree":
+            cond = self._encode_pnotree(pnotree)
+            # recon_pnotree = self._decode_pnotree(cond)
+            # estx_to_midi_file(recon_pnotree, "exp/pnotree_recon.mid")
+            # exit(0)
+        else:
+            raise NotImplementedError
         # recon_chord = self._decode_chord(cond)
         # chd_to_midi_file(recon_chord, "exp/chd_recon.mid")
         # exit(0)

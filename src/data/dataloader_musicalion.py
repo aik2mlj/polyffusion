@@ -36,7 +36,7 @@ def collate_fn(batch):
             song_fn.append(b[3])
 
     prmat = torch.Tensor(np.array(prmat, np.float32)).float()
-    pnotree = torch.Tensor(np.array(pnotree, np.float32)).float()
+    pnotree = torch.Tensor(np.array(pnotree, np.int64)).long()
     # prmat_x = prmat_x.unsqueeze(1)  # (B, 1, 128, 128)
     if len(song_fn) > 0:
         return prmat, pnotree, None, song_fn
@@ -72,12 +72,11 @@ if __name__ == "__main__":
     print(len(train_dl))
     for batch in train_dl:
         print(len(batch))
-        prmat, pnotree = batch
+        prmat, pnotree, _ = batch
         print(prmat.shape)
         print(pnotree.shape)
         prmat = prmat.cpu().numpy()
         pnotree = pnotree.cpu().numpy()
-        # chord = [onehot_to_chd(onehot) for onehot in chord]
         prmat2c_to_midi_file(prmat, f"exp/test.mid")
         estx_to_midi_file(pnotree, f"exp/test_pnotree.mid")
         exit(0)
