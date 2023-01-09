@@ -32,6 +32,8 @@ class DiffproLearner:
         self.autocast = torch.cuda.amp.autocast(enabled=params.fp16)
         self.scaler = torch.cuda.amp.GradScaler(enabled=params.fp16)
 
+        self.best_val_loss = torch.tensor([1e10], device=self.device)
+
         # restore if directory exists
         if os.path.exists(self.output_dir):
             self.restore_from_checkpoint()
@@ -94,14 +96,20 @@ class DiffproLearner:
             print("No checkpoint found. Starting from scratch...")
             return False
 
-    def save_to_checkpoint(self, fname="weights"):
-        save_name = f"{fname}-{self.epoch}.pt"
-        save_fpath = f"{self.checkpoint_dir}/{save_name}"
-        link_fpath = f"{self.checkpoint_dir}/{fname}.pt"
-        torch.save(self.state_dict(), save_fpath)
+    def _link_checkpoint(self, save_name, link_fpath):
         if os.path.islink(link_fpath):
             os.unlink(link_fpath)
         os.symlink(save_name, link_fpath)
+
+    def save_to_checkpoint(self, fname="weights", is_best=False):
+        save_name = f"{fname}-{self.epoch}.pt"
+        save_fpath = f"{self.checkpoint_dir}/{save_name}"
+        link_best_fpath = f"{self.checkpoint_dir}/{fname}_best.pt"
+        link_fpath = f"{self.checkpoint_dir}/{fname}.pt"
+        torch.save(self.state_dict(), save_fpath)
+        self._link_checkpoint(save_name, link_fpath)
+        if is_best:
+            self._link_checkpoint(save_name, link_best_fpath)
 
     def train(self, max_epoch=None):
         self.model.train()
@@ -153,7 +161,11 @@ class DiffproLearner:
             losses[k] /= len(self.val_dl)
         self._write_summary(losses, None, "val")
 
-        self.save_to_checkpoint()
+        if self.best_val_loss >= losses["loss"]:
+            self.best_val_loss = losses["loss"]
+            self.save_to_checkpoint(is_best=True)
+        else:
+            self.save_to_checkpoint(is_best=False)
 
     def train_step(self, batch):
         # people say this is the better way to set zero grad
