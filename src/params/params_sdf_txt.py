@@ -1,6 +1,6 @@
 from . import AttrDict
 
-txt_z_dim = 512
+txt_z_dim = 256 * 4  # 4 pnotree concated, each 256
 
 d_cond = txt_z_dim
 
@@ -38,6 +38,12 @@ params = AttrDict(
     img_w=128,
 
     # conditional
-    cond_type="pnotree",
+    cond_type="txt",
     cond_mode="mix",  # {mix, cond, uncond}
+
+    # txt_enc
+    txt_emb_size=256,
+    txt_hidden_dim=1024,
+    txt_z_dim=256,
+    txt_num_channel=10
 )

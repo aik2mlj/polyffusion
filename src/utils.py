@@ -4,7 +4,7 @@ import pickle
 import os
 import pretty_midi as pm
 import torch
-from dl_modules import PianoTreeEncoder, PianoTreeDecoder
+from dl_modules import *
 from collections import OrderedDict
 from torch.distributions import Normal, kl_divergence
 import matplotlib.pyplot as plt
@@ -35,6 +35,45 @@ def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
     pnotree_enc.to(device)
     pnotree_dec.to(device)
     return pnotree_enc, pnotree_dec
+
+
+def load_pretrained_chd_enc_dec(
+    fpath, input_dim, z_input_dim, hidden_dim, z_dim, n_step
+):
+    chord_enc = ChordEncoder(input_dim, hidden_dim, z_dim)
+    chord_dec = ChordDecoder(input_dim, z_input_dim, hidden_dim, z_dim, n_step)
+    checkpoint = torch.load(fpath)
+    if "model" in checkpoint:
+        checkpoint = checkpoint["model"]
+    from collections import OrderedDict
+    enc_chkpt = OrderedDict()
+    dec_chkpt = OrderedDict()
+    for k, v in checkpoint.items():
+        part = k.split('.')[0]
+        name = '.'.join(k.split('.')[1 :])
+        if part == "chord_enc":
+            enc_chkpt[name] = v
+        elif part == "chord_dec":
+            dec_chkpt[name] = v
+    chord_enc.load_state_dict(enc_chkpt)
+    chord_dec.load_state_dict(dec_chkpt)
+    return chord_enc, chord_dec
+
+
+def load_pretrained_txt_enc(fpath, emb_size, hidden_dim, z_dim, num_channel):
+    txt_enc = TextureEncoder(emb_size, hidden_dim, z_dim, num_channel)
+    checkpoint = torch.load(fpath)
+    if "model" in checkpoint:
+        checkpoint = checkpoint["model"]
+    from collections import OrderedDict
+    enc_chkpt = OrderedDict()
+    for k, v in checkpoint.items():
+        part = k.split('.')[0]
+        name = '.'.join(k.split('.')[1 :])
+        if part == "rhy_encoder":
+            enc_chkpt[name] = v
+    txt_enc.load_state_dict(enc_chkpt)
+    return txt_enc
 
 
 def output_to_numpy(recon_pitch, recon_dur):
@@ -162,7 +201,7 @@ def onehot_to_chd(onehot):
     return chd
 
 
-def nmat_to_pr_mat_repr(nmat, n_step=32):
+def nmat_to_prmat(nmat, n_step=32):
     pr_mat = np.zeros((n_step, 128), dtype=np.int64)
     for o, p, d in nmat:
         if o < n_step:
@@ -347,7 +386,7 @@ def custom_round(x):
 
 def prmat2c_to_midi_file(prmat: np.ndarray, fpath, labels=None, is_custom_round=True):
     # prmat2c: (B, 2, 32, 128)
-    print(f"prmat : {prmat.shape}")
+    print(f"prmat2c : {prmat.shape}")
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
     piano = pm.Instrument(program=piano_program)

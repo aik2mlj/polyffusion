@@ -1,52 +1,62 @@
 import sys
 import os
 import torch
+import random
 from torch.utils.data import DataLoader
 import numpy as np
 
 sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 from data.dataset import PianoOrchDataset
 from utils import (
-    pr_mat_pitch_shift, prmat2c_to_midi_file, denormalize_prmat, chd_to_onehot,
-    chd_pitch_shift, onehot_to_chd, chd_to_midi_file, estx_to_midi_file,
-    pianotree_pitch_shift
+    pr_mat_pitch_shift, prmat2c_to_midi_file, chd_to_onehot, chd_pitch_shift,
+    chd_to_midi_file, estx_to_midi_file, pianotree_pitch_shift, prmat_to_midi_file
 )
+
+# SEED = 7890
+# torch.manual_seed(SEED)
+# np.random.seed(SEED)
+# random.seed(SEED)
 
 
 def collate_fn(batch):
     def sample_shift():
         return np.random.choice(np.arange(-6, 6), 1)[0]
 
-    prmat_x = []
-    pnotree_x = []
+    prmat2c = []
+    pnotree = []
     chord = []
+    prmat = []
     song_fn = []
     for b in batch:
-        # b[0]: seg_pnotree_x; b[1]: seg_pnotree_y
-        seg_prmat_x = b[0]
-        seg_pnotree_x = b[1]
+        # b[0]: seg_pnotree; b[1]: seg_pnotree_y
+        seg_prmat2c = b[0]
+        seg_pnotree = b[1]
         seg_chord = b[2]
+        seg_prmat = b[3]
 
         shift = sample_shift()
-        seg_prmat_x = pr_mat_pitch_shift(seg_prmat_x, shift)
-        seg_pnotree_x = pianotree_pitch_shift(seg_pnotree_x, shift)
+        seg_prmat2c = pr_mat_pitch_shift(seg_prmat2c, shift)
+        seg_pnotree = pianotree_pitch_shift(seg_pnotree, shift)
         seg_chord = chd_to_onehot(chd_pitch_shift(seg_chord, shift))
+        seg_prmat = pr_mat_pitch_shift(seg_prmat, shift)
 
-        prmat_x.append(seg_prmat_x)
-        pnotree_x.append(seg_pnotree_x)
+        prmat2c.append(seg_prmat2c)
+        pnotree.append(seg_pnotree)
         chord.append(seg_chord)
+        prmat.append(seg_prmat)
 
-        if len(b) > 3:
-            song_fn.append(b[3])
+        if len(b) > 4:
+            song_fn.append(b[4])
 
-    prmat_x = torch.Tensor(np.array(prmat_x, np.float32)).float()
-    pnotree_x = torch.Tensor(np.array(pnotree_x, np.int64)).long()
+    prmat2c = torch.Tensor(np.array(prmat2c, np.float32)).float()
+    pnotree = torch.Tensor(np.array(pnotree, np.int64)).long()
     chord = torch.Tensor(np.array(chord, np.float32)).float()
-    # prmat_x = prmat_x.unsqueeze(1)  # (B, 1, 128, 128)
+    prmat = torch.Tensor(np.array(prmat, np.float32)).float()
+    # prmat = prmat.unsqueeze(1)  # (B, 1, 128, 128)
     if len(song_fn) > 0:
-        return prmat_x, pnotree_x, chord, song_fn
+        return prmat2c, pnotree, chord, prmat, song_fn
     else:
-        return prmat_x, pnotree_x, chord
+        return prmat2c, pnotree, chord, prmat
 
 
 def get_train_val_dataloaders(batch_size, num_workers=4, pin_memory=True, debug=False):
@@ -75,15 +85,18 @@ if __name__ == "__main__":
     print(len(train_dl))
     for batch in train_dl:
         print(len(batch))
-        prmat_x, pnotree_x, chord = batch
-        print(prmat_x.shape)
-        print(pnotree_x.shape)
+        prmat2c, pnotree, chord, prmat = batch
+        print(prmat2c.shape)
+        print(pnotree.shape)
         print(chord.shape)
-        prmat_x = prmat_x.cpu().numpy()
-        pnotree_x = pnotree_x.cpu().numpy()
+        print(prmat.shape)
+        prmat2c = prmat2c.cpu().numpy()
+        pnotree = pnotree.cpu().numpy()
         chord = chord.cpu().numpy()
+        prmat = prmat.cpu().numpy()
         # chord = [onehot_to_chd(onehot) for onehot in chord]
-        prmat2c_to_midi_file(prmat_x, f"exp/test_x.mid")
-        estx_to_midi_file(pnotree_x, f"exp/test_pnotree.mid")
-        chd_to_midi_file(chord, "exp/chord.mid")
+        prmat2c_to_midi_file(prmat2c, f"exp/dl_prmat2c.mid")
+        estx_to_midi_file(pnotree, f"exp/dl_pnotree.mid")
+        chd_to_midi_file(chord, "exp/dl_chord.mid")
+        prmat_to_midi_file(prmat, f"exp/dl_prmat.mid")
         exit(0)

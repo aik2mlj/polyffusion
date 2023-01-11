@@ -12,32 +12,9 @@ from stable_diffusion.latent_diffusion import LatentDiffusion
 from models.model_sdf import Diffpro_SDF
 from data.dataloader import get_train_val_dataloaders
 from data.dataloader_musicalion import get_train_val_dataloaders as get_train_val_dataloaders_musicalion
-from dl_modules import ChordEncoder, ChordDecoder
-from dirs import PT_A2S_PATH, PT_CHD_8BAR_PATH, PT_PNOTREE_PATH
-from utils import load_pretrained_pnotree_enc_dec
-
-
-def load_pretrained_chd_enc_dec(
-    fpath, input_dim, z_input_dim, hidden_dim, z_dim, n_step
-):
-    chord_enc = ChordEncoder(input_dim, hidden_dim, z_dim)
-    chord_dec = ChordDecoder(input_dim, z_input_dim, hidden_dim, z_dim, n_step)
-    checkpoint = torch.load(fpath)
-    if "model" in checkpoint:
-        checkpoint = checkpoint["model"]
-    from collections import OrderedDict
-    enc_chkpt = OrderedDict()
-    dec_chkpt = OrderedDict()
-    for k, v in checkpoint.items():
-        part = k.split('.')[0]
-        name = '.'.join(k.split('.')[1 :])
-        if part == "chord_enc":
-            enc_chkpt[name] = v
-        elif part == "chord_dec":
-            dec_chkpt[name] = v
-    chord_enc.load_state_dict(enc_chkpt)
-    chord_dec.load_state_dict(dec_chkpt)
-    return chord_enc, chord_dec
+from dl_modules import ChordEncoder, ChordDecoder, TextureEncoder
+from dirs import PT_A2S_PATH, PT_CHD_8BAR_PATH, PT_PNOTREE_PATH, PT_POLYDIS_PATH
+from utils import load_pretrained_pnotree_enc_dec, load_pretrained_chd_enc_dec, load_pretrained_txt_enc
 
 
 class LDM_TrainConfig(TrainConfig):
@@ -102,6 +79,11 @@ class LDM_TrainConfig(TrainConfig):
                     PT_CHD_8BAR_PATH, params.chd_input_dim, params.chd_z_input_dim,
                     params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
                 )
+        elif params.cond_type == "txt":
+            self.txt_enc = load_pretrained_txt_enc(
+                PT_POLYDIS_PATH, params.txt_emb_size, params.txt_hidden_dim,
+                params.txt_z_dim, params.txt_num_channel
+            )
         else:
             raise NotImplementedError
 
@@ -112,7 +94,8 @@ class LDM_TrainConfig(TrainConfig):
             chord_enc=self.chord_enc,
             chord_dec=self.chord_dec,
             pnotree_enc=self.pnotree_enc,
-            pnotree_dec=self.pnotree_dec
+            pnotree_dec=self.pnotree_dec,
+            txt_enc=self.txt_enc
         ).to(self.device)
         # Create dataloader
         if use_musicalion:

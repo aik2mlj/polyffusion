@@ -18,7 +18,8 @@ class Diffpro_SDF(nn.Module):
         chord_enc=None,
         chord_dec=None,
         pnotree_enc=None,
-        pnotree_dec=None
+        pnotree_dec=None,
+        txt_enc=None,
     ):
         """
         cond_type: {chord, texture}
@@ -35,6 +36,7 @@ class Diffpro_SDF(nn.Module):
         self.chord_dec = chord_dec
         self.pnotree_enc = pnotree_enc
         self.pnotree_dec = pnotree_dec
+        self.txt_enc = txt_enc
 
         # Freeze params for pretrained chord enc and dec
         if self.chord_enc is not None:
@@ -49,6 +51,9 @@ class Diffpro_SDF(nn.Module):
         if self.pnotree_dec is not None:
             for param in self.pnotree_dec.parameters():
                 param.requires_grad = False
+        if self.txt_enc is not None:
+            for param in self.txt_enc.parameters():
+                param.requires_grad = False
 
     @classmethod
     def load_trained(
@@ -60,10 +65,12 @@ class Diffpro_SDF(nn.Module):
         chord_enc=None,
         chord_dec=None,
         pnotree_enc=None,
-        pnotree_dec=None
+        pnotree_dec=None,
+        txt_enc=None
     ):
         model = cls(
-            ldm, cond_type, cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec
+            ldm, cond_type, cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec,
+            txt_enc
         )
         trained_leaner = torch.load(f"{model_dir}/weights.pt")
         model.load_state_dict(trained_leaner["model"])
@@ -132,8 +139,19 @@ class Diffpro_SDF(nn.Module):
         z = z.unsqueeze(1)  # (#B, 1, 2048)
         # print(f"pnotree z: {z.shape}")
         return z
-        z = torch.stack(z_list, dim=1)
-        # print(f"pnotree z: {z.shape}")
+
+    def _encode_txt(self, prmat):
+        z_list = []
+        assert self.txt_enc is not None
+        # print(f"prmat {prmat.shape}")
+        for prmat_seg in prmat.split(32, 1):  # (#B, 32, 128) * 4
+            # print(f"prmat seg {prmat_seg.shape}")
+            z_seg = self.txt_enc(prmat_seg).mean
+            # print(f"txt z seg {z_seg.shape}")
+            z_list.append(z_seg)
+        z = torch.cat(z_list, dim=-1)
+        z = z.unsqueeze(1)  # (#B, 1, 256*4)
+        # print(f"txt z: {z.shape}")
         return z
 
     def _decode_pnotree(self, z):
@@ -159,7 +177,7 @@ class Diffpro_SDF(nn.Module):
         """
         z_y is the stuff the diffusion model needs to learn
         """
-        prmat, pnotree, chord = batch
+        prmat2c, pnotree, chord, prmat = batch
         # estx_to_midi_file(pnotree, "exp/pnotree.mid")
         # chd_to_midi_file(chord, "exp/chd_origin.mid")
         if self.cond_type == "chord":
@@ -167,8 +185,10 @@ class Diffpro_SDF(nn.Module):
         elif self.cond_type == "pnotree":
             cond = self._encode_pnotree(pnotree)
             # recon_pnotree = self._decode_pnotree(cond)
-            # estx_to_midi_file(recon_pnotree, "exp/pnotree_recon.mid")
+            # estx_to_midi_file(recon_pnotree, "exp/pnotree_decoded.mid")
             # exit(0)
+        elif self.cond_type == "txt":
+            cond = self._encode_txt(prmat)
         else:
             raise NotImplementedError
         # recon_chord = self._decode_chord(cond)
@@ -182,8 +202,8 @@ class Diffpro_SDF(nn.Module):
                 cond = (-torch.ones_like(cond)).to(self.device)  # a bunch of -1
 
         # if self.is_autoregressive:
-        #     concat, x = prmat.split(64, -2)
+        #     concat, x = prmat2c.split(64, -2)
         #     loss = self.ldm.loss(x, cond, concat=concat, concat_axis=-2)
         # else:
-        loss = self.ldm.loss(prmat, cond)
+        loss = self.ldm.loss(prmat2c, cond)
         return {"loss": loss}

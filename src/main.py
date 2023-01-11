@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from params.params_sdf import params as params_sdf
 from params.params_sdf_chd8bar import params as params_sdf_chd8bar
+from params.params_sdf_pnotree import params as params_sdf_pnotree
 from params.params_sdf_txt import params as params_sdf_txt
 from params.params_ddpm import params as params_ddpm
 from params.params_autoencoder import params as params_autoencoder
@@ -24,8 +25,14 @@ if __name__ == "__main__":
         config = LDM_TrainConfig(params_sdf, args.output_dir)
     elif args.model == "ldm_chd8bar":
         config = LDM_TrainConfig(params_sdf_chd8bar, args.output_dir)
+    elif args.model == "ldm_pnotree":
+        config = LDM_TrainConfig(params_sdf_pnotree, args.output_dir)
     elif args.model == "ldm_txt":
         config = LDM_TrainConfig(params_sdf_txt, args.output_dir)
+    elif args.model == "ldm_musicalion_pnotree":
+        config = LDM_TrainConfig(
+            params_sdf_pnotree, args.output_dir, use_musicalion=True
+        )
     elif args.model == "ldm_musicalion_txt":
         config = LDM_TrainConfig(params_sdf_txt, args.output_dir, use_musicalion=True)
     elif args.model == "ddpm":

@@ -40,9 +40,9 @@ from data.dataset_musicalion import DataSampleNpz_Musicalion
 from dirs import *
 from utils import (
     prmat2c_to_midi_file, prmat_to_midi_file, show_image, chd_to_midi_file,
-    chd_to_onehot, prmat2c_to_prmat, load_pretrained_pnotree_enc_dec, estx_to_midi_file
+    chd_to_onehot, prmat2c_to_prmat, estx_to_midi_file, load_pretrained_pnotree_enc_dec,
+    load_pretrained_txt_enc, load_pretrained_chd_enc_dec
 )
-from train.train_ldm import load_pretrained_chd_enc_dec
 from polydis_aftertouch import PolydisAftertouch
 
 SEED = 7890
@@ -287,8 +287,8 @@ class DDPMSampler(DiffusionSampler):
             if self.is_show_image:
                 if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
                     show_image(x, f"exp/x{s1}.jpg")
-                    prmat_x = x.cpu().numpy()
-                    # prmat2c_to_midi_file(prmat_x, f"exp/x{s1}.mid")
+                    prmat = x.cpu().numpy()
+                    # prmat2c_to_midi_file(prmat, f"exp/x{s1}.mid")
 
         # Return $x_0$
         return x
@@ -348,8 +348,8 @@ class DDPMSampler(DiffusionSampler):
             if self.is_show_image:
                 if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
                     show_image(x, f"exp/x{s1}.jpg")
-                    prmat_x = x.cpu().numpy()
-                    # prmat2c_to_midi_file(prmat_x, f"exp/x{s1}.mid")
+                    prmat = x.cpu().numpy()
+                    # prmat2c_to_midi_file(prmat, f"exp/x{s1}.mid")
         return x
 
     def predict(
@@ -435,12 +435,12 @@ class DDPMSampler(DiffusionSampler):
 
         if self.is_show_image:
             show_image(gen, "exp/img/gen.jpg")
-        prmat_x = gen.cpu().numpy()
+        prmat = gen.cpu().numpy()
         output_stamp = f"sdf+pop909_[scale:{uncond_scale},autoreg={self.is_autoreg}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
-        prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+        prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
         if polydis_recon:
             aftertouch = PolydisAftertouch()
-            prmat = prmat2c_to_prmat(prmat_x)
+            prmat = prmat2c_to_prmat(prmat)
             print(prmat.shape)
             prmat_to_midi_file(prmat, f"exp/{output_stamp}_prmat.mid")
             prmat = torch.from_numpy(prmat)
@@ -451,9 +451,9 @@ class DDPMSampler(DiffusionSampler):
         # song_fn, x_init, _ = choose_song_from_val_dl()
         # x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
         # show_image(x0, "exp/x0.jpg")
-        # prmat_x = x0.squeeze().cpu().numpy()
+        # prmat = x0.squeeze().cpu().numpy()
         # output_stamp = f"sdf+pop909_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
-        # prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+        # prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
         # return x0
         # raise NotImplementedError
 
@@ -468,14 +468,14 @@ def choose_song_from_val_dl():
     print(song_fn)
 
     song = DataSampleNpz(song_fn)
-    prmat, pnotree, chord = song.get_whole_song_data()
-    prmat_np = prmat.squeeze().cpu().numpy()
+    prmat2c, pnotree, chord, prmat = song.get_whole_song_data()
+    prmat2c_np = prmat2c.squeeze().cpu().numpy()
     pnotree_np = pnotree.cpu().numpy()
     chord_np = chord.cpu().numpy()
-    prmat2c_to_midi_file(prmat_np, "exp/origin_x.mid")
+    prmat2c_to_midi_file(prmat2c_np, "exp/origin.mid")
     estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
     chd_to_midi_file(chord_np, "exp/chord.mid")
-    return prmat.to(device), pnotree.to(device), chord.to(device)
+    return prmat2c.to(device), pnotree.to(device), chord.to(device), prmat.to(device)
 
 
 def choose_song_from_val_dl_musicalion():
@@ -488,12 +488,12 @@ def choose_song_from_val_dl_musicalion():
     print(song_fn)
 
     song = DataSampleNpz_Musicalion(song_fn)
-    prmat, pnotree = song.get_whole_song_data()
-    prmat_np = prmat.squeeze().cpu().numpy()
+    prmat2c, pnotree, prmat = song.get_whole_song_data()
+    prmat2c_np = prmat2c.squeeze().cpu().numpy()
     pnotree_np = pnotree.cpu().numpy()
-    prmat2c_to_midi_file(prmat_np, "exp/origin_x.mid")
+    prmat2c_to_midi_file(prmat2c_np, "exp/origin.mid")
     estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
-    return prmat.to(device), pnotree.to(device), None
+    return prmat2c.to(device), pnotree.to(device), None, prmat.to(device)
 
 
 if __name__ == "__main__":
@@ -556,6 +556,11 @@ if __name__ == "__main__":
                 PT_CHD_8BAR_PATH, params.chd_input_dim, params.chd_z_input_dim,
                 params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
             )
+    elif params.cond_type == "txt":
+        self.txt_enc = load_pretrained_txt_enc(
+            PT_POLYDIS_PATH, params.txt_emb_size, params.txt_hidden_dim,
+            params.txt_z_dim, params.txt_num_channel
+        )
     else:
         raise NotImplementedError
 
@@ -568,10 +573,10 @@ if __name__ == "__main__":
     )
 
     if args.musicalion:
-        _, pnotree, _ = choose_song_from_val_dl_musicalion()
+        _, pnotree, _, prmat = choose_song_from_val_dl_musicalion()
         assert params.cond_type == "pnotree"
     else:
-        _, pnotree, chd = choose_song_from_val_dl()
+        _, pnotree, chd, prmat = choose_song_from_val_dl()
     polydis_chd = None
     if params.cond_type == "pnotree":
         cond = model._encode_pnotree(pnotree)
@@ -585,6 +590,8 @@ if __name__ == "__main__":
         # print(chd_enc.shape)
         polydis_chd = chd.view(-1, 8, 36)  # 2-bars
         # print(polydis_chd.shape)
+    elif params.cond_type == "txt":
+        cond = model._encode_txt(prmat)
     else:
         raise NotImplementedError
 

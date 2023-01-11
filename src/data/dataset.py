@@ -8,8 +8,8 @@ import sys
 sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 from torch.utils.data import Dataset
 from utils import (
-    nmat_to_pianotree_repr, prmat2c_to_midi_file, normalize_prmat, denormalize_prmat,
-    nmat_to_prmat2c, compute_prmat2c_density, chd_to_midi_file, estx_to_midi_file
+    nmat_to_pianotree_repr, prmat2c_to_midi_file, nmat_to_prmat2c, chd_to_midi_file,
+    estx_to_midi_file, nmat_to_prmat, prmat_to_midi_file, show_image
 )
 from utils import read_dict
 from dirs import *
@@ -60,30 +60,30 @@ class DataSampleNpz:
         #     """ load data """
         self.use_track = use_track  # which tracks to use when converting to prmat2c
 
-        data_x = np.load(self.fpath, allow_pickle=True)
-        self.notes_x = np.array(
-            data_x["notes"]
+        data = np.load(self.fpath, allow_pickle=True)
+        self.notes = np.array(
+            data["notes"]
         )  # NOTE: here we have 3 tracks: melody, bridge and piano
-        self.start_table_x = data_x["start_table"]  # NOTE: same here
+        self.start_table = data["start_table"]  # NOTE: same here
 
-        self.db_pos = data_x["db_pos"]
-        self.db_pos_filter = data_x["db_pos_filter"]
+        self.db_pos = data["db_pos"]
+        self.db_pos_filter = data["db_pos_filter"]
         self.db_pos = self.db_pos[self.db_pos_filter]
         if len(self.db_pos) != 0:
             self.last_db = self.db_pos[-1]
 
-        self.chord = data_x["chord"].astype(np.int32)
+        self.chord = data["chord"].astype(np.int32)
 
-        self._nmat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-        self._pnotree_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-        self._pr_mat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
-        self._feat_dict_x = dict(zip(self.db_pos, [None] * len(self.db_pos)))
+        self._nmat_dict = dict(zip(self.db_pos, [None] * len(self.db_pos)))
+        self._pnotree_dict = dict(zip(self.db_pos, [None] * len(self.db_pos)))
+        self._prmat2c_dict = dict(zip(self.db_pos, [None] * len(self.db_pos)))
+        self._prmat_dict = dict(zip(self.db_pos, [None] * len(self.db_pos)))
 
     def __len__(self):
         """Return number of complete 8-beat segments in a song"""
         return len(self.db_pos)
 
-    def note_mats_seg_at_db_x(self, db):
+    def note_mats_seg_at_db(self, db):
         """
         Select rows (notes) of the note_mat which lie between beats
         [db: db + 8].
@@ -91,8 +91,8 @@ class DataSampleNpz:
 
         seg_mats = []
         for track_idx in self.use_track:
-            notes = self.notes_x[track_idx]
-            start_table = self.start_table_x[track_idx]
+            notes = self.notes[track_idx]
+            start_table = self.start_table[track_idx]
 
             s_ind = start_table[db]
             if db + SEG_LGTH_BIN in start_table:
@@ -130,55 +130,67 @@ class DataSampleNpz:
         mat[:, 2] = seg_mats[:, 2]
         return mat
 
-    def store_nmat_seg_x(self, db):
+    def store_nmat_seg(self, db):
         """
         Get note matrix (SEG_LGTH) of orchestra(x) at db position
         """
-        if self._nmat_dict_x[db] is not None:
+        if self._nmat_dict[db] is not None:
             return
 
-        nmat = self.note_mats_seg_at_db_x(db)
+        nmat = self.note_mats_seg_at_db(db)
         self.reset_db_to_zeros(nmat, db)
 
         nmat = self.format_reset_seg_mats(nmat)
-        self._nmat_dict_x[db] = nmat
+        self._nmat_dict[db] = nmat
 
-    def store_prmat_seg_x(self, db):
+    def store_prmat2c_seg(self, db):
         """
         Get piano roll format (SEG_LGTH) from note matrices at db position
         """
-        if self._pr_mat_dict_x[db] is not None:
+        if self._prmat2c_dict[db] is not None:
             return
 
-        prmat = nmat_to_prmat2c(self._nmat_dict_x[db], SEG_LGTH_BIN)
-        self._pr_mat_dict_x[db] = prmat
+        prmat2c = nmat_to_prmat2c(self._nmat_dict[db], SEG_LGTH_BIN)
+        self._prmat2c_dict[db] = prmat2c
 
-    def store_pnotree_seg_x(self, db):
+    def store_prmat_seg(self, db):
+        """
+        Get piano roll format (SEG_LGTH) from note matrices at db position
+        """
+        if self._prmat_dict[db] is not None:
+            return
+
+        prmat2c = nmat_to_prmat(self._nmat_dict[db], SEG_LGTH_BIN)
+        self._prmat_dict[db] = prmat2c
+
+    def store_pnotree_seg(self, db):
         """
         Get pnotree representation (SEG_LGTH) from nmat
         """
-        if self._pnotree_dict_x[db] is not None:
+        if self._pnotree_dict[db] is not None:
             return
 
-        self._pnotree_dict_x[db] = nmat_to_pianotree_repr(
-            self._nmat_dict_x[db], n_step=SEG_LGTH_BIN
+        self._pnotree_dict[db] = nmat_to_pianotree_repr(
+            self._nmat_dict[db], n_step=SEG_LGTH_BIN
         )
 
     def _store_seg(self, db):
-        self.store_nmat_seg_x(db)
-        self.store_prmat_seg_x(db)
-        self.store_pnotree_seg_x(db)
+        self.store_nmat_seg(db)
+        self.store_prmat2c_seg(db)
+        self.store_prmat_seg(db)
+        self.store_pnotree_seg(db)
 
     def _get_item_by_db(self, db):
         """
         Return segments of
-            prmat_x, prmat_y
+            prmat, prmat_y
         """
 
         self._store_seg(db)
 
-        seg_prmat_x = self._pr_mat_dict_x[db]
-        seg_pnotree_x = self._pnotree_dict_x[db]
+        seg_prmat2c = self._prmat2c_dict[db]
+        seg_prmat = self._prmat_dict[db]
+        seg_pnotree = self._pnotree_dict[db]
         chord = self.chord[db // N_BIN : db // N_BIN + SEG_LGTH]
         if chord.shape[0] < SEG_LGTH:
             chord = np.append(
@@ -187,7 +199,7 @@ class DataSampleNpz:
                 axis=0
             )
 
-        return seg_prmat_x, seg_pnotree_x, chord
+        return seg_prmat2c, seg_pnotree, chord, seg_prmat
 
     def __getitem__(self, idx):
         db = self.db_pos[idx]
@@ -197,25 +209,28 @@ class DataSampleNpz:
         """
         used when inference
         """
-        prmat_x = []
-        pnotree_x = []
+        prmat2c = []
+        pnotree = []
         chord = []
+        prmat = []
         idx = 0
         i = 0
         while i < len(self):
-            seg_prmat_x, seg_pnotree_x, seg_chord = self[i]
-            prmat_x.append(seg_prmat_x)
-            pnotree_x.append(seg_pnotree_x)
+            seg_prmat2c, seg_pnotree, seg_chord, seg_prmat = self[i]
+            prmat2c.append(seg_prmat2c)
+            pnotree.append(seg_pnotree)
             chord.append(seg_chord)
+            prmat.append(seg_prmat)
 
             idx += SEG_LGTH_BIN
             while i < len(self) and self.db_pos[i] < idx:
                 i += 1
-        prmat_x = torch.from_numpy(np.array(prmat_x, dtype=np.float32))
-        pnotree_x = torch.from_numpy(np.array(pnotree_x, dtype=np.int64))
+        prmat2c = torch.from_numpy(np.array(prmat2c, dtype=np.float32))
+        pnotree = torch.from_numpy(np.array(pnotree, dtype=np.int64))
         chord = torch.from_numpy(np.array(chord, dtype=np.int32))
+        prmat = torch.from_numpy(np.array(prmat, dtype=np.float32))
 
-        return prmat_x, pnotree_x, chord
+        return prmat2c, pnotree, chord, prmat
 
 
 class PianoOrchDataset(Dataset):
@@ -266,14 +281,18 @@ class PianoOrchDataset(Dataset):
 if __name__ == "__main__":
     test = "661.npz"
     song = DataSampleNpz(test)
-    os.system(f"cp {POP909_DATA_DIR}/{test[:-4]}_flated.mid exp/copy_x.mid")
-    prmat_x, pnotree_x, chord = song.get_whole_song_data()
-    print(prmat_x.shape)
-    print(pnotree_x.shape)
+    os.system(f"cp {POP909_DATA_DIR}/{test[:-4]}_flated.mid exp/copy.mid")
+    prmat2c, pnotree, chord, prmat = song.get_whole_song_data()
+    print(prmat2c.shape)
+    print(pnotree.shape)
     print(chord.shape)
-    prmat_x = prmat_x.cpu().numpy()
-    pnotree_x = pnotree_x.cpu().numpy()
+    print(prmat.shape)
+    show_image(prmat2c, "exp/img/prmat2c.png")
+    prmat2c = prmat2c.cpu().numpy()
+    pnotree = pnotree.cpu().numpy()
     chord = chord.cpu().numpy()
-    prmat2c_to_midi_file(prmat_x, "exp/origin_x.mid")
-    estx_to_midi_file(pnotree_x, "exp/pnotree_x.mid")
+    prmat = prmat.cpu().numpy()
+    prmat2c_to_midi_file(prmat2c, "exp/prmat2c.mid")
+    estx_to_midi_file(pnotree, "exp/pnotree.mid")
     chd_to_midi_file(chord, "exp/chord.mid")
+    prmat_to_midi_file(prmat, "exp/prmat.mid")

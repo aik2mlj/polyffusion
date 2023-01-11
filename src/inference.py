@@ -90,8 +90,8 @@ class Configs():
             )
             if t_ % 100 == 0 or (t_ >= 900 and t_ % 25 == 0):
                 show_image(xt, f"exp/x{t}.jpg")
-                prmat_x = xt.squeeze().cpu().numpy()
-                prmat2c_to_midi_file(prmat_x, f"exp/x{t + 1}.mid")
+                prmat = xt.squeeze().cpu().numpy()
+                prmat2c_to_midi_file(prmat, f"exp/x{t + 1}.mid")
 
         # Return $x_0$
         return xt
@@ -147,17 +147,17 @@ class Configs():
             if not init_cond:
                 x0 = self.sample(n_samples)
                 show_image(x0, "exp/x0.jpg")
-                prmat_x = x0.squeeze().cpu().numpy()
+                prmat = x0.squeeze().cpu().numpy()
                 output_stamp = f"ddpm_prmat2c_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}"
-                prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+                prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
                 return x0
             else:
                 song_fn, x_init, _ = choose_song_from_val_dl()
                 x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
                 show_image(x0, "exp/x0.jpg")
-                prmat_x = x0.squeeze().cpu().numpy()
+                prmat = x0.squeeze().cpu().numpy()
                 output_stamp = f"ddpm_prmat2c_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
-                prmat2c_to_midi_file(prmat_x, f"exp/{output_stamp}.mid")
+                prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
                 return x0
 
 
@@ -171,10 +171,10 @@ def choose_song_from_val_dl():
     print(song_fn)
 
     song = DataSampleNpz(song_fn)
-    prmat_x, _ = song.get_whole_song_data()
-    prmat_x_np = prmat_x.squeeze().cpu().numpy()
-    prmat2c_to_midi_file(prmat_x_np, "exp/origin_x.mid")
-    return song_fn, prmat_x, prmat_x
+    prmat, _ = song.get_whole_song_data()
+    prmat_np = prmat.squeeze().cpu().numpy()
+    prmat2c_to_midi_file(prmat_np, "exp/origin.mid")
+    return song_fn, prmat, prmat
 
 
 if __name__ == "__main__":

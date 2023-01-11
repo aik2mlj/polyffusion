@@ -7,9 +7,8 @@ import numpy as np
 sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 from data.dataset_musicalion import PianoOrchDataset_Musicalion
 from utils import (
-    pr_mat_pitch_shift, prmat2c_to_midi_file, denormalize_prmat, chd_to_onehot,
-    chd_pitch_shift, onehot_to_chd, chd_to_midi_file, pianotree_pitch_shift,
-    estx_to_midi_file
+    pr_mat_pitch_shift, prmat2c_to_midi_file, pianotree_pitch_shift, estx_to_midi_file,
+    prmat_to_midi_file
 )
 
 
@@ -17,31 +16,36 @@ def collate_fn(batch):
     def sample_shift():
         return np.random.choice(np.arange(-6, 6), 1)[0]
 
-    prmat = []
+    prmat2c = []
     pnotree = []
+    prmat = []
     song_fn = []
     for b in batch:
-        # b[0]: seg_pnotree_x; b[1]: seg_pnotree_y
-        seg_prmat = b[0]
+        # b[0]: seg_pnotree; b[1]: seg_pnotree_y
+        seg_prmat2c = b[0]
         seg_pnotree = b[1]
+        seg_prmat = b[2]
 
         shift = sample_shift()
-        seg_prmat = pr_mat_pitch_shift(seg_prmat, shift)
+        seg_prmat2c = pr_mat_pitch_shift(seg_prmat2c, shift)
         seg_pnotree = pianotree_pitch_shift(seg_pnotree, shift)
+        seg_prmat = pr_mat_pitch_shift(seg_prmat, shift)
 
-        prmat.append(seg_prmat)
+        prmat2c.append(seg_prmat2c)
         pnotree.append(seg_pnotree)
+        prmat.append(seg_prmat)
 
         if len(b) > 3:
             song_fn.append(b[3])
 
-    prmat = torch.Tensor(np.array(prmat, np.float32)).float()
+    prmat2c = torch.Tensor(np.array(prmat2c, np.float32)).float()
     pnotree = torch.Tensor(np.array(pnotree, np.int64)).long()
-    # prmat_x = prmat_x.unsqueeze(1)  # (B, 1, 128, 128)
+    prmat = torch.Tensor(np.array(prmat, np.float32)).float()
+    # prmat = prmat.unsqueeze(1)  # (B, 1, 128, 128)
     if len(song_fn) > 0:
-        return prmat, pnotree, None, song_fn
+        return prmat2c, pnotree, None, prmat, song_fn
     else:
-        return prmat, pnotree, None
+        return prmat2c, pnotree, None, prmat
 
 
 def get_train_val_dataloaders(batch_size, num_workers=4, pin_memory=True, debug=False):
@@ -72,11 +76,14 @@ if __name__ == "__main__":
     print(len(train_dl))
     for batch in train_dl:
         print(len(batch))
-        prmat, pnotree, _ = batch
-        print(prmat.shape)
+        prmat2c, pnotree, _, prmat = batch
+        print(prmat2c.shape)
         print(pnotree.shape)
-        prmat = prmat.cpu().numpy()
+        print(prmat.shape)
+        prmat2c = prmat2c.cpu().numpy()
         pnotree = pnotree.cpu().numpy()
-        prmat2c_to_midi_file(prmat, f"exp/test.mid")
-        estx_to_midi_file(pnotree, f"exp/test_pnotree.mid")
+        prmat = prmat.cpu().numpy()
+        prmat2c_to_midi_file(prmat2c, f"exp/m_dl_prmat2c.mid")
+        estx_to_midi_file(pnotree, f"exp/m_dl_pnotree.mid")
+        prmat_to_midi_file(prmat, f"exp/m_dl_prmat.mid")
         exit(0)
