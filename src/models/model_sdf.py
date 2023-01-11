@@ -127,6 +127,11 @@ class Diffpro_SDF(nn.Module):
             z_seg = self.pnotree_enc(pnotree_seg)[0].mean
             # print(f"pnotree seg z {z_seg.shape}")
             z_list.append(z_seg)
+        # z = torch.stack(z_list, dim=1)  # (#B, 4, 512)
+        z = torch.cat(z_list, dim=-1)
+        z = z.unsqueeze(1)  # (#B, 1, 2048)
+        # print(f"pnotree z: {z.shape}")
+        return z
         z = torch.stack(z_list, dim=1)
         # print(f"pnotree z: {z.shape}")
         return z
@@ -134,7 +139,9 @@ class Diffpro_SDF(nn.Module):
     def _decode_pnotree(self, z):
         pnotree_list = []
         assert self.pnotree_dec is not None
-        for z_seg in z.split(1, 1):
+        z_dim = z.shape[-1] // 4
+        # print(f"z_dim : {z_dim}")
+        for z_seg in z.split(z_dim, -1):
             z_seg = z_seg.squeeze()
             # print(f"z_seg {z_seg.shape}")
             recon_pitch, recon_dur = self.pnotree_dec(z_seg, True, None, None, 0., 0.)
