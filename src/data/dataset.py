@@ -28,7 +28,7 @@ class DataSampleNpz:
     `__getitem__` is used for retrieving ready-made input segments to the model
     it will be called in DataLoader
     """
-    def __init__(self, song_fn, use_track=[1, 2]) -> None:
+    def __init__(self, song_fn, use_track=[0, 1, 2]) -> None:  # NOTE: use melody now!
         self.fpath = os.path.join(POP909_DATA_DIR, song_fn)
         self.song_fn = song_fn
         """
