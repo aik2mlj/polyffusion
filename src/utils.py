@@ -439,6 +439,7 @@ def show_image(img: torch.Tensor, title=""):
     w = img.shape[2]
     img = np.append(img, np.zeros([1, h, w]), axis=0)
     img = img.transpose(2, 1, 0)  # (128, 32, 3)
+    img = np.flip(img, 0)  # flip the pitch axis: lower pitches at the bottom
     plt.imsave(title, img)
 
 
