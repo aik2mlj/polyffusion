@@ -56,6 +56,8 @@ class DiffusionSampler:
         # $$\epsilon_\theta(x_t, c) = \epsilon_\text{cond}(x_t, c)$$
         if uncond_cond is None or uncond_scale == 1.:
             return self.model(x, t, c)
+        elif uncond_scale == 0.:  # unconditional
+            return self.model(x, t, uncond_cond)
 
         # Duplicate $x_t$ and $t$
         x_in = torch.cat([x] * 2)

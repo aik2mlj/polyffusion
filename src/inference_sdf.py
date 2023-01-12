@@ -286,9 +286,7 @@ class DDPMSampler(DiffusionSampler):
             s1 = step + 1
             if self.is_show_image:
                 if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
-                    show_image(x, f"exp/x{s1}.jpg")
-                    prmat = x.cpu().numpy()
-                    # prmat2c_to_midi_file(prmat, f"exp/x{s1}.mid")
+                    show_image(x, f"exp/img/x{s1}.png")
 
         # Return $x_0$
         return x
@@ -347,9 +345,7 @@ class DDPMSampler(DiffusionSampler):
             s1 = step + 1
             if self.is_show_image:
                 if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
-                    show_image(x, f"exp/x{s1}.jpg")
-                    prmat = x.cpu().numpy()
-                    # prmat2c_to_midi_file(prmat, f"exp/x{s1}.mid")
+                    show_image(x, f"exp/img/x{s1}.png")
         return x
 
     def predict(
@@ -434,7 +430,7 @@ class DDPMSampler(DiffusionSampler):
                 )
 
         if self.is_show_image:
-            show_image(gen, "exp/img/gen.jpg")
+            show_image(gen, "exp/img/gen.png")
         prmat = gen.cpu().numpy()
         output_stamp = f"sdf+pop909_[scale:{uncond_scale},autoreg={self.is_autoreg}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
         prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
@@ -450,7 +446,7 @@ class DDPMSampler(DiffusionSampler):
         # else:
         # song_fn, x_init, _ = choose_song_from_val_dl()
         # x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
-        # show_image(x0, "exp/x0.jpg")
+        # show_image(x0, "exp/x0.png")
         # prmat = x0.squeeze().cpu().numpy()
         # output_stamp = f"sdf+pop909_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
         # prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
@@ -517,11 +513,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--musicalion", action="store_true", help="use musicalion dataset"
     )
+    parser.add_argument(
+        "--only_q_imgs",
+        action="store_true",
+        help="only show q_sample results (for testing)"
+    )
+    parser.add_argument("--length", default=0, help="the generated length (in 8-bars)")
     args = parser.parse_args()
 
+    # params ready
     with open(f"{args.model_dir}/params.json", "r") as params_file:
         params = json.load(params_file)
     params = AttrDict(params)
+
+    # model ready
     autoencoder = None
     unet_model = UNetModel(
         in_channels=params.in_channels,
@@ -572,11 +577,27 @@ if __name__ == "__main__":
         model.ldm, params, is_show_image=args.show_image, is_autoreg=args.is_autoreg
     )
 
+    # input ready
     if args.musicalion:
-        _, pnotree, _, prmat = choose_song_from_val_dl_musicalion()
-        assert params.cond_type == "pnotree"
+        prmat2c, pnotree, chd, prmat = choose_song_from_val_dl_musicalion(
+        )  # here chd is None
+        assert params.cond_type == "pnotree" or params.cond_type == "txt"
     else:
-        _, pnotree, chd, prmat = choose_song_from_val_dl()
+        prmat2c, pnotree, chd, prmat = choose_song_from_val_dl()
+
+    # for demonstrating diffusion process
+    if args.only_q_imgs:
+        if int(args.length) > 0:
+            prmat2c = prmat2c[: int(args.length)]
+        show_image(prmat2c, f"exp/img/q0.png")
+        for step in config.time_steps:
+            s1 = step + 1
+            if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
+                noised = config.q_sample(prmat2c, step)
+                show_image(noised, f"exp/img/q{s1}.png")
+        exit(0)
+
+    # conditions ready
     polydis_chd = None
     if params.cond_type == "pnotree":
         cond = model._encode_pnotree(pnotree)
@@ -594,6 +615,11 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError
 
+    if int(args.length) > 0:
+        cond = cond[: int(args.length)]
+        print(f"selected cond shape: {cond.shape}")
+
+    # generate!
     config.predict(
         cond,
         uncond_scale=float(args.uncond_scale),

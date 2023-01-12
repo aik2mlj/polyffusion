@@ -89,7 +89,7 @@ class Configs():
                 xt, xt.new_full((n_samples, ), t, dtype=torch.long)
             )
             if t_ % 100 == 0 or (t_ >= 900 and t_ % 25 == 0):
-                show_image(xt, f"exp/x{t}.jpg")
+                show_image(xt, f"exp/x{t}.png")
                 prmat = xt.squeeze().cpu().numpy()
                 prmat2c_to_midi_file(prmat, f"exp/x{t + 1}.mid")
 
@@ -146,7 +146,7 @@ class Configs():
         with torch.no_grad():
             if not init_cond:
                 x0 = self.sample(n_samples)
-                show_image(x0, "exp/x0.jpg")
+                show_image(x0, "exp/x0.png")
                 prmat = x0.squeeze().cpu().numpy()
                 output_stamp = f"ddpm_prmat2c_[uncond]_{datetime.now().strftime('%m-%d_%H%M%S')}"
                 prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
@@ -154,7 +154,7 @@ class Configs():
             else:
                 song_fn, x_init, _ = choose_song_from_val_dl()
                 x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
-                show_image(x0, "exp/x0.jpg")
+                show_image(x0, "exp/x0.png")
                 prmat = x0.squeeze().cpu().numpy()
                 output_stamp = f"ddpm_prmat2c_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
                 prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
