@@ -9,7 +9,7 @@ sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 from torch.utils.data import Dataset
 from utils import (
     nmat_to_pianotree_repr, prmat2c_to_midi_file, nmat_to_prmat2c, chd_to_midi_file,
-    estx_to_midi_file, nmat_to_prmat, prmat_to_midi_file, show_image
+    estx_to_midi_file, nmat_to_prmat, prmat_to_midi_file, show_image, chd_to_onehot
 )
 from utils import read_dict
 from dirs import *
@@ -219,7 +219,7 @@ class DataSampleNpz:
             seg_prmat2c, seg_pnotree, seg_chord, seg_prmat = self[i]
             prmat2c.append(seg_prmat2c)
             pnotree.append(seg_pnotree)
-            chord.append(seg_chord)
+            chord.append(chd_to_onehot(seg_chord))
             prmat.append(seg_prmat)
 
             idx += SEG_LGTH_BIN
@@ -227,7 +227,7 @@ class DataSampleNpz:
                 i += 1
         prmat2c = torch.from_numpy(np.array(prmat2c, dtype=np.float32))
         pnotree = torch.from_numpy(np.array(pnotree, dtype=np.int64))
-        chord = torch.from_numpy(np.array(chord, dtype=np.int32))
+        chord = torch.from_numpy(np.array(chord, dtype=np.float32))
         prmat = torch.from_numpy(np.array(prmat, dtype=np.float32))
 
         return prmat2c, pnotree, chord, prmat
@@ -287,7 +287,8 @@ if __name__ == "__main__":
     print(pnotree.shape)
     print(chord.shape)
     print(prmat.shape)
-    show_image(prmat2c, "exp/img/prmat2c.png")
+    show_image(prmat2c[: 1], "exp/img/prmat2c_1.png")
+    show_image(prmat2c[1 : 2], "exp/img/prmat2c_2.png")
     prmat2c = prmat2c.cpu().numpy()
     pnotree = pnotree.cpu().numpy()
     chord = chord.cpu().numpy()

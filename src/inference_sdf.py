@@ -583,9 +583,8 @@ if __name__ == "__main__":
         pnotree_recon = model._decode_pnotree(cond)
         estx_to_midi_file(pnotree_recon, f"exp/pnotree_recon.mid")
     elif params.cond_type == "chord":
-        chd = torch.Tensor(np.array([chd_to_onehot(chord) for chord in chd])).to(device)
-        chd = chd[: 6]
         # print(chd.shape)
+        assert chd is not None
         cond = model._encode_chord(chd)
         # print(chd_enc.shape)
         polydis_chd = chd.view(-1, 8, 36)  # 2-bars
