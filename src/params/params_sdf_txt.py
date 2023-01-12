@@ -13,8 +13,8 @@ params = AttrDict(
     fp16=True,
 
     # Data params
-    num_workers=4,
-    pin_memory=True,
+    num_workers=0,
+    pin_memory=False,
 
     # unet
     in_channels=2,

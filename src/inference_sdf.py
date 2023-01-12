@@ -23,7 +23,6 @@ import random
 
 from labml import monit
 from stable_diffusion.latent_diffusion import LatentDiffusion
-from stable_diffusion.sampler import DiffusionSampler
 from stable_diffusion.model.unet import UNetModel
 from models.model_sdf import Diffpro_SDF
 # from params_sdf import params
@@ -39,10 +38,11 @@ from data.dataset import DataSampleNpz
 from data.dataset_musicalion import DataSampleNpz_Musicalion
 from dirs import *
 from utils import (
-    prmat2c_to_midi_file, prmat_to_midi_file, show_image, chd_to_midi_file,
-    chd_to_onehot, prmat2c_to_prmat, estx_to_midi_file, load_pretrained_pnotree_enc_dec,
-    load_pretrained_txt_enc, load_pretrained_chd_enc_dec
+    prmat2c_to_midi_file, show_image, chd_to_midi_file, estx_to_midi_file,
+    load_pretrained_pnotree_enc_dec, load_pretrained_txt_enc,
+    load_pretrained_chd_enc_dec, prmat_to_midi_file, show_image, prmat2c_to_prmat
 )
+from sampler_sdf import SDFSampler
 from polydis_aftertouch import PolydisAftertouch
 
 SEED = 7890
@@ -51,307 +51,57 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+parser = ArgumentParser(description='inference a Diffpro model')
 
 
-class DDPMSampler(DiffusionSampler):
-    """
-    ## DDPM Sampler
+def choose_song_from_val_dl():
+    split_fpath = join(TRAIN_SPLIT_DIR, "pop909.pickle")
+    with open(split_fpath, "rb") as f:
+        split = pickle.load(f)
+    print(split[1])
+    num = int(input("choose one from pop909:"))
+    song_fn = split[1][num]
+    print(song_fn)
 
-    This extends the [`DiffusionSampler` base class](index.html).
+    song = DataSampleNpz(song_fn)
+    prmat2c, pnotree, chord, prmat = song.get_whole_song_data()
+    prmat2c_np = prmat2c.squeeze().cpu().numpy()
+    pnotree_np = pnotree.cpu().numpy()
+    chord_np = chord.cpu().numpy()
+    prmat2c_to_midi_file(prmat2c_np, "exp/origin.mid")
+    estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
+    chd_to_midi_file(chord_np, "exp/chord.mid")
+    return prmat2c.to(device), pnotree.to(device), chord.to(device), prmat.to(device)
 
-    DDPM samples images by repeatedly removing noise by sampling step by step from
-    $p_\theta(x_{t-1} | x_t)$,
 
-    \begin{align}
+def choose_song_from_val_dl_musicalion():
+    split_fpath = join(TRAIN_SPLIT_DIR, "musicalion.pickle")
+    with open(split_fpath, "rb") as f:
+        split = pickle.load(f)
+    print(split[1])
+    num = int(input("choose one from musicalion:"))
+    song_fn = split[1][num]
+    print(song_fn)
 
-    p_\theta(x_{t-1} | x_t) &= \mathcal{N}\big(x_{t-1}; \mu_\theta(x_t, t), \tilde\beta_t \mathbf{I} \big) \\
+    song = DataSampleNpz_Musicalion(song_fn)
+    prmat2c, pnotree, prmat = song.get_whole_song_data()
+    prmat2c_np = prmat2c.squeeze().cpu().numpy()
+    pnotree_np = pnotree.cpu().numpy()
+    prmat2c_to_midi_file(prmat2c_np, "exp/origin.mid")
+    estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
+    return prmat2c.to(device), pnotree.to(device), None, prmat.to(device)
 
-    \mu_t(x_t, t) &= \frac{\sqrt{\bar\alpha_{t-1}}\beta_t}{1 - \bar\alpha_t}x_0
-                         + \frac{\sqrt{\alpha_t}(1 - \bar\alpha_{t-1})}{1-\bar\alpha_t}x_t \\
 
-    \tilde\beta_t &= \frac{1 - \bar\alpha_{t-1}}{1 - \bar\alpha_t} \beta_t \\
-
-    x_0 &= \frac{1}{\sqrt{\bar\alpha_t}} x_t -  \Big(\sqrt{\frac{1}{\bar\alpha_t} - 1}\Big)\epsilon_\theta \\
-
-    \end{align}
-    """
-
-    model: LatentDiffusion
-
-    def __init__(
-        self, model: LatentDiffusion, params, is_show_image=False, is_autoreg=False
-    ):
-        """
-        :param model: is the model to predict noise $\epsilon_\text{cond}(x_t, c)$
-        """
-        super().__init__(model)
-
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        # Sampling steps $1, 2, \dots, T$
-        self.time_steps = np.asarray(list(range(self.n_steps)), dtype=np.int32)
-
+class Experiments:
+    def __init__(self, params, sampler: SDFSampler) -> None:
         self.params = params
-
-        self.is_show_image = is_show_image
-
-        self.is_autoreg = is_autoreg
-
-        self.autocast = torch.cuda.amp.autocast(enabled=params.fp16)
-
-        with torch.no_grad():
-            # $\bar\alpha_t$
-            alpha_bar = self.model.alpha_bar
-            # $\beta_t$ schedule
-            beta = self.model.beta
-            #  $\bar\alpha_{t-1}$
-            alpha_bar_prev = torch.cat([alpha_bar.new_tensor([1.]), alpha_bar[:-1]])
-
-            # $\sqrt{\bar\alpha}$
-            self.sqrt_alpha_bar = alpha_bar**.5
-            # $\sqrt{1 - \bar\alpha}$
-            self.sqrt_1m_alpha_bar = (1. - alpha_bar)**.5
-            # $\frac{1}{\sqrt{\bar\alpha_t}}$
-            self.sqrt_recip_alpha_bar = alpha_bar**-.5
-            # $\sqrt{\frac{1}{\bar\alpha_t} - 1}$
-            self.sqrt_recip_m1_alpha_bar = (1 / alpha_bar - 1)**.5
-
-            # $\frac{1 - \bar\alpha_{t-1}}{1 - \bar\alpha_t} \beta_t$
-            variance = beta * (1. - alpha_bar_prev) / (1. - alpha_bar)
-            # Clamped log of $\tilde\beta_t$
-            self.log_var = torch.log(torch.clamp(variance, min=1e-20))
-            # $\frac{\sqrt{\bar\alpha_{t-1}}\beta_t}{1 - \bar\alpha_t}$
-            self.mean_x0_coef = beta * (alpha_bar_prev**.5) / (1. - alpha_bar)
-            # $\frac{\sqrt{\alpha_t}(1 - \bar\alpha_{t-1})}{1-\bar\alpha_t}$
-            self.mean_xt_coef = (1. - alpha_bar_prev) * ((1 - beta)**
-                                                         0.5) / (1. - alpha_bar)
-
-    @torch.no_grad()
-    def p_sample(
-        self,
-        x: torch.Tensor,
-        c: torch.Tensor,
-        t: torch.Tensor,
-        step: int,
-        repeat_noise: bool = False,
-        temperature: float = 1.,
-        uncond_scale: float = 1.,
-        uncond_cond: Optional[torch.Tensor] = None
-    ):
-        """
-        ### Sample $x_{t-1}$ from $p_\theta(x_{t-1} | x_t)$
-
-        :param x: is $x_t$ of shape `[batch_size, channels, height, width]`
-        :param c: is the conditional embeddings $c$ of shape `[batch_size, emb_size]`
-        :param t: is $t$ of shape `[batch_size]`
-        :param step: is the step $t$ as an integer
-        :repeat_noise: specified whether the noise should be same for all samples in the batch
-        :param temperature: is the noise temperature (random noise gets multiplied by this)
-        :param uncond_scale: is the unconditional guidance scale $s$. This is used for
-            $\epsilon_\theta(x_t, c) = s\epsilon_\text{cond}(x_t, c) + (s - 1)\epsilon_\text{cond}(x_t, c_u)$
-        :param uncond_cond: is the conditional embedding for empty prompt $c_u$
-        """
-
-        # Get $\epsilon_\theta$
-        with self.autocast:
-            e_t = self.get_eps(
-                x, t, c, uncond_scale=uncond_scale, uncond_cond=uncond_cond
-            )
-
-        # Get batch size
-        bs = x.shape[0]
-
-        # $\frac{1}{\sqrt{\bar\alpha_t}}$
-        sqrt_recip_alpha_bar = x.new_full(
-            (bs, 1, 1, 1), self.sqrt_recip_alpha_bar[step]
-        )
-        # $\sqrt{\frac{1}{\bar\alpha_t} - 1}$
-        sqrt_recip_m1_alpha_bar = x.new_full(
-            (bs, 1, 1, 1), self.sqrt_recip_m1_alpha_bar[step]
-        )
-
-        # Calculate $x_0$ with current $\epsilon_\theta$
-        #
-        # $$x_0 = \frac{1}{\sqrt{\bar\alpha_t}} x_t -  \Big(\sqrt{\frac{1}{\bar\alpha_t} - 1}\Big)\epsilon_\theta$$
-        x0 = sqrt_recip_alpha_bar * x - sqrt_recip_m1_alpha_bar * e_t
-
-        # $\frac{\sqrt{\bar\alpha_{t-1}}\beta_t}{1 - \bar\alpha_t}$
-        mean_x0_coef = x.new_full((bs, 1, 1, 1), self.mean_x0_coef[step])
-        # $\frac{\sqrt{\alpha_t}(1 - \bar\alpha_{t-1})}{1-\bar\alpha_t}$
-        mean_xt_coef = x.new_full((bs, 1, 1, 1), self.mean_xt_coef[step])
-
-        # Calculate $\mu_t(x_t, t)$
-        #
-        # $$\mu_t(x_t, t) = \frac{\sqrt{\bar\alpha_{t-1}}\beta_t}{1 - \bar\alpha_t}x_0
-        #    + \frac{\sqrt{\alpha_t}(1 - \bar\alpha_{t-1})}{1-\bar\alpha_t}x_t$$
-        mean = mean_x0_coef * x0 + mean_xt_coef * x
-        # $\log \tilde\beta_t$
-        log_var = x.new_full((bs, 1, 1, 1), self.log_var[step])
-
-        # Do not add noise when $t = 1$ (final step sampling process).
-        # Note that `step` is `0` when $t = 1$)
-        if step == 0:
-            noise = 0
-        # If same noise is used for all samples in the batch
-        elif repeat_noise:
-            noise = torch.randn((1, *x.shape[1 :]), device=self.device)
-        # Different noise for each sample
-        else:
-            noise = torch.randn(x.shape, device=self.device)
-
-        # Multiply noise by the temperature
-        noise = noise * temperature
-
-        # Sample from,
-        #
-        # $$p_\theta(x_{t-1} | x_t) = \mathcal{N}\big(x_{t-1}; \mu_\theta(x_t, t), \tilde\beta_t \mathbf{I} \big)$$
-        x_prev = mean + (0.5 * log_var).exp() * noise
-
-        #
-        return x_prev, x0, e_t
-
-    @torch.no_grad()
-    def q_sample(
-        self, x0: torch.Tensor, index: int, noise: Optional[torch.Tensor] = None
-    ):
-        """
-        ### Sample from $q(x_t|x_0)$
-
-        $$q(x_t|x_0) = \mathcal{N} \Big(x_t; \sqrt{\bar\alpha_t} x_0, (1-\bar\alpha_t) \mathbf{I} \Big)$$
-
-        :param x0: is $x_0$ of shape `[batch_size, channels, height, width]`
-        :param index: is the time step $t$ index
-        :param noise: is the noise, $\epsilon$
-        """
-
-        # Random noise, if noise is not specified
-        if noise is None:
-            noise = torch.randn_like(x0, device=self.device)
-
-        # Sample from $\mathcal{N} \Big(x_t; \sqrt{\bar\alpha_t} x_0, (1-\bar\alpha_t) \mathbf{I} \Big)$
-        return self.sqrt_alpha_bar[index] * x0 + self.sqrt_1m_alpha_bar[index] * noise
-
-    @torch.no_grad()
-    def sample(
-        self,
-        shape: List[int],
-        cond: torch.Tensor,
-        repeat_noise: bool = False,
-        temperature: float = 1.,
-        x_last: Optional[torch.Tensor] = None,
-        uncond_scale: float = 1.,
-        uncond_cond: Optional[torch.Tensor] = None,
-        t_start: int = 0,
-    ):
-        """
-        ### Sampling Loop
-
-        :param shape: is the shape of the generated images in the
-            form `[batch_size, channels, height, width]`
-        :param cond: is the conditional embeddings $c$
-        :param temperature: is the noise temperature (random noise gets multiplied by this)
-        :param x_last: is $x_T$. If not provided random noise will be used.
-        :param uncond_scale: is the unconditional guidance scale $s$. This is used for
-            $\epsilon_\theta(x_t, c) = s\epsilon_\text{cond}(x_t, c) + (s - 1)\epsilon_\text{cond}(x_t, c_u)$
-        :param uncond_cond: is the conditional embedding for empty prompt $c_u$
-        :param skip_steps: is the number of time steps to skip $t'$. We start sampling from $T - t'$.
-            And `x_last` is then $x_{T - t'}$.
-        """
-
-        # Get device and batch size
-        bs = shape[0]
-
-        # Get $x_T$
-        x = x_last if x_last is not None else torch.randn(shape, device=self.device)
-
-        # Time steps to sample at $T - t', T - t' - 1, \dots, 1$
-        time_steps = np.flip(self.time_steps)[t_start :]
-
-        # Sampling loop
-        for step in monit.iterate('Sample', time_steps):
-            # Time step $t$
-            ts = x.new_full((bs, ), step, dtype=torch.long)
-
-            # Sample $x_{t-1}$
-            x, pred_x0, e_t = self.p_sample(
-                x,
-                cond,
-                ts,
-                step,
-                repeat_noise=repeat_noise,
-                temperature=temperature,
-                uncond_scale=uncond_scale,
-                uncond_cond=uncond_cond
-            )
-
-            s1 = step + 1
-            if self.is_show_image:
-                if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
-                    show_image(x, f"exp/img/x{s1}.png")
-
-        # Return $x_0$
-        return x
-
-    @torch.no_grad()
-    def paint(
-        self,
-        x: torch.Tensor,
-        cond: torch.Tensor,
-        t_start: int,
-        orig: Optional[torch.Tensor] = None,
-        mask: Optional[torch.Tensor] = None,
-        orig_noise: Optional[torch.Tensor] = None,
-        uncond_scale: float = 1.,
-        uncond_cond: Optional[torch.Tensor] = None,
-    ):
-        """
-        ### Painting Loop
-
-        :param x: is $x_{S'}$ of shape `[batch_size, channels, height, width]`
-        :param cond: is the conditional embeddings $c$
-        :param t_start: is the sampling step to start from, $S'$
-        :param orig: is the original image in latent page which we are in paining.
-            If this is not provided, it'll be an image to image transformation.
-        :param mask: is the mask to keep the original image.
-        :param orig_noise: is fixed noise to be added to the original image.
-        :param uncond_scale: is the unconditional guidance scale $s$. This is used for
-            $\epsilon_\theta(x_t, c) = s\epsilon_\text{cond}(x_t, c) + (s - 1)\epsilon_\text{cond}(x_t, c_u)$
-        :param uncond_cond: is the conditional embedding for empty prompt $c_u$
-        """
-        # Get  batch size
-        bs = x.shape[0]
-
-        # Time steps to sample at $\tau_{S`}, \tau_{S' - 1}, \dots, \tau_1$
-        time_steps = np.flip(self.time_steps[: t_start])
-
-        for i, step in monit.enum('Paint', time_steps):
-            # Index $i$ in the list $[\tau_1, \tau_2, \dots, \tau_S]$
-            # index = len(time_steps) - i - 1
-            # Time step $\tau_i$
-            ts = x.new_full((bs, ), step, dtype=torch.long)
-
-            # Sample $x_{\tau_{i-1}}$
-            x, _, _ = self.p_sample(
-                x, cond, ts, step, uncond_scale=uncond_scale, uncond_cond=uncond_cond
-            )
-
-            # Replace the masked area with original image
-            if orig is not None:
-                assert mask is not None
-                # Get the $q_{\sigma,\tau}(x_{\tau_i}|x_0)$ for original image in latent space
-                orig_t = self.q_sample(orig, step, noise=orig_noise)
-                # Replace the masked area
-                x = orig_t * mask + x * (1 - mask)
-
-            s1 = step + 1
-            if self.is_show_image:
-                if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
-                    show_image(x, f"exp/img/x{s1}.png")
-        return x
+        self.sampler = sampler
 
     def predict(
         self,
         cond: torch.Tensor,
         uncond_scale=1.,
+        is_autoreg=False,
         polydis_recon=False,
         polydis_chd=None
     ):
@@ -359,17 +109,17 @@ class DDPMSampler(DiffusionSampler):
         shape = [
             n_samples, self.params.out_channels, self.params.img_h, self.params.img_w
         ]
-        uncond_cond = (-torch.ones_like(cond)).to(self.device)  # a bunch of -1
+        uncond_cond = (-torch.ones_like(cond)).to(device)  # a bunch of -1
         print(f"predicting {shape} with uncond_scale = {uncond_scale}")
-        self.model.eval()
+        self.sampler.model.eval()
         with torch.no_grad():
-            if self.is_autoreg:
+            if is_autoreg:
                 half_len = self.params.img_h // 2
                 single_shape = [
                     1, self.params.out_channels, self.params.img_h, self.params.img_w
                 ]
                 last = None  # this is the last inpainted 4-bar
-                mask = torch.zeros(single_shape, device=self.device)
+                mask = torch.zeros(single_shape, device=device)
                 # the first half is masked for inpainting
                 mask[:, :, 0 : half_len, :] = 1.
 
@@ -386,7 +136,7 @@ class DDPMSampler(DiffusionSampler):
                 gen = []  # the generated
                 for idx in range(n_samples * 2 - 1):  # inpaint a 4-bar each time
                     if idx == 0:
-                        x0 = self.sample(
+                        x0 = self.sampler.sample(
                             single_shape,
                             cond[idx].unsqueeze(0),
                             uncond_scale=uncond_scale,
@@ -396,12 +146,12 @@ class DDPMSampler(DiffusionSampler):
                     else:
                         assert last is not None
                         t_idx = self.params.n_steps - 1
-                        orig_noise = torch.randn(last.shape, device=self.device)
-                        xt = self.q_sample(last, t_idx, orig_noise)
+                        orig_noise = torch.randn(last.shape, device=device)
+                        xt = self.sampler.q_sample(last, t_idx, orig_noise)
                         cond_start_idx = idx * (cond_len // 2)
                         cond_seg = cond_sqz[cond_start_idx : cond_start_idx +
                                             cond_len, :].unsqueeze(0)
-                        x0 = self.paint(
+                        x0 = sampler.paint(
                             xt,
                             cond_seg,
                             t_idx,
@@ -425,14 +175,12 @@ class DDPMSampler(DiffusionSampler):
                 # print(f"piano_roll: {gen.shape}")
 
             else:
-                gen = self.sample(
+                gen = self.sampler.sample(
                     shape, cond, uncond_scale=uncond_scale, uncond_cond=uncond_cond
                 )
 
-        if self.is_show_image:
-            show_image(gen, "exp/img/gen.png")
+        output_stamp = f"sdf+{args.dataset}_[scale={uncond_scale},{'autoreg' if is_autoreg else ''}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
         prmat = gen.cpu().numpy()
-        output_stamp = f"sdf+pop909_[scale:{uncond_scale},autoreg={self.is_autoreg}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
         prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
         if polydis_recon:
             aftertouch = PolydisAftertouch()
@@ -443,62 +191,41 @@ class DDPMSampler(DiffusionSampler):
             chd = polydis_chd
             aftertouch.reconstruct(prmat, chd, f"exp/{output_stamp}")
         return gen
-        # else:
-        # song_fn, x_init, _ = choose_song_from_val_dl()
-        # x0 = self.sample(n_samples, init_cond=x_init, init_step=init_step)
-        # show_image(x0, "exp/x0.png")
-        # prmat = x0.squeeze().cpu().numpy()
-        # output_stamp = f"sdf+pop909_init_[{song_fn}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
-        # prmat2c_to_midi_file(prmat, f"exp/{output_stamp}.mid")
-        # return x0
-        # raise NotImplementedError
 
+    def inpaint(
+        self,
+        x: torch.Tensor,
+        cond: torch.Tensor,
+        t_start: int,
+        orig: Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
+        orig_noise: Optional[torch.Tensor] = None,
+        uncond_scale: float = 1.,
+        uncond_cond: Optional[torch.Tensor] = None,
+    ):
+        pass
 
-def choose_song_from_val_dl():
-    split_fpath = join(TRAIN_SPLIT_DIR, "pop909.pickle")
-    with open(split_fpath, "rb") as f:
-        split = pickle.load(f)
-    print(split[1])
-    num = int(input("choose one:"))
-    song_fn = split[1][num]
-    print(song_fn)
-
-    song = DataSampleNpz(song_fn)
-    prmat2c, pnotree, chord, prmat = song.get_whole_song_data()
-    prmat2c_np = prmat2c.squeeze().cpu().numpy()
-    pnotree_np = pnotree.cpu().numpy()
-    chord_np = chord.cpu().numpy()
-    prmat2c_to_midi_file(prmat2c_np, "exp/origin.mid")
-    estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
-    chd_to_midi_file(chord_np, "exp/chord.mid")
-    return prmat2c.to(device), pnotree.to(device), chord.to(device), prmat.to(device)
-
-
-def choose_song_from_val_dl_musicalion():
-    split_fpath = join(TRAIN_SPLIT_DIR, "musicalion.pickle")
-    with open(split_fpath, "rb") as f:
-        split = pickle.load(f)
-    print(split[1])
-    num = int(input("choose one:"))
-    song_fn = split[1][num]
-    print(song_fn)
-
-    song = DataSampleNpz_Musicalion(song_fn)
-    prmat2c, pnotree, prmat = song.get_whole_song_data()
-    prmat2c_np = prmat2c.squeeze().cpu().numpy()
-    pnotree_np = pnotree.cpu().numpy()
-    prmat2c_to_midi_file(prmat2c_np, "exp/origin.mid")
-    estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
-    return prmat2c.to(device), pnotree.to(device), None, prmat.to(device)
+    def show_q_imgs(self, prmat2c):
+        if int(args.length) > 0:
+            prmat2c = prmat2c[: int(args.length)]
+        show_image(prmat2c, f"exp/img/q0.png")
+        for step in self.sampler.time_steps:
+            s1 = step + 1
+            if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
+                noised = self.sampler.q_sample(prmat2c, step)
+                show_image(noised, f"exp/img/q{s1}.png")
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description='inference a Diffpro model')
     parser.add_argument(
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )
     parser.add_argument("--uncond_scale", default=1., help="unconditional scale")
-    parser.add_argument("--is_autoreg", action="store_true", help="is autoregressive")
+    parser.add_argument(
+        "--is_autoreg",
+        action="store_true",
+        help="autoregressively inpaint the music segments"
+    )
     parser.add_argument(
         "--show_image",
         action="store_true",
@@ -511,7 +238,12 @@ if __name__ == "__main__":
         "whether to use polydis to reconstruct the generated midi from diffusion model"
     )
     parser.add_argument(
-        "--musicalion", action="store_true", help="use musicalion dataset"
+        "--dataset",
+        default="pop909",
+        help="choose from which dataset (pop909, musicalion)"
+    )
+    parser.add_argument(
+        "--from_midi", help="choose condition from a specific midi file"
     )
     parser.add_argument(
         "--only_q_imgs",
@@ -573,28 +305,30 @@ if __name__ == "__main__":
         ldm_model, f"{args.model_dir}/chkpts", params.cond_type, params.cond_mode,
         chord_enc, chord_dec, pnotree_enc, pnotree_dec
     ).to(device)
-    config = DDPMSampler(
-        model.ldm, params, is_show_image=args.show_image, is_autoreg=args.is_autoreg
+    sampler = SDFSampler(
+        model.ldm,
+        is_autocast=params.fp16,
+        is_show_image=args.show_image,
     )
+    expmt = Experiments(params, sampler)
 
     # input ready
-    if args.musicalion:
+    if args.from_midi is not None:
+        print(f"using the {params.cond_type} of midi file: {args.from_midi}")
+        # TODO: data from midi file
+
+    if args.dataset == "musicalion":
         prmat2c, pnotree, chd, prmat = choose_song_from_val_dl_musicalion(
         )  # here chd is None
         assert params.cond_type == "pnotree" or params.cond_type == "txt"
-    else:
+    elif args.dataset == "pop909":
         prmat2c, pnotree, chd, prmat = choose_song_from_val_dl()
+    else:
+        raise NotImplementedError
 
     # for demonstrating diffusion process
     if args.only_q_imgs:
-        if int(args.length) > 0:
-            prmat2c = prmat2c[: int(args.length)]
-        show_image(prmat2c, f"exp/img/q0.png")
-        for step in config.time_steps:
-            s1 = step + 1
-            if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
-                noised = config.q_sample(prmat2c, step)
-                show_image(noised, f"exp/img/q{s1}.png")
+        expmt.show_q_imgs(prmat2c)
         exit(0)
 
     # conditions ready
@@ -620,9 +354,10 @@ if __name__ == "__main__":
         print(f"selected cond shape: {cond.shape}")
 
     # generate!
-    config.predict(
+    expmt.predict(
         cond,
         uncond_scale=float(args.uncond_scale),
+        is_autoreg=args.is_autoreg,
         polydis_recon=args.polydis_recon,
         polydis_chd=polydis_chd
     )
