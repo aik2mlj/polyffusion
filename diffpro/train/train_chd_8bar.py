@@ -2,8 +2,6 @@ import torch
 import sys
 import os
 
-sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
-
 # from stable_diffusion.model.autoencoder import Autoencoder, Encoder, Decoder
 from . import *
 from data.dataloader import get_train_val_dataloaders

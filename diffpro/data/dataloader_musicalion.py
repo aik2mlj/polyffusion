@@ -4,7 +4,6 @@ import torch
 from torch.utils.data import DataLoader
 import numpy as np
 
-sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 from data.dataset_musicalion import PianoOrchDataset_Musicalion
 from utils import (
     pr_mat_pitch_shift, prmat2c_to_midi_file, pianotree_pitch_shift, estx_to_midi_file,

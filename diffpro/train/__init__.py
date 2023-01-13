@@ -7,8 +7,6 @@ from torch.optim import Optimizer
 
 import sys
 
-sys.path.insert(0, "..")
-
 from params import AttrDict
 from learner import DiffproLearner
 

@@ -5,7 +5,6 @@ import torch
 import numpy as np
 import sys
 
-sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 from torch.utils.data import Dataset
 from utils import (
     nmat_to_pianotree_repr, prmat2c_to_midi_file, nmat_to_prmat2c, chd_to_midi_file,

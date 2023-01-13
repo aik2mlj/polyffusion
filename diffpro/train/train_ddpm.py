@@ -1,8 +1,6 @@
 from argparse import ArgumentParser
 import sys
 
-sys.path.insert(0, "..")
-
 from . import *
 from ddpm.unet import UNet
 from ddpm import DenoiseDiffusion
@@ -20,7 +18,7 @@ class DDPM_TrainConfig(TrainConfig):
     optimizer: torch.optim.Adam
 
     def __init__(self, params, output_dir):
-        super().__init__(params, output_dir)
+        super().__init__(params, None, output_dir)
 
         self.eps_model = UNet(
             image_channels=params.image_channels,

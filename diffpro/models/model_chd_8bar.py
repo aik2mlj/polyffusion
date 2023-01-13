@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import sys
 
-sys.path.insert(0, "..")
 from utils import *
 from dl_modules import ChordEncoder, ChordDecoder
 import torch.nn.functional as F

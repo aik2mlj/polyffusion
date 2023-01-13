@@ -3,8 +3,6 @@ from argparse import ArgumentParser
 import sys
 import os
 
-sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
-
 # from stable_diffusion.model.autoencoder import Autoencoder, Encoder, Decoder
 from . import *
 from stable_diffusion.model.unet import UNetModel

@@ -8,7 +8,6 @@ import csv
 from tqdm import tqdm
 from os.path import join
 
-sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 from chord_extractor import extract_chords_from_midi_file
 
 # duration of one beat

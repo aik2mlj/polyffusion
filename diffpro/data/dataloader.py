@@ -5,7 +5,6 @@ import random
 from torch.utils.data import DataLoader
 import numpy as np
 
-sys.path.insert(0, f"{os.path.dirname(__file__)}/../")
 from data.dataset import PianoOrchDataset
 from utils import (
     pr_mat_pitch_shift, prmat2c_to_midi_file, chd_to_onehot, chd_pitch_shift,

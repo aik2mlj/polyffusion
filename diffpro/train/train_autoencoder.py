@@ -4,7 +4,6 @@ import torch
 from datetime import datetime
 import sys
 
-sys.path.insert(0, "..")
 from . import TrainConfig
 from learner import DiffproLearner
 from stable_diffusion.model.autoencoder import Autoencoder, Encoder, Decoder
@@ -18,7 +17,7 @@ class Autoencoder_TrainConfig(TrainConfig):
     optimizer: torch.optim.Adam
 
     def __init__(self, params, output_dir) -> None:
-        super().__init__(params, output_dir)
+        super().__init__(params, None, output_dir)
         encoder = Encoder(
             in_channels=params.in_channels,
             z_channels=params.z_channels,
