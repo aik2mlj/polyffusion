@@ -45,7 +45,9 @@ class Autoencoder_TrainConfig(TrainConfig):
         self.model = Diffpro_Autoencoder(autoencoder).to(self.device)
 
         # Create dataloader
-        self.train_dl, self.val_dl = get_train_val_dataloaders(params.batch_size)
+        self.train_dl, self.val_dl = get_train_val_dataloaders(
+            params.batch_size, params.num_workers, params.pin_memory
+        )
         # Create optimizer
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), lr=params.learning_rate

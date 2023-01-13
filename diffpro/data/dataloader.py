@@ -59,7 +59,7 @@ def collate_fn(batch):
         return prmat2c, pnotree, chord, prmat
 
 
-def get_train_val_dataloaders(batch_size, num_workers=4, pin_memory=True, debug=False):
+def get_train_val_dataloaders(batch_size, num_workers=0, pin_memory=False, debug=False):
     train_dataset, val_dataset = PianoOrchDataset.load_train_and_valid_sets(debug)
     train_dl = DataLoader(
         train_dataset,
@@ -76,6 +76,9 @@ def get_train_val_dataloaders(batch_size, num_workers=4, pin_memory=True, debug=
         collate_fn=collate_fn,
         num_workers=num_workers,
         pin_memory=pin_memory
+    )
+    print(
+        f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}"
     )
     return train_dl, val_dl
 

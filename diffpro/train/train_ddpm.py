@@ -38,7 +38,9 @@ class DDPM_TrainConfig(TrainConfig):
 
         self.model = Diffpro_DDPM(self.diffusion, params).to(self.device)
         # Create dataloader
-        self.train_dl, self.val_dl = get_train_val_dataloaders(params.batch_size)
+        self.train_dl, self.val_dl = get_train_val_dataloaders(
+            params.batch_size, params.num_workers, params.pin_memory
+        )
         # Create optimizer
         self.optimizer = torch.optim.Adam(
             self.eps_model.parameters(), lr=params.learning_rate

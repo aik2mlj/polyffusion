@@ -100,10 +100,12 @@ class LDM_TrainConfig(TrainConfig):
         # Create dataloader
         if use_musicalion:
             self.train_dl, self.val_dl = get_train_val_dataloaders_musicalion(
-                params.batch_size
+                params.batch_size, params.num_workers, params.pin_memory
             )
         else:
-            self.train_dl, self.val_dl = get_train_val_dataloaders(params.batch_size)
+            self.train_dl, self.val_dl = get_train_val_dataloaders(
+                params.batch_size, params.num_workers, params.pin_memory
+            )
 
         # Create optimizer
         self.optimizer = torch.optim.Adam(
