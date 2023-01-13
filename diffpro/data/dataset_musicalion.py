@@ -171,7 +171,7 @@ class DataSampleNpz_Musicalion:
         seg_prmat2c = self._prmat2c_dict[db]
         seg_prmat = self._prmat_dict[db]
         seg_pnotree = self._pnotree_dict[db]
-        return seg_prmat2c, seg_pnotree, seg_prmat
+        return seg_prmat2c, seg_pnotree, None, seg_prmat
 
     def __getitem__(self, idx):
         db = self.db_pos[idx]
@@ -187,7 +187,7 @@ class DataSampleNpz_Musicalion:
         idx = 0
         i = 0
         while i < len(self):
-            seg_prmat2c, seg_pnotree, seg_prmat = self[i]
+            seg_prmat2c, seg_pnotree, _, seg_prmat = self[i]
             prmat2c.append(seg_prmat2c)
             pnotree.append(seg_pnotree)
             prmat.append(seg_prmat)
@@ -198,7 +198,7 @@ class DataSampleNpz_Musicalion:
         prmat2c = torch.from_numpy(np.array(prmat2c, dtype=np.float32))
         pnotree = torch.from_numpy(np.array(pnotree, dtype=np.int64))
         prmat = torch.from_numpy(np.array(prmat, dtype=np.float32))
-        return prmat2c, pnotree, prmat
+        return prmat2c, pnotree, None, prmat
 
 
 class PianoOrchDataset_Musicalion(Dataset):
@@ -250,7 +250,7 @@ if __name__ == "__main__":
     test = "ssccm172.npz"
     song = DataSampleNpz_Musicalion(test)
     os.system(f"cp {MUSICALION_DATA_DIR}/{test[:-4]}_flated.mid exp/copy.mid")
-    prmat2c, pnotree, prmat = song.get_whole_song_data()
+    prmat2c, pnotree, _, prmat = song.get_whole_song_data()
     print(prmat2c.shape)
     print(pnotree.shape)
     print(prmat.shape)

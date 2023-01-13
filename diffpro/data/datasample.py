@@ -1,14 +1,18 @@
 # pyright: reportOptionalSubscript=false
+"""
+This is for directly get DataSampleNpz from a midi file when inference.
+"""
 
+import sys
 import os
 import torch
 import numpy as np
-import sys
+from data.midi_to_data import get_data_for_single_midi
 
 from torch.utils.data import Dataset
 from utils import (
-    nmat_to_pianotree_repr, prmat2c_to_midi_file, nmat_to_prmat2c, chd_to_midi_file,
-    estx_to_midi_file, nmat_to_prmat, prmat_to_midi_file, show_image, chd_to_onehot
+    nmat_to_pianotree_repr, prmat2c_to_midi_file, nmat_to_prmat2c, estx_to_midi_file,
+    nmat_to_prmat, prmat_to_midi_file, chd_to_onehot, chd_to_midi_file
 )
 from utils import read_dict
 from dirs import *
@@ -18,18 +22,13 @@ N_BIN = 4
 SEG_LGTH_BIN = SEG_LGTH * N_BIN
 
 
-class DataSampleNpz:
+class DataSample:
     """
-    A pair of song segment stored in .npz format
-    containing piano and orchestration versions
-
     This class aims to get input samples for a single song
     `__getitem__` is used for retrieving ready-made input segments to the model
     it will be called in DataLoader
     """
-    def __init__(self, song_fn, use_track=[0, 1, 2]) -> None:  # NOTE: use melody now!
-        self.fpath = os.path.join(POP909_DATA_DIR, song_fn)
-        self.song_fn = song_fn
+    def __init__(self, data) -> None:
         """
         notes (onset_beat, onset_bin, duration, pitch, velocity)
         start_table : i-th row indicates the starting row of the "notes" array
@@ -57,13 +56,9 @@ class DataSampleNpz:
 
         # def load(self, use_chord=False):
         #     """ load data """
-        self.use_track = use_track  # which tracks to use when converting to prmat2c
 
-        data = np.load(self.fpath, allow_pickle=True)
-        self.notes = np.array(
-            data["notes"]
-        )  # NOTE: here we have 3 tracks: melody, bridge and piano
-        self.start_table = data["start_table"]  # NOTE: same here
+        self.notes = data["notes"]
+        self.start_table: dict = data["start_table"].item()
 
         self.db_pos = data["db_pos"]
         self.db_pos_filter = data["db_pos_filter"]
@@ -88,27 +83,13 @@ class DataSampleNpz:
         [db: db + 8].
         """
 
-        seg_mats = []
-        for track_idx in self.use_track:
-            notes = self.notes[track_idx]
-            start_table = self.start_table[track_idx]
-
-            s_ind = start_table[db]
-            if db + SEG_LGTH_BIN in start_table:
-                e_ind = start_table[db + SEG_LGTH_BIN]
-                note_seg = np.array(notes[s_ind : e_ind])
-            else:
-                note_seg = np.array(notes[s_ind :])  # NOTE: may be wrong
-            seg_mats.extend(note_seg)
-
-        seg_mats = np.array(seg_mats)
-        if seg_mats.size == 0:
-            seg_mats = np.zeros([0, 5])
-        return seg_mats
-
-    @staticmethod
-    def cat_note_mats(note_mats):
-        return np.concatenate(note_mats, 0)
+        s_ind = self.start_table[db]
+        if db + SEG_LGTH_BIN in self.start_table:
+            e_ind = self.start_table[db + SEG_LGTH_BIN]
+            seg_mats = self.notes[s_ind : e_ind]
+        else:
+            seg_mats = self.notes[s_ind :]  # NOTE: may be wrong
+        return seg_mats.copy()
 
     @staticmethod
     def reset_db_to_zeros(note_mat, db):
@@ -232,67 +213,20 @@ class DataSampleNpz:
         return prmat2c, pnotree, chord, prmat
 
 
-class PianoOrchDataset(Dataset):
-    def __init__(self, data_samples, debug=False):
-        super(PianoOrchDataset, self).__init__()
-
-        # a list of DataSampleNpz
-        self.data_samples = data_samples
-
-        self.lgths = np.array([len(d) for d in self.data_samples], dtype=np.int64)
-        self.lgth_cumsum = np.cumsum(self.lgths)
-        self.debug = debug
-
-    def __len__(self):
-        return self.lgth_cumsum[-1]
-
-    def __getitem__(self, index):
-        # song_no is the smallest id that > dataset_item
-        song_no = np.where(self.lgth_cumsum > index)[0][0]
-        song_item = index - np.insert(self.lgth_cumsum, 0, 0)[song_no]
-
-        song_data = self.data_samples[song_no]
-        if self.debug:
-            return *song_data[song_item], song_data.song_fn
-        else:
-            return song_data[song_item]
-
-    @classmethod
-    def load_with_song_paths(cls, song_paths, debug=False):
-        data_samples = [DataSampleNpz(song_path) for song_path in song_paths]
-        return cls(data_samples, debug)
-
-    @classmethod
-    def load_train_and_valid_sets(cls, debug=False):
-        split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "pop909.pickle"))
-        return cls.load_with_song_paths(split[0], debug), cls.load_with_song_paths(
-            split[1], debug
-        )
-
-    @classmethod
-    def load_with_train_valid_paths(cls, tv_song_paths, **kwargs):
-        return cls.load_with_song_paths(tv_song_paths[0],
-                                        **kwargs), cls.load_with_song_paths(
-                                            tv_song_paths[1], **kwargs
-                                        )
-
-
 if __name__ == "__main__":
-    test = "661.npz"
-    song = DataSampleNpz(test)
-    os.system(f"cp {POP909_DATA_DIR}/{test[:-4]}_flated.mid exp/copy.mid")
+    fpath = sys.argv[1]
+    data = get_data_for_single_midi(fpath, sys.argv[2])
+    song = DataSample(data)
     prmat2c, pnotree, chord, prmat = song.get_whole_song_data()
     print(prmat2c.shape)
     print(pnotree.shape)
     print(chord.shape)
     print(prmat.shape)
-    # show_image(prmat2c[: 1], "exp/img/prmat2c_1.png")
-    # show_image(prmat2c[1 : 2], "exp/img/prmat2c_2.png")
     prmat2c = prmat2c.cpu().numpy()
     pnotree = pnotree.cpu().numpy()
     chord = chord.cpu().numpy()
     prmat = prmat.cpu().numpy()
-    prmat2c_to_midi_file(prmat2c, "exp/prmat2c.mid")
-    estx_to_midi_file(pnotree, "exp/pnotree.mid")
-    chd_to_midi_file(chord, "exp/chord.mid")
-    prmat_to_midi_file(prmat, "exp/prmat.mid")
+    prmat2c_to_midi_file(prmat2c, "exp/s_prmat2c.mid")
+    estx_to_midi_file(pnotree, "exp/s_pnotree.mid")
+    chd_to_midi_file(chord, "exp/s_chord.mid")
+    prmat_to_midi_file(prmat, "exp/s_prmat.mid")

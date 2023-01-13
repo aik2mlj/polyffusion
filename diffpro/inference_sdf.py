@@ -44,9 +44,26 @@ from utils import (
 )
 from sampler_sdf import SDFSampler
 from polydis_aftertouch import PolydisAftertouch
+from data.datasample import DataSample
+from data.midi_to_data import get_data_for_single_midi
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 parser = ArgumentParser(description='inference a Diffpro model')
+
+
+def get_data_preprocessed(song):
+    prmat2c, pnotree, chord, prmat = song.get_whole_song_data()
+    prmat2c_np = prmat2c.squeeze().cpu().numpy()
+    pnotree_np = pnotree.cpu().numpy()
+    prmat2c_to_midi_file(prmat2c_np, "exp/o_prmat2c.mid")
+    estx_to_midi_file(pnotree_np, "exp/o_pnotree.mid")
+    if chord is not None:
+        chord_np = chord.cpu().numpy()
+        chd_to_midi_file(chord_np, "exp/o_chord.mid")
+        return prmat2c.to(device), pnotree.to(device), chord.to(device
+                                                               ), prmat.to(device)
+    else:
+        return prmat2c.to(device), pnotree.to(device), None, prmat.to(device)
 
 
 def choose_song_from_val_dl():
@@ -59,14 +76,7 @@ def choose_song_from_val_dl():
     print(song_fn)
 
     song = DataSampleNpz(song_fn)
-    prmat2c, pnotree, chord, prmat = song.get_whole_song_data()
-    prmat2c_np = prmat2c.squeeze().cpu().numpy()
-    pnotree_np = pnotree.cpu().numpy()
-    chord_np = chord.cpu().numpy()
-    prmat2c_to_midi_file(prmat2c_np, "exp/origin.mid")
-    estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
-    chd_to_midi_file(chord_np, "exp/chord.mid")
-    return prmat2c.to(device), pnotree.to(device), chord.to(device), prmat.to(device)
+    return *get_data_preprocessed(song), song_fn
 
 
 def choose_song_from_val_dl_musicalion():
@@ -79,12 +89,7 @@ def choose_song_from_val_dl_musicalion():
     print(song_fn)
 
     song = DataSampleNpz_Musicalion(song_fn)
-    prmat2c, pnotree, prmat = song.get_whole_song_data()
-    prmat2c_np = prmat2c.squeeze().cpu().numpy()
-    pnotree_np = pnotree.cpu().numpy()
-    prmat2c_to_midi_file(prmat2c_np, "exp/origin.mid")
-    estx_to_midi_file(pnotree_np, "exp/origin_pnotree.mid")
-    return prmat2c.to(device), pnotree.to(device), None, prmat.to(device)
+    return *get_data_preprocessed(song), song_fn
 
 
 class Experiments:
@@ -215,7 +220,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )
-    parser.add_argument("--uncond_scale", default=1., help="unconditional scale")
+    parser.add_argument(
+        "--uncond_scale",
+        default=1.,
+        help="unconditional scale for classifier-free guidance"
+    )
+    parser.add_argument("--seed", help="use specific seed for inference")
     parser.add_argument(
         "--is_autoreg",
         action="store_true",
@@ -317,17 +327,19 @@ if __name__ == "__main__":
 
     # input ready
     if args.from_midi is not None:
-        print(f"using the {params.cond_type} of midi file: {args.from_midi}")
-        # TODO: data from midi file
-
-    if args.dataset == "musicalion":
-        prmat2c, pnotree, chd, prmat = choose_song_from_val_dl_musicalion(
+        song_fn = args.from_midi
+        data = get_data_for_single_midi(args.from_midi, f"exp/chords_extracted.out")
+        data_sample = DataSample(data)
+        prmat2c, pnotree, chd, prmat = get_data_preprocessed(data_sample)
+    elif args.dataset == "musicalion":
+        prmat2c, pnotree, chd, prmat, song_fn = choose_song_from_val_dl_musicalion(
         )  # here chd is None
-        assert params.cond_type == "pnotree" or params.cond_type == "txt"
+        assert params.cond_type != "chord"
     elif args.dataset == "pop909":
-        prmat2c, pnotree, chd, prmat = choose_song_from_val_dl()
+        prmat2c, pnotree, chd, prmat, song_fn = choose_song_from_val_dl()
     else:
         raise NotImplementedError
+    print(f"using the {params.cond_type} of midi file: {song_fn}")
 
     # for demonstrating diffusion process
     if args.only_q_imgs:

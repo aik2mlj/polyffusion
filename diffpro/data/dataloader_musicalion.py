@@ -23,7 +23,7 @@ def collate_fn(batch):
         # b[0]: seg_pnotree; b[1]: seg_pnotree_y
         seg_prmat2c = b[0]
         seg_pnotree = b[1]
-        seg_prmat = b[2]
+        seg_prmat = b[3]
 
         shift = sample_shift()
         seg_prmat2c = pr_mat_pitch_shift(seg_prmat2c, shift)
@@ -34,8 +34,8 @@ def collate_fn(batch):
         pnotree.append(seg_pnotree)
         prmat.append(seg_prmat)
 
-        if len(b) > 3:
-            song_fn.append(b[3])
+        if len(b) > 4:
+            song_fn.append(b[4])
 
     prmat2c = torch.Tensor(np.array(prmat2c, np.float32)).float()
     pnotree = torch.Tensor(np.array(pnotree, np.int64)).long()

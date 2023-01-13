@@ -159,8 +159,9 @@ def get_downbeat_pos_and_filter(music: muspy.Music, debug_info):
     [1, 2, 3, 4, 1, 2, 3, 4] is complete.
     [1, 2, 3, 1, 2, 3, 4], [1, 2, 3, 4, 1, 2, 3] are not.
     """
-    beats = music.infer_beats()
-    for b in beats:
+    music.infer_barlines_and_beats()
+    barlines = music.barlines
+    for b in barlines:
         if not float(b.time).is_integer():
             # print("======")
             # print("downbeat not integer!")
@@ -168,7 +169,7 @@ def get_downbeat_pos_and_filter(music: muspy.Music, debug_info):
             # BAD_SONGS.add(debug_info)
             return None, None
 
-    db_pos = [int(b.time) for b in beats if b.is_downbeat]
+    db_pos = [int(b.time) for b in barlines]
     # end_pos = int(music.get_end_time() / ONE_BEAT)
     db_pos_diff = np.diff(db_pos).tolist()
     db_pos_diff.append(db_pos_diff[len(db_pos_diff) - 1])
@@ -217,7 +218,7 @@ def get_start_table(notes, db_pos):
 BAD_SONGS = set()
 
 
-def make_npz_for_single_midi(fpath, chdfile_path, output_fpath):
+def get_data_for_single_midi(fpath, chdfile_path):
     music = muspy.read_midi(fpath)
     music.adjust_resolution(BIN)
     if len(music.time_signatures) == 0:
@@ -231,17 +232,16 @@ def make_npz_for_single_midi(fpath, chdfile_path, output_fpath):
     db_pos, db_pos_filter = get_downbeat_pos_and_filter(music, fpath)
     if db_pos is not None:
         start_table = get_start_table(note_mat, db_pos)
-        np.savez(
-            output_fpath,
-            notes=note_mat,
-            start_table=start_table,
-            db_pos=db_pos,
-            db_pos_filter=db_pos_filter,
-            chord=chord,
-        )
+        return {
+            "notes": np.array(note_mat),
+            "start_table": np.array(start_table),
+            "db_pos": np.array(db_pos),
+            "db_pos_filter": np.array(db_pos_filter),
+            "chord": np.array(chord),
+        }
     else:
         print("get downbeat error!")
 
 
 if __name__ == "__main__":
-    make_npz_for_single_midi(sys.argv[0], sys.argv[1], sys.argv[2])
+    print(get_data_for_single_midi(sys.argv[1], sys.argv[2]))
