@@ -45,11 +45,6 @@ from utils import (
 from sampler_sdf import SDFSampler
 from polydis_aftertouch import PolydisAftertouch
 
-SEED = 7890
-torch.manual_seed(SEED)
-np.random.seed(SEED)
-random.seed(SEED)
-
 device = "cuda" if torch.cuda.is_available() else "cpu"
 parser = ArgumentParser(description='inference a Diffpro model')
 
@@ -252,6 +247,13 @@ if __name__ == "__main__":
     )
     parser.add_argument("--length", default=0, help="the generated length (in 8-bars)")
     args = parser.parse_args()
+
+    if args.seed is not None:
+        SEED = int(args.seed)
+        print(f"fixed SEED = {SEED}")
+        torch.manual_seed(SEED)
+        np.random.seed(SEED)
+        random.seed(SEED)
 
     # params ready
     with open(f"{args.model_dir}/params.json", "r") as params_file:
