@@ -302,8 +302,8 @@ if __name__ == "__main__":
         raise NotImplementedError
 
     model = Diffpro_SDF.load_trained(
-        ldm_model, f"{args.model_dir}/chkpts", params.cond_type, params.cond_mode,
-        chord_enc, chord_dec, pnotree_enc, pnotree_dec
+        ldm_model, f"{args.model_dir}/chkpts/weights_best.pt", params.cond_type,
+        params.cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec, txt_enc
     ).to(device)
     sampler = SDFSampler(
         model.ldm,

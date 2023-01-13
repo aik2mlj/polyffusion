@@ -58,7 +58,7 @@ class Diffpro_SDF(nn.Module):
     def load_trained(
         cls,
         ldm,
-        model_dir,
+        chkpt_fpath,
         cond_type,
         cond_mode="cond",
         chord_enc=None,
@@ -71,7 +71,7 @@ class Diffpro_SDF(nn.Module):
             ldm, cond_type, cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec,
             txt_enc
         )
-        trained_leaner = torch.load(f"{model_dir}/weights.pt")
+        trained_leaner = torch.load(chkpt_fpath)
         model.load_state_dict(trained_leaner["model"])
         return model
 
