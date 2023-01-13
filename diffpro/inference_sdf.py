@@ -283,6 +283,7 @@ if __name__ == "__main__":
 
     pnotree_enc, pnotree_dec = None, None
     chord_enc, chord_dec = None, None
+    txt_enc = None
     if params.cond_type == "pnotree":
         pnotree_enc, pnotree_dec = load_pretrained_pnotree_enc_dec(
             PT_PNOTREE_PATH, 20, device
@@ -294,7 +295,7 @@ if __name__ == "__main__":
                 params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
             )
     elif params.cond_type == "txt":
-        self.txt_enc = load_pretrained_txt_enc(
+        txt_enc = load_pretrained_txt_enc(
             PT_POLYDIS_PATH, params.txt_emb_size, params.txt_hidden_dim,
             params.txt_z_dim, params.txt_num_channel
         )

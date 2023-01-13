@@ -67,6 +67,7 @@ class LDM_TrainConfig(TrainConfig):
 
         self.pnotree_enc, self.pnotree_dec = None, None
         self.chord_enc, self.chord_dec = None, None
+        self.txt_enc = None
         if params.cond_type == "pnotree":
             self.pnotree_enc, self.pnotree_dec = load_pretrained_pnotree_enc_dec(
                 PT_PNOTREE_PATH, 20, self.device
