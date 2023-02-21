@@ -1,12 +1,12 @@
 from . import AttrDict
 
-use_chd_enc = True
-chd_z_dim = 128
+use_enc = False
+chd_z_dim = 512
 
-if use_chd_enc:
+if use_enc:
     d_cond = chd_z_dim
 else:
-    d_cond = 36
+    d_cond = 36 * 32
 
 params = AttrDict(
     # Training params
@@ -42,11 +42,14 @@ params = AttrDict(
     img_w=128,
 
     # conditional
+    cond_type="chord",
     cond_mode="mix",  # {mix, cond, uncond}
 
     # whether to use chord encoder from polydis
-    use_chd_enc=use_chd_enc,
+    use_enc=use_enc,
+    chd_n_step=32,
     chd_input_dim=36,
-    chd_hidden_dim=256,
+    chd_z_input_dim=512,
+    chd_hidden_dim=512,
     chd_z_dim=chd_z_dim
 )

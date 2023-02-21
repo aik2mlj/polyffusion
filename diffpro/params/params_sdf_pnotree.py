@@ -7,7 +7,7 @@ d_cond = pnotree_z_dim
 params = AttrDict(
     # Training params
     batch_size=16,
-    max_epoch=100,
+    max_epoch=50,
     learning_rate=5e-5,
     max_grad_norm=10,
     fp16=True,

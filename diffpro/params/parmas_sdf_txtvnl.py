@@ -1,17 +1,13 @@
 from . import AttrDict
 
-use_enc = True
-chd_z_dim = 512
+txt_z_dim = 128
 
-if use_enc:
-    d_cond = chd_z_dim
-else:
-    d_cond = 36 * 32
+d_cond = txt_z_dim
 
 params = AttrDict(
     # Training params
     batch_size=16,
-    max_epoch=100,
+    max_epoch=200,
     learning_rate=5e-5,
     max_grad_norm=10,
     fp16=True,
@@ -42,14 +38,12 @@ params = AttrDict(
     img_w=128,
 
     # conditional
-    cond_type="chord",
+    cond_type="txt",
     cond_mode="mix",  # {mix, cond, uncond}
-
-    # whether to use chord encoder from polydis
-    use_enc=use_enc,
-    chd_n_step=32,
-    chd_input_dim=36,
-    chd_z_input_dim=512,
-    chd_hidden_dim=512,
-    chd_z_dim=chd_z_dim
+    use_enc=False,
+    # txt_enc
+    # txt_emb_size=256,
+    # txt_hidden_dim=1024,
+    # txt_z_dim=256,
+    # txt_num_channel=10
 )

@@ -92,7 +92,10 @@ class Diffpro_SDF(nn.Module):
             z = z.unsqueeze(1)  # (#B, 1, 512)
             return z
         else:
-            return chord
+            chord_flatten = torch.reshape(
+                chord, (-1, 1, chord.shape[1] * chord.shape[2])
+            )
+            return chord_flatten
 
     def _decode_chord(self, z):
         if self.chord_dec is not None:
@@ -141,17 +144,16 @@ class Diffpro_SDF(nn.Module):
 
     def _encode_txt(self, prmat):
         z_list = []
-        assert self.txt_enc is not None
-        # print(f"prmat {prmat.shape}")
-        for prmat_seg in prmat.split(32, 1):  # (#B, 32, 128) * 4
-            # print(f"prmat seg {prmat_seg.shape}")
-            z_seg = self.txt_enc(prmat_seg).mean
-            # print(f"txt z seg {z_seg.shape}")
-            z_list.append(z_seg)
-        z = torch.cat(z_list, dim=-1)
-        z = z.unsqueeze(1)  # (#B, 1, 256*4)
-        # print(f"txt z: {z.shape}")
-        return z
+        if self.txt_enc is not None:
+            for prmat_seg in prmat.split(32, 1):  # (#B, 32, 128) * 4
+                z_seg = self.txt_enc(prmat_seg).mean
+                z_list.append(z_seg)
+            z = torch.cat(z_list, dim=-1)
+            z = z.unsqueeze(1)  # (#B, 1, 256*4)
+            return z
+        else:
+            # print(f"unencoded txt: {prmat.shape}")
+            return prmat
 
     def _decode_pnotree(self, z):
         pnotree_list = []

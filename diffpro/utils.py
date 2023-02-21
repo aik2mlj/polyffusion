@@ -349,8 +349,10 @@ def estx_to_midi_file(est_x, fpath, labels=None):
     midi.write(fpath)
 
 
-def prmat_to_midi_file(prmat: np.ndarray, fpath, labels=None):
+def prmat_to_midi_file(prmat, fpath, labels=None):
     # prmat: (B, 32, 128)
+    if "Tensor" in str(type(prmat)):
+        prmat = prmat.cpu().detach().numpy()
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
     piano = pm.Instrument(program=piano_program)
@@ -387,16 +389,21 @@ def custom_round(x):
         return 0
 
 
-def prmat2c_to_midi_file(prmat: np.ndarray, fpath, labels=None, is_custom_round=True):
+def prmat2c_to_midi_file(
+    prmat2c, fpath, labels=None, is_custom_round=False, inp_mask=None
+):
     # prmat2c: (B, 2, 32, 128)
-    print(f"prmat2c : {prmat.shape}")
+    if "Tensor" in str(type(prmat2c)):
+        prmat2c = prmat2c.cpu().detach().numpy()
+    print(f"prmat2c : {prmat2c.shape}")
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
-    piano = pm.Instrument(program=piano_program)
+    origin = pm.Instrument(program=piano_program)
+    inpainted = pm.Instrument(program=piano_program)
     t = 0
-    n_step = prmat.shape[2]
+    n_step = prmat2c.shape[2]
     t_bar = int(n_step / 8)
-    for bar_ind, bars in enumerate(prmat):
+    for bar_ind, bars in enumerate(prmat2c):
         onset = bars[0]
         sustain = bars[1]
         for step_ind, step in enumerate(onset):
@@ -417,9 +424,17 @@ def prmat2c_to_midi_file(prmat: np.ndarray, fpath, labels=None, is_custom_round=
                         start=t + step_ind * 1 / 8,
                         end=min(t + (step_ind + dur) * 1 / 8, t + t_bar)
                     )
-                    piano.notes.append(note)
+                    if inp_mask is not None:
+                        if inp_mask[bar_ind, 0, step_ind, key] == 0.:
+                            inpainted.notes.append(note)
+                        else:
+                            origin.notes.append(note)
+                    else:
+                        origin.notes.append(note)
         t += t_bar
-    midi.instruments.append(piano)
+    midi.instruments.append(origin)
+    if inp_mask is not None:
+        midi.instruments.append(inpainted)
     if labels is not None:
         midi.lyrics.clear()
         t = 0
@@ -467,21 +482,27 @@ def chd_to_midi_file(chords, output_fpath, one_beat=0.5):
     midi.write(output_fpath)
 
 
-def show_image(img: torch.Tensor, title=""):
+def show_image(img: torch.Tensor, title="", mask=False):
     """Helper function to display an image"""
     # (B, 2, 32, 128)
-    img = img.clip(0, 1)
+    img = img.clip(0, 1).clone()
     img = img.cpu().numpy()
+    # if mask == True:
+    #     img = 1 - img
     if img.ndim == 4:
         img = np.swapaxes(img, 1, 2)
         img = np.concatenate(img, axis=0)
         img = np.swapaxes(img, 0, 1)
-    print(f"img: {img.shape}")
     h = img.shape[1]
     w = img.shape[2]
     img = np.append(img, np.zeros([1, h, w]), axis=0)
     img = img.transpose(2, 1, 0)  # (128, 32, 3)
     img = np.flip(img, 0)  # flip the pitch axis: lower pitches at the bottom
+    if mask == True:
+        alpha = np.expand_dims(img[:, :, 0], axis=2)
+        img = np.append(img, alpha, axis=2)
+        img = np.ascontiguousarray(img)
+    print(f"img: {img.shape}")
     plt.imsave(title, img)
 
 

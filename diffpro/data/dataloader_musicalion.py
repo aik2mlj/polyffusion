@@ -11,7 +11,7 @@ from utils import (
 )
 
 
-def collate_fn(batch):
+def collate_fn(batch, shift):
     def sample_shift():
         return np.random.choice(np.arange(-6, 6), 1)[0]
 
@@ -25,10 +25,11 @@ def collate_fn(batch):
         seg_pnotree = b[1]
         seg_prmat = b[3]
 
-        shift = sample_shift()
-        seg_prmat2c = pr_mat_pitch_shift(seg_prmat2c, shift)
-        seg_pnotree = pianotree_pitch_shift(seg_pnotree, shift)
-        seg_prmat = pr_mat_pitch_shift(seg_prmat, shift)
+        if shift:
+            shift_pitch = sample_shift()
+            seg_prmat2c = pr_mat_pitch_shift(seg_prmat2c, shift_pitch)
+            seg_pnotree = pianotree_pitch_shift(seg_pnotree, shift_pitch)
+            seg_prmat = pr_mat_pitch_shift(seg_prmat, shift_pitch)
 
         prmat2c.append(seg_prmat2c)
         pnotree.append(seg_pnotree)
@@ -55,7 +56,7 @@ def get_train_val_dataloaders(batch_size, num_workers=0, pin_memory=False, debug
         train_dataset,
         batch_size,
         True,
-        collate_fn=collate_fn,
+        collate_fn=lambda x: collate_fn(x, shift=True),
         num_workers=num_workers,
         pin_memory=pin_memory
     )
@@ -63,7 +64,7 @@ def get_train_val_dataloaders(batch_size, num_workers=0, pin_memory=False, debug
         val_dataset,
         batch_size,
         True,
-        collate_fn=collate_fn,
+        collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
         pin_memory=pin_memory
     )

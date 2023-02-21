@@ -17,7 +17,12 @@ from utils import load_pretrained_pnotree_enc_dec, load_pretrained_chd_enc_dec, 
 
 class LDM_TrainConfig(TrainConfig):
     def __init__(
-        self, params, output_dir, use_autoencoder=False, use_musicalion=False
+        self,
+        params,
+        output_dir,
+        use_autoencoder=False,
+        use_musicalion=False,
+        use_track=[0, 1, 2],
     ) -> None:
         super().__init__(params, None, output_dir)
         self.autoencoder = None
@@ -73,16 +78,17 @@ class LDM_TrainConfig(TrainConfig):
                 PT_PNOTREE_PATH, 20, self.device
             )
         elif params.cond_type == "chord":
-            if params.use_chd_enc:
+            if params.use_enc:
                 self.chord_enc, self.chord_dec = load_pretrained_chd_enc_dec(
                     PT_CHD_8BAR_PATH, params.chd_input_dim, params.chd_z_input_dim,
                     params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
                 )
         elif params.cond_type == "txt":
-            self.txt_enc = load_pretrained_txt_enc(
-                PT_POLYDIS_PATH, params.txt_emb_size, params.txt_hidden_dim,
-                params.txt_z_dim, params.txt_num_channel
-            )
+            if params.use_enc:
+                self.txt_enc = load_pretrained_txt_enc(
+                    PT_POLYDIS_PATH, params.txt_emb_size, params.txt_hidden_dim,
+                    params.txt_z_dim, params.txt_num_channel
+                )
         else:
             raise NotImplementedError
 
@@ -103,7 +109,10 @@ class LDM_TrainConfig(TrainConfig):
             )
         else:
             self.train_dl, self.val_dl = get_train_val_dataloaders(
-                params.batch_size, params.num_workers, params.pin_memory
+                params.batch_size,
+                params.num_workers,
+                params.pin_memory,
+                use_track=use_track
             )
 
         # Create optimizer

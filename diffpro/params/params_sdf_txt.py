@@ -7,14 +7,14 @@ d_cond = txt_z_dim
 params = AttrDict(
     # Training params
     batch_size=16,
-    max_epoch=100,
+    max_epoch=200,
     learning_rate=5e-5,
     max_grad_norm=10,
     fp16=True,
 
     # Data params
-    num_workers=0,
-    pin_memory=False,
+    num_workers=4,
+    pin_memory=True,
 
     # unet
     in_channels=2,
@@ -42,6 +42,7 @@ params = AttrDict(
     cond_mode="mix",  # {mix, cond, uncond}
 
     # txt_enc
+    use_enc=True,
     txt_emb_size=256,
     txt_hidden_dim=1024,
     txt_z_dim=256,

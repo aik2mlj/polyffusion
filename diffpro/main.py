@@ -3,6 +3,7 @@ from params.params_sdf import params as params_sdf
 from params.params_sdf_chd8bar import params as params_sdf_chd8bar
 from params.params_sdf_pnotree import params as params_sdf_pnotree
 from params.params_sdf_txt import params as params_sdf_txt
+from params.parmas_sdf_txtvnl import params as params_sdf_txtvnl
 from params.params_ddpm import params as params_ddpm
 from params.params_autoencoder import params as params_autoencoder
 from params.params_chd_8bar import params as params_chd_8bar
@@ -19,16 +20,32 @@ if __name__ == "__main__":
         default=None,
         help='directory in which to store model checkpoints and training logs'
     )
+    parser.add_argument(
+        "--pop909_use_track", help='which tracks to use for pop909 training'
+    )
     parser.add_argument("--model", help="which model to train (autoencoder, ldm, ddpm)")
     args = parser.parse_args()
-    if args.model == "ldm":
-        config = LDM_TrainConfig(params_sdf, args.output_dir)
+
+    use_track = [0, 1, 2]
+    if args.pop909_use_track is not None:
+        use_track = [int(x) for x in args.pop909_use_track.split(",")]
+
+    if args.model == "ldm_chdvnl":
+        config = LDM_TrainConfig(params_sdf, args.output_dir, use_track=use_track)
     elif args.model == "ldm_chd8bar":
-        config = LDM_TrainConfig(params_sdf_chd8bar, args.output_dir)
+        config = LDM_TrainConfig(
+            params_sdf_chd8bar, args.output_dir, use_track=use_track
+        )
     elif args.model == "ldm_pnotree":
-        config = LDM_TrainConfig(params_sdf_pnotree, args.output_dir)
+        config = LDM_TrainConfig(
+            params_sdf_pnotree, args.output_dir, use_track=use_track
+        )
     elif args.model == "ldm_txt":
-        config = LDM_TrainConfig(params_sdf_txt, args.output_dir)
+        config = LDM_TrainConfig(params_sdf_txt, args.output_dir, use_track=use_track)
+    elif args.model == "ldm_txtvnl":
+        config = LDM_TrainConfig(
+            params_sdf_txtvnl, args.output_dir, use_track=use_track
+        )
     elif args.model == "ldm_musicalion_pnotree":
         config = LDM_TrainConfig(
             params_sdf_pnotree, args.output_dir, use_musicalion=True

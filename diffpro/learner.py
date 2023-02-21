@@ -117,11 +117,12 @@ class DiffproLearner:
         while True:
             if self.param_scheduler is not None:
                 self.param_scheduler.train()
-            self.epoch = self.step // len(self.train_dl)
             if max_epoch is not None and self.epoch >= max_epoch:
                 return
 
-            for batch in tqdm(self.train_dl, desc=f"Epoch {self.epoch}"):
+            for _step, batch in enumerate(
+                tqdm(self.train_dl, desc=f"Epoch {self.epoch}")
+            ):
                 batch = nested_map(
                     batch, lambda x: x.to(self.device)
                     if isinstance(x, torch.Tensor) else x
@@ -134,17 +135,22 @@ class DiffproLearner:
                         raise RuntimeError(
                             f"Detected NaN loss at step {self.step}, epoch {self.epoch}"
                         )
-                if self.step % 50 == 0:
-                    self._write_summary(losses, scheduled_params, "train")
-                if self.step % 5000 == 0:
-                    self.valid()
                 self.step += 1
+                if self.step % 100 == 0:
+                    self._write_summary(losses, scheduled_params, "train")
+                if _step % 5000 == 4999:
+                    break
+                    # self.model.eval()
+                    # self.valid()
+                    # self.model.train()
+            self.epoch += 1
 
             # valid
+            self.model.eval()
             self.valid()
+            self.model.train()
 
     def valid(self):
-        # self.model.eval()
         if self.param_scheduler is not None:
             self.param_scheduler.eval()
         losses = None

@@ -258,22 +258,29 @@ class PianoOrchDataset(Dataset):
             return song_data[song_item]
 
     @classmethod
-    def load_with_song_paths(cls, song_paths, debug=False):
-        data_samples = [DataSampleNpz(song_path) for song_path in song_paths]
+    def load_with_song_paths(cls, song_paths, debug=False, **kwargs):
+        data_samples = [DataSampleNpz(song_path, **kwargs) for song_path in song_paths]
         return cls(data_samples, debug)
 
     @classmethod
-    def load_train_and_valid_sets(cls, debug=False):
+    def load_train_and_valid_sets(cls, debug=False, **kwargs):
         split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "pop909.pickle"))
-        return cls.load_with_song_paths(split[0], debug), cls.load_with_song_paths(
-            split[1], debug
-        )
+        print("load train valid set with:", kwargs)
+        return cls.load_with_song_paths(split[0], debug,
+                                        **kwargs), cls.load_with_song_paths(
+                                            split[1], debug, **kwargs
+                                        )
 
     @classmethod
-    def load_with_train_valid_paths(cls, tv_song_paths, **kwargs):
-        return cls.load_with_song_paths(tv_song_paths[0],
+    def load_valid_set(cls, debug=False, **kwargs):
+        split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "pop909.pickle"))
+        return cls.load_with_song_paths(split[1], debug, **kwargs)
+
+    @classmethod
+    def load_with_train_valid_paths(cls, tv_song_paths, debug=False, **kwargs):
+        return cls.load_with_song_paths(tv_song_paths[0], debug,
                                         **kwargs), cls.load_with_song_paths(
-                                            tv_song_paths[1], **kwargs
+                                            tv_song_paths[1], debug, **kwargs
                                         )
 
 

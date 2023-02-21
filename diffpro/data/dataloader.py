@@ -17,7 +17,7 @@ from utils import (
 # random.seed(SEED)
 
 
-def collate_fn(batch):
+def collate_fn(batch, shift):
     def sample_shift():
         return np.random.choice(np.arange(-6, 6), 1)[0]
 
@@ -33,11 +33,14 @@ def collate_fn(batch):
         seg_chord = b[2]
         seg_prmat = b[3]
 
-        shift = sample_shift()
-        seg_prmat2c = pr_mat_pitch_shift(seg_prmat2c, shift)
-        seg_pnotree = pianotree_pitch_shift(seg_pnotree, shift)
-        seg_chord = chd_to_onehot(chd_pitch_shift(seg_chord, shift))
-        seg_prmat = pr_mat_pitch_shift(seg_prmat, shift)
+        if shift:
+            shift_pitch = sample_shift()
+            seg_prmat2c = pr_mat_pitch_shift(seg_prmat2c, shift_pitch)
+            seg_pnotree = pianotree_pitch_shift(seg_pnotree, shift_pitch)
+            seg_chord = chd_pitch_shift(seg_chord, shift_pitch)
+            seg_prmat = pr_mat_pitch_shift(seg_prmat, shift_pitch)
+
+        seg_chord = chd_to_onehot(seg_chord)
 
         prmat2c.append(seg_prmat2c)
         pnotree.append(seg_pnotree)
@@ -58,13 +61,17 @@ def collate_fn(batch):
         return prmat2c, pnotree, chord, prmat
 
 
-def get_train_val_dataloaders(batch_size, num_workers=0, pin_memory=False, debug=False):
-    train_dataset, val_dataset = PianoOrchDataset.load_train_and_valid_sets(debug)
+def get_train_val_dataloaders(
+    batch_size, num_workers=0, pin_memory=False, debug=False, **kwargs
+):
+    train_dataset, val_dataset = PianoOrchDataset.load_train_and_valid_sets(
+        debug, **kwargs
+    )
     train_dl = DataLoader(
         train_dataset,
         batch_size,
         True,
-        collate_fn=collate_fn,
+        collate_fn=lambda x: collate_fn(x, shift=True),
         num_workers=num_workers,
         pin_memory=pin_memory
     )
@@ -72,14 +79,32 @@ def get_train_val_dataloaders(batch_size, num_workers=0, pin_memory=False, debug
         val_dataset,
         batch_size,
         True,
-        collate_fn=collate_fn,
+        collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
         pin_memory=pin_memory
     )
     print(
-        f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}"
+        f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, {kwargs}"
     )
     return train_dl, val_dl
+
+
+def get_val_dataloader(
+    batch_size, num_workers=0, pin_memory=False, debug=False, **kwargs
+):
+    val_dataset = PianoOrchDataset.load_valid_set(debug, **kwargs)
+    val_dl = DataLoader(
+        val_dataset,
+        batch_size,
+        True,
+        collate_fn=lambda x: collate_fn(x, shift=False),
+        num_workers=num_workers,
+        pin_memory=pin_memory
+    )
+    print(
+        f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, {kwargs}"
+    )
+    return val_dl
 
 
 if __name__ == "__main__":

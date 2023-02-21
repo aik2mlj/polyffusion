@@ -43,7 +43,7 @@ class Chord_8Bar(nn.Module):
         }
 
     def get_loss_dict(self, batch, step, tfr_chd):
-        prmat, _, chord = batch
+        _, _, chord, _ = batch
 
         z_chd = self.chord_enc(chord).rsample()
         recon_root, recon_chroma, recon_bass = self.chord_dec(
