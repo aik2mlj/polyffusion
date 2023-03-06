@@ -96,7 +96,8 @@ class SDFSampler(DiffusionSampler):
         repeat_noise: bool = False,
         temperature: float = 1.,
         uncond_scale: float = 1.,
-        uncond_cond: Optional[torch.Tensor] = None
+        uncond_cond: Optional[torch.Tensor] = None,
+        cond_concat=None
     ):
         """
         ### Sample $x_{t-1}$ from $p_\theta(x_{t-1} | x_t)$
@@ -114,9 +115,18 @@ class SDFSampler(DiffusionSampler):
 
         # Get $\epsilon_\theta$
         with self.autocast:
-            e_t = self.get_eps(
-                x, t, c, uncond_scale=uncond_scale, uncond_cond=uncond_cond
-            )
+            if cond_concat is not None:
+                e_t = self.get_eps(
+                    torch.concat([x, cond_concat], dim=1),
+                    t,
+                    c,
+                    uncond_scale=uncond_scale,
+                    uncond_cond=uncond_cond
+                )
+            else:
+                e_t = self.get_eps(
+                    x, t, c, uncond_scale=uncond_scale, uncond_cond=uncond_cond
+                )
 
         # Get batch size
         bs = x.shape[0]
@@ -265,6 +275,7 @@ class SDFSampler(DiffusionSampler):
         orig_noise: Optional[torch.Tensor] = None,
         uncond_scale: float = 1.,
         uncond_cond: Optional[torch.Tensor] = None,
+        cond_concat=None,
     ):
         """
         ### Painting Loop
@@ -294,7 +305,13 @@ class SDFSampler(DiffusionSampler):
 
             # Sample $x_{\tau_{i-1}}$
             x, _, _ = self.p_sample(
-                x, cond, ts, step, uncond_scale=uncond_scale, uncond_cond=uncond_cond
+                x,
+                cond,
+                ts,
+                step,
+                uncond_scale=uncond_scale,
+                uncond_cond=uncond_cond,
+                cond_concat=cond_concat,
             )
 
             # Replace the masked area with original image

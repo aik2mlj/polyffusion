@@ -19,6 +19,8 @@ class Diffpro_SDF(nn.Module):
         pnotree_enc=None,
         pnotree_dec=None,
         txt_enc=None,
+        concat_blurry=False,
+        concat_ratio=1 / 8
     ):
         """
         cond_type: {chord, texture}
@@ -36,6 +38,8 @@ class Diffpro_SDF(nn.Module):
         self.pnotree_enc = pnotree_enc
         self.pnotree_dec = pnotree_dec
         self.txt_enc = txt_enc
+        self.concat_blurry = concat_blurry
+        self.concat_ratio = concat_ratio
 
         # Freeze params for pretrained chord enc and dec
         if self.chord_enc is not None:
@@ -206,5 +210,12 @@ class Diffpro_SDF(nn.Module):
         #     concat, x = prmat2c.split(64, -2)
         #     loss = self.ldm.loss(x, cond, concat=concat, concat_axis=-2)
         # else:
-        loss = self.ldm.loss(prmat2c, cond)
+
+        if self.concat_blurry:
+            blurry_img = get_blurry_image(prmat2c, ratio=self.concat_ratio)
+            exit(0)
+            loss = self.ldm.loss(prmat2c, cond, cond_concat=blurry_img)
+
+        else:
+            loss = self.ldm.loss(prmat2c, cond)
         return {"loss": loss}

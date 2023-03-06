@@ -42,7 +42,8 @@ from dirs import *
 from utils import (
     prmat2c_to_midi_file, show_image, chd_to_midi_file, estx_to_midi_file,
     load_pretrained_pnotree_enc_dec, load_pretrained_txt_enc,
-    load_pretrained_chd_enc_dec, prmat_to_midi_file, show_image, prmat2c_to_prmat
+    load_pretrained_chd_enc_dec, prmat_to_midi_file, show_image, prmat2c_to_prmat,
+    get_blurry_image
 )
 from sampler_sdf import SDFSampler
 from polydis_aftertouch import PolydisAftertouch
@@ -197,6 +198,7 @@ class Experiments:
         autoreg=False,
         orig=None,
         mask=None,
+        cond_concat=None,
     ):
         B = cond.shape[0]
         shape = [B, self.params.out_channels, self.params.img_h, self.params.img_w]
@@ -247,7 +249,8 @@ class Experiments:
                         mask=mask_seg,
                         orig_noise=noise_seg,
                         uncond_scale=uncond_scale,
-                        uncond_cond=uncond_cond_seg
+                        uncond_cond=uncond_cond_seg,
+                        cond_concat=cond_concat
                     )
                     if idx == 0:
                         gen.append(x0[:, :, 0 : half_len, :])
@@ -276,7 +279,8 @@ class Experiments:
                     mask=mask,
                     orig_noise=noise,
                     uncond_scale=uncond_scale,
-                    uncond_cond=uncond_cond
+                    uncond_cond=uncond_cond,
+                    cond_concat=cond_concat
                 )
         # show_image(gen, "exp/img/gen.png")
         return gen
@@ -290,8 +294,15 @@ class Experiments:
         polydis_recon=False,
         polydis_chd=None,
         no_output=False,
+        cond_concat=None,
     ):
-        gen = self.predict(cond, cond_mid, uncond_scale, autoreg)
+        gen = self.predict(
+            cond,
+            cond_mid,
+            uncond_scale,
+            autoreg,
+            cond_concat=cond_concat,
+        )
 
         if not no_output:
             output_stamp = f"{self.model_label}_[scale={uncond_scale}{',autoreg' if autoreg else ''}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
@@ -318,6 +329,7 @@ class Experiments:
         uncond_scale: float = 1.,
         bar_list=None,
         no_output=False,
+        cond_concat=None
     ):
         # show_image(orig, "exp/img/orig.png")
         orig_noise = orig_noise or torch.randn(orig.shape, device=device)
@@ -325,7 +337,9 @@ class Experiments:
 
         # show_image(mask, "exp/img/mask.png", mask=True)
         mask = mask.to(device)
-        gen = self.predict(cond, cond_mid, uncond_scale, autoreg, orig, mask)
+        gen = self.predict(
+            cond, cond_mid, uncond_scale, autoreg, orig, mask, cond_concat=cond_concat
+        )
 
         if not no_output:
             output_stamp = f"{self.model_label}_inp_{inpaint_type}[scale={uncond_scale}{',autoreg' if autoreg else ''}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
@@ -576,6 +590,18 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError
 
+    # concat conditioning
+    cond_concat = None
+    if hasattr(params, 'concat_blurry') and params.concat_blurry:
+        assert prmat2c is not None
+        show_image(prmat2c, "exp/img/cond_concat_orig.png")
+        cond_concat = get_blurry_image(prmat2c, params.concat_ratio)
+        show_image(cond_concat, "exp/img/cond_concat.png")
+
+    if params.cond_mode == "uncond":
+        print("The model is trained unconditionally, ignoring conditions...")
+        cond = -torch.ones_like(cond).to(device)
+
     if int(args.length) > 0:
         cond = cond[: int(args.length)]
         print(f"selected cond shape: {cond.shape}")
@@ -597,7 +623,8 @@ if __name__ == "__main__":
             cond_mid=cond_mid,
             autoreg=args.autoreg,
             orig_noise=None,
-            uncond_scale=float(args.uncond_scale)
+            uncond_scale=float(args.uncond_scale),
+            cond_concat=cond_concat
         )
     else:
         expmt.generate(
@@ -606,5 +633,6 @@ if __name__ == "__main__":
             uncond_scale=float(args.uncond_scale),
             autoreg=args.autoreg,
             polydis_recon=args.polydis_recon,
-            polydis_chd=polydis_chd
+            polydis_chd=polydis_chd,
+            cond_concat=cond_concat
         )

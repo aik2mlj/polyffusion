@@ -91,7 +91,6 @@ class LDM_TrainConfig(TrainConfig):
                 )
         else:
             raise NotImplementedError
-
         self.model = Diffpro_SDF(
             self.ldm_model,
             cond_type=params.cond_type,
@@ -100,7 +99,11 @@ class LDM_TrainConfig(TrainConfig):
             chord_dec=self.chord_dec,
             pnotree_enc=self.pnotree_enc,
             pnotree_dec=self.pnotree_dec,
-            txt_enc=self.txt_enc
+            txt_enc=self.txt_enc,
+            concat_blurry=params.concat_blurry
+            if hasattr(params, 'concat_blurry') else False,
+            concat_ratio=params.concat_ratio if hasattr(params, 'concat_ratio') else 1 /
+            8,
         ).to(self.device)
         # Create dataloader
         if use_musicalion:

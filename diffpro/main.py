@@ -4,6 +4,8 @@ from params.params_sdf_chd8bar import params as params_sdf_chd8bar
 from params.params_sdf_pnotree import params as params_sdf_pnotree
 from params.params_sdf_txt import params as params_sdf_txt
 from params.parmas_sdf_txtvnl import params as params_sdf_txtvnl
+from params.params_sdf_concat import params as params_sdf_concat
+
 from params.params_ddpm import params as params_ddpm
 from params.params_autoencoder import params as params_autoencoder
 from params.params_chd_8bar import params as params_chd_8bar
@@ -45,6 +47,10 @@ if __name__ == "__main__":
     elif args.model == "ldm_txtvnl":
         config = LDM_TrainConfig(
             params_sdf_txtvnl, args.output_dir, use_track=use_track
+        )
+    elif args.model == "ldm_concat":
+        config = LDM_TrainConfig(
+            params_sdf_concat, args.output_dir, use_track=use_track
         )
     elif args.model == "ldm_musicalion_pnotree":
         config = LDM_TrainConfig(

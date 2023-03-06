@@ -8,9 +8,14 @@ import torch
 from dl_modules import *
 from collections import OrderedDict
 from torch.distributions import Normal, kl_divergence
+from torch.nn.functional import interpolate
 import matplotlib.pyplot as plt
 import csv
 import mir_eval
+from PIL import Image
+import torchvision.transforms as T
+from torch.nn.modules.upsampling import Upsample
+import cv2
 
 
 def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
@@ -485,6 +490,7 @@ def chd_to_midi_file(chords, output_fpath, one_beat=0.5):
 def show_image(img: torch.Tensor, title="", mask=False):
     """Helper function to display an image"""
     # (B, 2, 32, 128)
+    print(f"img: {img.shape}")
     img = img.clip(0, 1).clone()
     img = img.cpu().numpy()
     # if mask == True:
@@ -495,18 +501,74 @@ def show_image(img: torch.Tensor, title="", mask=False):
         img = np.swapaxes(img, 0, 1)
     h = img.shape[1]
     w = img.shape[2]
-    img = np.append(img, np.zeros([1, h, w]), axis=0)
+    while img.shape[0] < 3:
+        img = np.append(img, np.zeros([1, h, w]), axis=0)
     img = img.transpose(2, 1, 0)  # (128, 32, 3)
     img = np.flip(img, 0)  # flip the pitch axis: lower pitches at the bottom
     if mask == True:
         alpha = np.expand_dims(img[:, :, 0], axis=2)
         img = np.append(img, alpha, axis=2)
-        img = np.ascontiguousarray(img)
+    img = np.ascontiguousarray(img)
     print(f"img: {img.shape}")
     plt.imsave(title, img)
 
 
+def get_blurry_image(img: torch.Tensor, ratio=1 / 8):
+    # print(img.shape)
+    # show_image(img, "exp/img/original_img.png")
+    # size = (img.shape[1] * ratio, img.shape[])
+
+    blurry_img = interpolate(img, scale_factor=ratio, mode="bicubic")
+    show_image(blurry_img, "exp/img/blurry_img_sm.png")
+    blurry_img = interpolate(blurry_img, scale_factor=1 / ratio, mode="nearest")
+    blurry_img = blurry_img.clip(0, 1)
+    show_image(blurry_img, "exp/img/blurry_img.png")
+    # blurry_img[:, 0, :, :] += blurry_img[:, 1, :, :]
+
+    # show_image(blurry_img, "exp/img/blurry_img_.png")
+    # print(blurry_img.shape)
+    return blurry_img[:, 0, :, :].unsqueeze(1)
+
+
+def get_blurry_image_2(img):
+
+    # import required libraries
+
+    # read the input image
+    # img = img
+
+    # define the transform to blur image
+    transform = T.GaussianBlur(kernel_size=(3, 5))
+
+    # blur the input image using the above defined transform
+    img = transform(img)
+    img.save("exp/img/blurry.png")
+    # transform = T.Compose([T.ToTensor()])
+    # tensor = transform(img)
+    # tensor
+    # print(tensor.shape)
+
+    # display the blurred image
+    # plt.imsave("exp/img/blurry.png", tensor)
+
+
+def get_blurry_image_cv2(img):
+    img = cv2.imread(img)
+    img = cv2.pyrDown(img)
+    img = cv2.pyrDown(img)
+    img = cv2.pyrUp(img)
+    img = cv2.pyrUp(img)
+    cv2.imwrite("exp/img/blurry.png", img)
+
+
 if __name__ == "__main__":
-    load_pretrained_pnotree_enc_dec(
-        "../PianoTree-VAE/model20/train_20-last-model.pt", 20, None
-    )
+    # load_pretrained_pnotree_enc_dec(
+    #     "../PianoTree-VAE/model20/train_20-last-model.pt", 20, None
+    # )
+    # img = Image.open("exp/img/original_img.png")
+    # transform = T.Compose([T.ToTensor()])
+    # tensor = transform(img)
+    # tensor = tensor.transpose(1, 2)
+    # tensor = tensor.flip(2)
+    # get_blurry_image(tensor)
+    get_blurry_image_cv2("exp/img/original_img.png")
