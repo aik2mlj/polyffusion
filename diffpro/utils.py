@@ -150,7 +150,7 @@ def nmat_to_pianotree_repr(
     pnotree[:, 0, 0] = pitch_sos_ind
 
     cur_idx = np.ones(n_step, dtype=np.int64)
-    for o, p, d in nmat:
+    for o, p, d, v, pg in nmat:
         if o >= n_step:
             continue
         pnotree[o, cur_idx[o], 0] = p - min_pitch
@@ -211,29 +211,36 @@ def onehot_to_chd(onehot):
 
 def nmat_to_prmat(nmat, n_step=32):
     pr_mat = np.zeros((n_step, 128), dtype=np.int64)
-    for o, p, d in nmat:
+    for o, p, d, v, pg in nmat:
         if o < n_step:
             pr_mat[o, p] = d
     return pr_mat
 
 
-def nmat_to_prmat2c(nmat, n_step=32, use_track=None):
-    pr_mat = np.zeros((2, n_step, 128), dtype=np.float32)
+def nmat_to_prmat2c(nmat, n_step=32, use_track=None, use_vel=False):
+    if use_vel:
+        pr_mat = np.zeros((3, n_step, 128), dtype=np.float32)
+    else:
+        pr_mat = np.zeros((2, n_step, 128), dtype=np.float32)
     if use_track:
         for track_idx in use_track:
-            for o, p, d in nmat[track_idx]:
+            for o, p, d, v, pg in nmat[track_idx]:
                 if o < n_step:
                     pr_mat[0, o, p] = 1.
                     for dd in range(1, d):
                         if o + dd < n_step:
                             pr_mat[1, o + dd, p] = 1.
+                    if use_vel:
+                        pr_mat[2, o, p] = v / 127
     else:
-        for o, p, d in nmat:
+        for o, p, d, v, pg in nmat:
             if o < n_step:
                 pr_mat[0, o, p] = 1.
                 for dd in range(1, d):
                     if o + dd < n_step:
                         pr_mat[1, o + dd, p] = 1.
+                if use_vel:
+                    pr_mat[2, o, p] = v / 127
     return pr_mat
 
 
@@ -406,11 +413,14 @@ def prmat2c_to_midi_file(
     origin = pm.Instrument(program=piano_program)
     inpainted = pm.Instrument(program=piano_program)
     t = 0
+    use_vel = (prmat2c.shape[1] == 3)
     n_step = prmat2c.shape[2]
     t_bar = int(n_step / 8)
     for bar_ind, bars in enumerate(prmat2c):
         onset = bars[0]
         sustain = bars[1]
+        if use_vel:
+            velocity = bars[2]
         for step_ind, step in enumerate(onset):
             for key, on in enumerate(step):
                 if is_custom_round:
@@ -424,7 +434,7 @@ def prmat2c_to_midi_file(
                             break
                         dur += 1
                     note = pm.Note(
-                        velocity=80,
+                        velocity=int(velocity[step_ind, key] * 127) if use_vel else 80,
                         pitch=key,
                         start=t + step_ind * 1 / 8,
                         end=min(t + (step_ind + dur) * 1 / 8, t + t_bar)

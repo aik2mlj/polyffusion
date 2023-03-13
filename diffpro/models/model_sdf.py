@@ -213,7 +213,6 @@ class Diffpro_SDF(nn.Module):
 
         if self.concat_blurry:
             blurry_img = get_blurry_image(prmat2c, ratio=self.concat_ratio)
-            exit(0)
             loss = self.ldm.loss(prmat2c, cond, cond_concat=blurry_img)
 
         else:

@@ -120,7 +120,7 @@ class DataSample:
         nmat = self.note_mat_seg_at_db(db)
         self.reset_db_to_zeros(nmat, db)
 
-        nmat = self.format_reset_seg_mat(nmat)
+        # nmat = self.format_reset_seg_mat(nmat)
         self._nmat_dict[db] = nmat
 
     def store_prmat2c_seg(self, db):

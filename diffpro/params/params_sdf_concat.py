@@ -21,7 +21,7 @@ params = AttrDict(
     pin_memory=True,
 
     # unet
-    in_channels=3,
+    in_channels=4,
     out_channels=2,
     channels=64,
     attention_levels=[2, 3],
@@ -53,5 +53,5 @@ params = AttrDict(
     # chd_hidden_dim=512,
     # chd_z_dim=chd_z_dim
     concat_blurry=True,
-    concat_ratio=1 / 4,
+    concat_ratio=1 / 8,
 )

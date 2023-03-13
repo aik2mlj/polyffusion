@@ -27,7 +27,12 @@ class DataSampleNpz:
     `__getitem__` is used for retrieving ready-made input segments to the model
     it will be called in DataLoader
     """
-    def __init__(self, song_fn, use_track=[0, 1, 2]) -> None:  # NOTE: use melody now!
+    def __init__(
+        self,
+        song_fn,
+        use_track=[0, 1, 2],
+        use_vel=True
+    ) -> None:  # NOTE: use melody now!
         self.fpath = os.path.join(POP909_DATA_DIR, song_fn)
         self.song_fn = song_fn
         """
@@ -58,6 +63,7 @@ class DataSampleNpz:
         # def load(self, use_chord=False):
         #     """ load data """
         self.use_track = use_track  # which tracks to use when converting to prmat2c
+        self.use_vel = use_vel
 
         data = np.load(self.fpath, allow_pickle=True)
         self.notes = np.array(
@@ -139,7 +145,7 @@ class DataSampleNpz:
         nmat = self.note_mat_seg_at_db(db)
         self.reset_db_to_zeros(nmat, db)
 
-        nmat = self.format_reset_seg_mat(nmat)
+        # nmat = self.format_reset_seg_mat(nmat)
         self._nmat_dict[db] = nmat
 
     def store_prmat2c_seg(self, db):
@@ -149,7 +155,9 @@ class DataSampleNpz:
         if self._prmat2c_dict[db] is not None:
             return
 
-        prmat2c = nmat_to_prmat2c(self._nmat_dict[db], SEG_LGTH_BIN)
+        prmat2c = nmat_to_prmat2c(
+            self._nmat_dict[db], SEG_LGTH_BIN, use_vel=self.use_vel
+        )
         self._prmat2c_dict[db] = prmat2c
 
     def store_prmat_seg(self, db):
@@ -287,7 +295,8 @@ class PianoOrchDataset(Dataset):
 if __name__ == "__main__":
     test = "661.npz"
     song = DataSampleNpz(test)
-    os.system(f"cp {POP909_DATA_DIR}/{test[:-4]}_flated.mid exp/copy.mid")
+    # print(song.notes[0])
+    # os.system(f"cp {POP909_DATA_DIR}/{test[:-4]}_flated.mid exp/copy.mid")
     prmat2c, pnotree, chord, prmat = song.get_whole_song_data()
     print(prmat2c.shape)
     print(pnotree.shape)

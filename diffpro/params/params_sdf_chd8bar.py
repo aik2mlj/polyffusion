@@ -21,8 +21,8 @@ params = AttrDict(
     pin_memory=True,
 
     # unet
-    in_channels=2,
-    out_channels=2,
+    in_channels=3,
+    out_channels=3,
     channels=64,
     attention_levels=[2, 3],
     n_res_blocks=2,
