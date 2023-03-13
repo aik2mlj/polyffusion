@@ -101,15 +101,22 @@ class DiffproLearner:
             os.unlink(link_fpath)
         os.symlink(save_name, link_fpath)
 
+    def write_epoch_info(self):
+        with open(f"{self.checkpoint_dir}/info.txt", "w") as f:
+            f.write(str(self.epoch))
+            f.write(str(self.best_val_loss))
+
     def save_to_checkpoint(self, fname="weights", is_best=False):
-        save_name = f"{fname}-{self.epoch}.pt"
-        save_fpath = f"{self.checkpoint_dir}/{save_name}"
-        link_best_fpath = f"{self.checkpoint_dir}/{fname}_best.pt"
-        link_fpath = f"{self.checkpoint_dir}/{fname}.pt"
+        save_fpath = f"{self.checkpoint_dir}/{fname}.pt"
+        save_best_fpath = f"{self.checkpoint_dir}/{fname}_best.pt"
+        # link_best_fpath = f"{self.checkpoint_dir}/{fname}_best.pt"
+        # link_fpath = f"{self.checkpoint_dir}/{fname}.pt"
         torch.save(self.state_dict(), save_fpath)
-        self._link_checkpoint(save_name, link_fpath)
+        # self._link_checkpoint(save_name, link_fpath)
         if is_best:
-            self._link_checkpoint(save_name, link_best_fpath)
+            # self._link_checkpoint(save_name, link_best_fpath)
+            torch.save(self.state_dict(), save_best_fpath)
+            self.write_epoch_info()
 
     def train(self, max_epoch=None):
         self.model.train()
