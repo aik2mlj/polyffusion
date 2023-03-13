@@ -519,15 +519,16 @@ def get_blurry_image(img: torch.Tensor, ratio=1 / 8):
     # size = (img.shape[1] * ratio, img.shape[])
 
     blurry_img = interpolate(img, scale_factor=ratio, mode="bicubic")
-    show_image(blurry_img, "exp/img/blurry_img_sm.png")
+    # show_image(blurry_img, "exp/img/blurry_img_sm.png")
     blurry_img = interpolate(blurry_img, scale_factor=1 / ratio, mode="nearest")
     blurry_img = blurry_img.clip(0, 1)
-    show_image(blurry_img, "exp/img/blurry_img.png")
+    # show_image(blurry_img, "exp/img/blurry_img.png")
     # blurry_img[:, 0, :, :] += blurry_img[:, 1, :, :]
 
     # show_image(blurry_img, "exp/img/blurry_img_.png")
     # print(blurry_img.shape)
-    return blurry_img[:, 0, :, :].unsqueeze(1)
+    # return blurry_img[:, 0, :, :].unsqueeze(1)
+    return blurry_img
 
 
 def get_blurry_image_2(img):
