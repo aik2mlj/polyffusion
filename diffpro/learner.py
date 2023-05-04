@@ -166,9 +166,11 @@ class DiffproLearner:
                 batch, lambda x: x.to(self.device) if isinstance(x, torch.Tensor) else x
             )
             current_losses, _ = self.val_step(batch)
-            losses = losses or current_losses
-            for k, v in current_losses.items():
-                losses[k] += v
+            if losses is None:
+                losses = current_losses
+            else:
+                for k, v in current_losses.items():
+                    losses[k] += v
         assert losses is not None
         for k, v in losses.items():
             losses[k] /= len(self.val_dl)
