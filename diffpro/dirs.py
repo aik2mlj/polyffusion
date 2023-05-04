@@ -14,7 +14,7 @@ PT_POLYDIS_PATH = "pretrained/polydis/model_master_final.pt"
 PT_A2S_PATH = "pretrained/a2s/a2s-stage3a.pt"
 
 # pretrained chd_8bar
-PT_CHD_8BAR_PATH = "result/chd_8bar/12-06_211824/chkpts/weights.pt"
+PT_CHD_8BAR_PATH = "pretrained/chd8bar/weights.pt"
 
 # the path to store demo.
 DEMO_FOLDER = "./demo"
