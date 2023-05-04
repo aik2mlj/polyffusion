@@ -189,12 +189,15 @@ class DisentangleVAE(nn.Module):
             est_x, _, _ = self.decoder.output_to_numpy(pitch_outs, dur_outs)
         return est_x
 
-    def inference(self, pr_mat, c, sample):
+    def inference(self, pr_mat, c, sample, chd_sample=False):
         self.eval()
         with torch.no_grad():
             dist_chd = self.chd_encoder(c)
             dist_rhy = self.rhy_encoder(pr_mat)
             z_chd, z_rhy = get_zs_from_dists([dist_chd, dist_rhy], sample)
+            if chd_sample:
+                dist = Normal(torch.zeros_like(z_chd), torch.ones_like(z_chd))
+                z_chd = dist.sample().to(self.device)
             dec_z = torch.cat([z_chd, z_rhy], dim=-1)
             pitch_outs, dur_outs = self.decoder(dec_z, True, None, None, 0.0, 0.0)
             est_x, _, _ = self.decoder.output_to_numpy(pitch_outs, dur_outs)

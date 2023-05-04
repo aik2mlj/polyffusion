@@ -28,10 +28,10 @@ class PolydisAftertouch:
         print(f"loaded model {model_path}.")
         self.model = model
 
-    def reconstruct(self, prmat, chd, fn):
+    def reconstruct(self, prmat, chd, fn, chd_sample=False):
         chd = chd.to(device).float()
         prmat = prmat.to(device).float()
-        est_x = self.model.inference(prmat, chd, sample=False)
+        est_x = self.model.inference(prmat, chd, sample=False, chd_sample=chd_sample)
         estx_to_midi_file(est_x, fn + "_recon.mid")
 
 

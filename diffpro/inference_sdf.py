@@ -426,6 +426,11 @@ if __name__ == "__main__":
         help=
         "only split inpainted result according to the inpaint type (for testing). (inpaint: original, condition: inpainted)"
     )
+    parser.add_argument(
+        "--polydis_txt",
+        action="store_true",
+        help="use polydis to generate texture-like MIDI. For comparison."
+    )
     args = parser.parse_args()
     model_label = Path(args.model_dir).parent.name
     print(f"model_label: {model_label}")
@@ -525,6 +530,18 @@ if __name__ == "__main__":
         print("only split prmat2c according to the inpainting type")
         mask = get_mask(orig=prmat2c_inp, inpaint_type=args.inpaint_type)
         prmat2c_to_midi_file(prmat2c, f"{args.from_midi[:-4]}_split.mid", inp_mask=mask)
+        exit(0)
+
+    # for polydis comparison
+    if args.polydis_txt:
+        aftertouch = PolydisAftertouch()
+        polydis_prmat = prmat.view(-1, 32, 128)
+        print(polydis_prmat.shape)
+        prmat_to_midi_file(polydis_prmat, f"exp/polydis_txt_prmat.mid")
+        polydis_chd = chd.view(-1, 8, 36)  # 2-bars
+        aftertouch.reconstruct(
+            polydis_prmat, polydis_chd, f"exp/polydis_txt", chd_sample=True
+        )
         exit(0)
 
     pnotree_enc, pnotree_dec = None, None
