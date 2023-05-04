@@ -130,7 +130,7 @@ if __name__ == "__main__":
         bridge = get_note_matrix(f["bridge"])
         piano = get_note_matrix(f["piano"])
         beats = f["beat"]
-        notes = cat_note_mats([bridge, piano])
+        notes = cat_note_mats([melody, bridge, piano])
 
         retrieve_midi_from_nmat(
             notes, os.path.join(NEW_DIR, piece[:-4] + "_flated.mid")
