@@ -396,7 +396,9 @@ if __name__ == "__main__":
         "--inpaint_pop909_use_track",
         help="which tracks to use as original song for inpainting (default: 0,1,2)"
     )
-    parser.add_argument("--inpaint_type", help="inpaint a song, type: {remaining}")
+    parser.add_argument(
+        "--inpaint_type", help="inpaint a song, type: {remaining, below, above, bars}"
+    )
     parser.add_argument("--length", default=0, help="the generated length (in 8-bars)")
     # you usually don't need to use the following args
     parser.add_argument(
