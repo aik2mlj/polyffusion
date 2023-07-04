@@ -5,11 +5,11 @@ from datetime import datetime
 import sys
 
 from . import TrainConfig
-from learner import DiffproLearner
+from learner import PolyffusionLearner
 from stable_diffusion.model.autoencoder import Autoencoder, Encoder, Decoder
 from data.dataloader import get_train_val_dataloaders
 from dirs import *
-from models.model_autoencoder import Diffpro_Autoencoder
+from models.model_autoencoder import Polyffusion_Autoencoder
 
 
 class Autoencoder_TrainConfig(TrainConfig):
@@ -41,7 +41,7 @@ class Autoencoder_TrainConfig(TrainConfig):
             z_channels=params.z_channels
         )
 
-        self.model = Diffpro_Autoencoder(autoencoder).to(self.device)
+        self.model = Polyffusion_Autoencoder(autoencoder).to(self.device)
 
         # Create dataloader
         self.train_dl, self.val_dl = get_train_val_dataloaders(

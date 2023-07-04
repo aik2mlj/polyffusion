@@ -16,7 +16,9 @@ from train.train_ddpm import DDPM_TrainConfig
 from train.train_chd_8bar import Chord8bar_TrainConfig
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description='train (or resume training) a Diffpro model')
+    parser = ArgumentParser(
+        description='train (or resume training) a Polyffusion model'
+    )
     parser.add_argument(
         "--output_dir",
         default=None,

@@ -7,7 +7,7 @@ import os
 from . import *
 from stable_diffusion.model.unet import UNetModel
 from stable_diffusion.latent_diffusion import LatentDiffusion
-from models.model_sdf import Diffpro_SDF
+from models.model_sdf import Polyffusion_SDF
 from data.dataloader import get_train_val_dataloaders
 from data.dataloader_musicalion import get_train_val_dataloaders as get_train_val_dataloaders_musicalion
 from dl_modules import ChordEncoder, ChordDecoder, TextureEncoder
@@ -91,7 +91,7 @@ class LDM_TrainConfig(TrainConfig):
                 )
         else:
             raise NotImplementedError
-        self.model = Diffpro_SDF(
+        self.model = Polyffusion_SDF(
             self.ldm_model,
             cond_type=params.cond_type,
             cond_mode=params.cond_mode,

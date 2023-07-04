@@ -4,7 +4,7 @@ import sys
 from . import *
 from ddpm.unet import UNet
 from ddpm import DenoiseDiffusion
-from models.model_ddpm import Diffpro_DDPM
+from models.model_ddpm import Polyffusion_DDPM
 from data.dataloader import get_train_val_dataloaders
 
 
@@ -34,7 +34,7 @@ class DDPM_TrainConfig(TrainConfig):
             device=self.device,
         )
 
-        self.model = Diffpro_DDPM(self.diffusion, params).to(self.device)
+        self.model = Polyffusion_DDPM(self.diffusion, params).to(self.device)
         # Create dataloader
         self.train_dl, self.val_dl = get_train_val_dataloaders(
             params.batch_size, params.num_workers, params.pin_memory

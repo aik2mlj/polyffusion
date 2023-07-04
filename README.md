@@ -4,8 +4,8 @@
 
 ```shell
 pip install -r requirements.txt
-pip install -e diffpro/chord_extractor
-pip install -e diffpro
+pip install -e polyffusion/chord_extractor
+pip install -e polyffusion
 ```
 
 ## Data
@@ -26,7 +26,7 @@ Please put them under `/pretrained/` after extraction.
 ## Training
 
 ```shell
-python diffpro/main.py --model [model] --output_dir [output_dir]
+python polyffusion/main.py --model [model] --output_dir [output_dir]
 ```
 
 The models that can be selected (which make sense):
@@ -38,30 +38,30 @@ The models that can be selected (which make sense):
 
 Examples:
 ```shell
-python diffpro/main.py --model ldm_chd8bar --output_dir result/ldm_chd8bar
+python polyffusion/main.py --model ldm_chd8bar --output_dir result/ldm_chd8bar
 ```
 
 ## Inference
 
 Please see the helping messages by running
 ```shell
-python diffpro/inference_sdf.py --help
+python polyffusion/inference_sdf.py --help
 ```
 
 Examples:
 ```shell
 # unconditional generation of length 10x8 bars
-python diffpro/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=0. --length=10
+python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=0. --length=10
 
 # conditional generation with guidance scale = 5, conditional chord progressions chosen from a song from POP909 validation set.
-python diffpro/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=5.
+python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=5.
 
 # conditional iterative inpainting (i.e. autoregressive generation) (default guidance scale = 1)
-python diffpro/inference_sdf.py --model_dir=result/ldm_chd8bar --autoreg
+python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --autoreg
 
 # unconditional melody generation given accompaniment
-python diffpro/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=0. --inpaint_from_midi=/path/to/accompaniment.mid --inpaint_type=above
+python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=0. --inpaint_from_midi=/path/to/accompaniment.mid --inpaint_type=above
 
 # accompaniment generation given melody, conditioned on chord progressions of another midi file (default guidance scale = 1)
-python diffpro/inference_sdf.py --model_dir=result/ldm_chd8bar --inpaint_from_midi=/path/to/melody.mid --inpaint_type=below --from_midi=/path/to/cond_midi.mid
+python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --inpaint_from_midi=/path/to/melody.mid --inpaint_type=below --from_midi=/path/to/cond_midi.mid
 ```

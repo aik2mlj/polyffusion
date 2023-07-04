@@ -14,7 +14,7 @@ from utils import prmat2c_to_midi_file, show_image
 from ddpm import DenoiseDiffusion
 from ddpm.unet import UNet
 from ddpm.utils import gather
-from model import Diffpro_DDPM
+from model import Polyffusion_DDPM
 
 
 class Configs():
@@ -43,8 +43,8 @@ class Configs():
             device=self.device,
         )
 
-        self.model = Diffpro_DDPM.load_trained(self.diffusion, model_dir,
-                                               params).to(self.device)
+        self.model = Polyffusion_DDPM.load_trained(self.diffusion, model_dir,
+                                                   params).to(self.device)
 
         # self.song_fn, self.pnotree, _ = choose_song_from_val_dl()
 
@@ -178,7 +178,7 @@ def choose_song_from_val_dl():
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description='inference a Diffpro model')
+    parser = ArgumentParser(description='inference a Polyffusion model')
     parser.add_argument(
         "--model_dir", help='directory in which trained model checkpoints are stored'
     )

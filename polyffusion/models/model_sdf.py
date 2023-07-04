@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import random
 
 
-class Diffpro_SDF(nn.Module):
+class Polyffusion_SDF(nn.Module):
     def __init__(
         self,
         ldm: LatentDiffusion,
@@ -28,7 +28,7 @@ class Diffpro_SDF(nn.Module):
             mix: use a special condition for unconditional learning with probability of 0.2
         use_enc: whether to use pretrained chord encoder to generate encoded condition
         """
-        super(Diffpro_SDF, self).__init__()
+        super(Polyffusion_SDF, self).__init__()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.ldm = ldm
         self.cond_type = cond_type

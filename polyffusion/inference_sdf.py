@@ -26,7 +26,7 @@ import pretty_midi as pm
 from labml import monit
 from stable_diffusion.latent_diffusion import LatentDiffusion
 from stable_diffusion.model.unet import UNetModel
-from models.model_sdf import Diffpro_SDF
+from models.model_sdf import Polyffusion_SDF
 # from params_sdf import params
 from params import AttrDict
 
@@ -51,7 +51,7 @@ from data.datasample import DataSample
 from data.midi_to_data import get_data_for_single_midi
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-parser = ArgumentParser(description='inference a Diffpro model')
+parser = ArgumentParser(description='inference a Polyffusion model')
 
 
 def dummy_cond_input(length, params):
@@ -568,7 +568,7 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError
 
-    model = Diffpro_SDF.load_trained(
+    model = Polyffusion_SDF.load_trained(
         ldm_model, f"{args.model_dir}/chkpts/{args.chkpt_name}", params.cond_type,
         params.cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec, txt_enc
     ).to(device)

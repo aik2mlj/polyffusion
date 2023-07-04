@@ -5,14 +5,14 @@ from ddpm import DenoiseDiffusion
 import torch.nn.functional as F
 
 
-class Diffpro_DDPM(nn.Module):
+class Polyffusion_DDPM(nn.Module):
     def __init__(
         self,
         ddpm: DenoiseDiffusion,
         params,
         max_simu_note=20,
     ):
-        super(Diffpro_DDPM, self).__init__()
+        super(Polyffusion_DDPM, self).__init__()
         self.params = params
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.ddpm = ddpm

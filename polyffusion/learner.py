@@ -11,7 +11,7 @@ from dirs import *
 from utils import nested_map
 
 
-class DiffproLearner:
+class PolyffusionLearner:
     def __init__(
         self, output_dir, model, train_dl, val_dl, optimizer, params, param_scheduler
     ):

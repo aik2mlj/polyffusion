@@ -7,9 +7,9 @@ from stable_diffusion.model.autoencoder import Autoencoder
 import torch.nn.functional as F
 
 
-class Diffpro_Autoencoder(nn.Module):
+class Polyffusion_Autoencoder(nn.Module):
     def __init__(self, autoencoder: Autoencoder):
-        super(Diffpro_Autoencoder, self).__init__()
+        super(Polyffusion_Autoencoder, self).__init__()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.autoencoder = autoencoder
 

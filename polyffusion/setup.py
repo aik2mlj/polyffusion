@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='diffpro',
+    name='polyffusion',
     packages=find_packages(),
 )

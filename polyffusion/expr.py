@@ -200,7 +200,7 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError
 
-    model = Diffpro_SDF.load_trained(
+    model = Polyffusion_SDF.load_trained(
         ldm_model, f"{args.model_dir}/chkpts/{args.chkpt_name}", params.cond_type,
         params.cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec, txt_enc
     ).to(device)

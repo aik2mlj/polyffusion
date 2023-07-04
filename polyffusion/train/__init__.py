@@ -8,7 +8,7 @@ from torch.optim import Optimizer
 import sys
 
 from params import AttrDict
-from learner import DiffproLearner
+from learner import PolyffusionLearner
 
 
 class TrainConfig():
@@ -42,7 +42,7 @@ class TrainConfig():
         else:
             output_dir = f"{output_dir}/{datetime.now().strftime('%m-%d_%H%M%S')}"
             print(f"Creating new log folder as {output_dir}")
-        learner = DiffproLearner(
+        learner = PolyffusionLearner(
             output_dir, self.model, self.train_dl, self.val_dl, self.optimizer,
             self.params, self.param_scheduler
         )
