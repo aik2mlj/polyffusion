@@ -394,6 +394,36 @@ def custom_round(x):
         return 0
 
 
+def check_prmat2c_integrity(prmat2c, is_custom_round=False):
+    if "Tensor" in str(type(prmat2c)):
+        prmat2c = prmat2c.cpu().detach().numpy()
+    round_func = custom_round if is_custom_round else round
+    err = 0
+    total = 0
+    for bar_ind, bars in enumerate(prmat2c):
+        onset = bars[0]
+        sustain = bars[1]
+        for step_ind, step in enumerate(sustain):
+            for key, sus in enumerate(step):
+                sus = int(round_func(sus))
+                if sus > 0 and (
+                    step_ind == 0 or (
+                        int(round_func(onset[step_ind - 1, key])) == 0 and
+                        int(round_func(sustain[step_ind - 1, key])) == 0
+                    )
+                ):
+                    # no onset, only sustain
+                    err += 1
+                    total += 1
+        for step_ind, step in enumerate(onset):
+            for key, on in enumerate(step):
+                on = int(round_func(on))
+                if on > 0:
+                    # a valid note with onset
+                    total += 1
+    return float(err / total)
+
+
 def prmat2c_to_midi_file(
     prmat2c, fpath, labels=None, is_custom_round=False, inp_mask=None
 ):

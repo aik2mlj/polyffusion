@@ -504,7 +504,9 @@ if __name__ == "__main__":
     # condition data ready
     if float(args.uncond_scale) == 0.:
         print("unconditional generation...")
-        if prmat2c_inp is not None:
+        if int(args.length) > 0:
+            length = int(args.length)
+        elif prmat2c_inp is not None:
             length = prmat2c_inp.shape[0]
         else:
             length = int(input("how many 8-bars would you like to generate?"))

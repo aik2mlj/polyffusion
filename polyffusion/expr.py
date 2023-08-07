@@ -1,12 +1,17 @@
 from tqdm import tqdm
 from inference_sdf import *
 from data.dataloader import get_val_dataloader, get_train_val_dataloaders
-from utils import nested_map
+from utils import nested_map, check_prmat2c_integrity
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def prompt_generation(expr: Experiments, num, output_dir):  # start from the 3-rd bar
+def prompt_generation(
+    expr: Experiments,
+    num,
+    output_dir,
+    check_integrity=True
+):  # start from the 3-rd bar
     val_dl = get_val_dataloader(16)
     gen = []
     for i, batch in enumerate(tqdm(val_dl)):
@@ -22,6 +27,8 @@ def prompt_generation(expr: Experiments, num, output_dir):  # start from the 3-r
         # bar_list = [2, 3, 4, 5, 6, 7]
         # expr.inpaint()
     gen = torch.cat(gen)
+    if check_integrity:
+        print(check_prmat2c_integrity(gen))
     prmat2c_to_midi_file(gen, f"{output_dir}/uncond.mid")
 
 
