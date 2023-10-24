@@ -25,6 +25,11 @@ if __name__ == "__main__":
         help='directory in which to store model checkpoints and training logs'
     )
     parser.add_argument(
+        "--data_dir",
+        default=None,
+        help='directory of custom training data, in npzs'
+    )
+    parser.add_argument(
         "--pop909_use_track", help='which tracks to use for pop909 training'
     )
     parser.add_argument("--model", help="which model to train (autoencoder, ldm, ddpm)")
@@ -38,7 +43,7 @@ if __name__ == "__main__":
         config = LDM_TrainConfig(params_sdf, args.output_dir, use_track=use_track)
     elif args.model == "ldm_chd8bar":
         config = LDM_TrainConfig(
-            params_sdf_chd8bar, args.output_dir, use_track=use_track
+            params_sdf_chd8bar, args.output_dir, use_track=use_track, data_dir=args.data_dir
         )
     elif args.model == "ldm_pnotree":
         config = LDM_TrainConfig(
@@ -61,7 +66,7 @@ if __name__ == "__main__":
     elif args.model == "ldm_musicalion_txt":
         config = LDM_TrainConfig(params_sdf_txt, args.output_dir, use_musicalion=True)
     elif args.model == "ddpm":
-        config = DDPM_TrainConfig(params_ddpm, args.output_dir)
+        config = DDPM_TrainConfig(params_ddpm, args.output_dir, data_dir=args.data_dir)
     elif args.model == "autoencoder":
         config = Autoencoder_TrainConfig(params_autoencoder, args.output_dir)
     elif args.model == "chd_8bar":

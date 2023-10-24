@@ -5,7 +5,7 @@ import numpy as np
 import csv
 
 
-def get_chord_from_chdfile(fpath, one_beat=0.5):
+def get_chord_from_chdfile(fpath, one_beat=0.5, rounding=True):
     """
     chord matrix [M * 14], each line represent the chord of a beat
     same format as mir_eval.chord.encode():
@@ -19,8 +19,11 @@ def get_chord_from_chdfile(fpath, one_beat=0.5):
         start = float(line[0])
         end = float(line[1])
         chord = line[2]
-        assert ((end - start) / one_beat).is_integer()
-        beat_num = int((end - start) / one_beat)
+        if not rounding:
+            assert ((end - start) / one_beat).is_integer()
+            beat_num = int((end - start) / one_beat)
+        else:
+            beat_num = round((end - start) / one_beat)
         for _ in range(beat_num):
             beat_cnt += 1
             # see https://craffel.github.io/mir_eval/#mir_eval.chord.encode

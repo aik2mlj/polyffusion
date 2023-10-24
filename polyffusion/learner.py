@@ -37,6 +37,7 @@ class PolyffusionLearner:
         # restore if directory exists
         if os.path.exists(self.output_dir):
             self.restore_from_checkpoint()
+            print("found previous output directory")
         else:
             os.makedirs(self.output_dir)
             os.makedirs(self.log_dir)

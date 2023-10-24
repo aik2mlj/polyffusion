@@ -23,11 +23,13 @@ class TrainConfig():
         self.param_scheduler = param_scheduler
         self.output_dir = output_dir
         if os.path.exists(f"{output_dir}/params.json"):
-            with open(f"{output_dir}/params.json", "r") as params_file:
-                self.params = AttrDict(json.load(params_file))
-                if params != self.params:
-                    print("New params differ, using former params instead...")
-                    params = self.params
+            with open(f"{output_dir}/params.json", "r+") as params_file:
+                old_params = AttrDict(json.load(params_file))
+                if old_params != self.params:
+                    print("New params differ, using new params could break things")
+                    params_file.seek(0)
+                    json.dump(self.params, params_file)
+                    params_file.truncate()
 
     def train(self):
         total_parameters = sum(
@@ -40,7 +42,6 @@ class TrainConfig():
             if input("Resume training? (y/n)") != "y":
                 return
         else:
-            output_dir = f"{output_dir}/{datetime.now().strftime('%m-%d_%H%M%S')}"
             print(f"Creating new log folder as {output_dir}")
         learner = PolyffusionLearner(
             output_dir, self.model, self.train_dl, self.val_dl, self.optimizer,

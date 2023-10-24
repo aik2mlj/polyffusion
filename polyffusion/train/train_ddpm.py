@@ -5,7 +5,7 @@ from . import *
 from ddpm.unet import UNet
 from ddpm import DenoiseDiffusion
 from models.model_ddpm import Polyffusion_DDPM
-from data.dataloader import get_train_val_dataloaders
+from data.dataloader import get_train_val_dataloaders, get_custom_train_val_dataloaders
 
 
 class DDPM_TrainConfig(TrainConfig):
@@ -17,7 +17,7 @@ class DDPM_TrainConfig(TrainConfig):
     # Adam optimizer
     optimizer: torch.optim.Adam
 
-    def __init__(self, params, output_dir):
+    def __init__(self, params, output_dir, data_dir=None):
         super().__init__(params, None, output_dir)
 
         self.eps_model = UNet(
@@ -36,9 +36,14 @@ class DDPM_TrainConfig(TrainConfig):
 
         self.model = Polyffusion_DDPM(self.diffusion, params).to(self.device)
         # Create dataloader
-        self.train_dl, self.val_dl = get_train_val_dataloaders(
-            params.batch_size, params.num_workers, params.pin_memory
-        )
+        if data_dir == None:
+            self.train_dl, self.val_dl = get_train_val_dataloaders(
+                params.batch_size, params.num_workers, params.pin_memory
+            )
+        else:
+            self.train_dl, self.val_dl = get_custom_train_val_dataloaders(
+                params.batch_size, data_dir, num_workers=params.num_workers, pin_memory=params.pin_memory
+            )
         # Create optimizer
         self.optimizer = torch.optim.Adam(
             self.eps_model.parameters(), lr=params.learning_rate

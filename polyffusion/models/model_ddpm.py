@@ -30,8 +30,9 @@ class Polyffusion_DDPM(nn.Module):
     def q_sample(self, x0: torch.Tensor, t: torch.Tensor):
         return self.ddpm.q_sample(x0, t)
 
-    def get_loss_dict(self, prmat):
+    def get_loss_dict(self, batch, step):
         """
         z_y is the stuff the diffusion model needs to learn
         """
-        return {"loss": self.ddpm.loss(prmat)}
+        prmat2c, pnotree, chord, prmat = batch
+        return {"loss": self.ddpm.loss(prmat2c)}
