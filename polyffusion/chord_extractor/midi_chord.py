@@ -34,7 +34,7 @@ class ChordRecognition:
         qt_beat_length = np.zeros(n_frame)
         beat_chroma = np.zeros((n_frame, 12))
         beat_bass = np.zeros((n_frame, 12))
-        min_subbeat_bass = np.full((n_frame * SUBBEAT_COUNT,), 259, dtype=np.int)
+        min_subbeat_bass = np.full((n_frame * SUBBEAT_COUNT,), 259, dtype=int)
         notes = []
         for i in range(n_frame):
             qt_beat_onset[i] = beat[i, 0]
@@ -117,8 +117,8 @@ class ChordRecognition:
         beat_chroma = self.beat_chroma
         n_class = self.chord_class.get_length()
         dp = np.full(n_frame, -np.inf)
-        prec = np.zeros((n_frame), dtype=np.int)
-        prei = np.zeros((n_frame), dtype=np.int)
+        prec = np.zeros((n_frame), dtype=int)
+        prei = np.zeros((n_frame), dtype=int)
         obs = np.full((n_frame, MAX_PREV, n_class), -np.inf)
         batch_chroma = np.zeros((n_frame, MAX_PREV, 12))
         batch_bass_chroma = np.zeros((n_frame, MAX_PREV, 12))
