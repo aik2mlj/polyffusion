@@ -287,7 +287,7 @@ class PianoOrchDataset(Dataset):
 if __name__ == "__main__":
     test = "661.npz"
     song = DataSampleNpz(test)
-    os.system(f"cp {POP909_DATA_DIR}/{test[:-4]}_flated.mid exp/copy.mid")
+    os.system(f"cp {POP909_DATA_DIR}/{test[:-4]}_flatten.mid exp/copy.mid")
     prmat2c, pnotree, chord, prmat = song.get_whole_song_data()
     print(prmat2c.shape)
     print(pnotree.shape)

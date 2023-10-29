@@ -133,7 +133,7 @@ if __name__ == "__main__":
         notes = cat_note_mats([melody, bridge, piano])
 
         retrieve_midi_from_nmat(
-            notes, os.path.join(NEW_DIR, piece[:-4] + "_flated.mid")
+            notes, os.path.join(NEW_DIR, piece[:-4] + "_flatten.mid")
         )
         db_pos, db_pos_filter = get_downbeat_pos_and_filter(notes, beats)
         start_table_melody = get_start_table(melody, db_pos)
