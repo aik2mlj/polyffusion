@@ -18,9 +18,9 @@ class Polyffusion_DDPM(nn.Module):
         self.ddpm = ddpm
 
     @classmethod
-    def load_trained(cls, ddpm, model_dir, params, max_simu_note=20):
+    def load_trained(cls, ddpm, chkpt_fpath, params, max_simu_note=20):
         model = cls(ddpm, params, max_simu_note)
-        trained_leaner = torch.load(f"{model_dir}/weights.pt")
+        trained_leaner = torch.load(chkpt_fpath)
         model.load_state_dict(trained_leaner["model"])
         return model
 

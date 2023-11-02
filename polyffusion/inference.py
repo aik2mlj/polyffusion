@@ -25,7 +25,7 @@ class Configs():
     # Adam optimizer
     optimizer: torch.optim.Adam
 
-    def __init__(self, params, model_dir):
+    def __init__(self, params, model_dir, chkpt_name = "weights_best.pt"):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(self.device)
         self.eps_model = UNet(
@@ -42,7 +42,7 @@ class Configs():
             device=self.device,
         )
 
-        self.model = Polyffusion_DDPM.load_trained(self.diffusion, os.path.join(model_dir, "chkpts"),
+        self.model = Polyffusion_DDPM.load_trained(self.diffusion, os.path.join(model_dir, "chkpts", chkpt_name),
                                                    params).to(self.device)
 
         # self.song_fn, self.pnotree, _ = choose_song_from_val_dl()
@@ -209,9 +209,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--show_progress", action='store_true', help='whether to generate progress images and midis'
     )
+    parser.add_argument(
+        "--chkpt_name", default="weights_best.pt", help="which specific checkpoint to use (default: weights_best.pt)"
+    )
     args = parser.parse_args()
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
-    config = Configs(params, args.model_dir)
+    config = Configs(params, args.model_dir, args.chkpt_name)
     for i in range(args.num_generate):
         config.predict(n_samples=args.length, init_cond=False, init_step=100, output_dir=args.output_dir, show_img=args.show_progress)

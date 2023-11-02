@@ -3,10 +3,13 @@ import muspy
 from tqdm import tqdm
 import numpy as np
 from data.midi_to_data import *
-from data.dataset import PianoOrchDataset
 from argparse import ArgumentParser
 
 def force_length(music : muspy.music, bars = 8):
+    """Loops a MIDI file if it's under the specified number of bars, in place."""
+    num_tracks_at_least_bars = sum([1 if (track.get_end_time() + 15) // 16 >= bars else 0 for track in music.tracks])
+    if (num_tracks_at_least_bars > 0):
+        return
     for track in music.tracks:
         timesteps = track.get_end_time()
         old_bars = (timesteps + 15) // 16
@@ -16,7 +19,30 @@ def force_length(music : muspy.music, bars = 8):
             tmp.adjust_time(lambda x : x + i * timesteps)
             track.notes.extend(tmp.notes)
 
-def prepare_npz(midi_dir, chords_dir, output_dir, force=False):
+def get_note_matrix_melodies(music, ignore_non_melody = True):
+    """Similar to get_note_matrix from data.midi_to_data, with an option to ignore non-melodies."""
+    notes = []
+    for inst in music.tracks:
+        if ignore_non_melody and (inst.is_drum or inst.program >= 113):
+            continue
+        for note in inst.notes:
+            onset = int(note.time)
+            duration = int(note.duration)
+            if duration > 0:
+                notes.append(
+                    [
+                        onset,
+                        note.pitch,
+                        duration,
+                        note.velocity,
+                        inst.program,
+                    ]
+                )
+    notes.sort(key=lambda x: (x[0], x[1], x[2]))
+    assert(len(notes)) # in case if a MIDI has only non-melodies
+    return notes
+
+def prepare_npz(midi_dir, chords_dir, output_dir, force=False, ignore_non_melody=True):
     for dir in [chords_dir, output_dir]:
         if not os.path.exists(dir):
             os.makedirs(dir)
@@ -37,7 +63,7 @@ def prepare_npz(midi_dir, chords_dir, output_dir, force=False):
                 force_length(music)
 
             try:
-                note_mat = get_note_matrix(music)
+                note_mat = get_note_matrix_melodies(music, ignore_non_melody)
                 note_mat = dedup_note_matrix(note_mat)
                 extract_chords_from_midi_file(fpath, chdpath)
                 chord = get_chord_matrix(chdpath)
@@ -97,8 +123,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--force_length",
         action="store_true",
-        help="whether to repeat shorter samples into the desired number of bars"
+        help="to repeat shorter samples into the desired number of bars"
     )
-
+    parser.add_argument(
+        "--ignore_non_melody",
+        action="store_false",
+        help="whether ignore all non-melody instruments. default: true"
+    )
     args = parser.parse_args()
-    prepare_npz(args.midi_dir, args.chords_dir, args.npz_dir, args.force_length)
+    prepare_npz(args.midi_dir, args.chords_dir, args.npz_dir, args.force_length, args.ignore_non_melody)

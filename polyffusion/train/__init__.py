@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from torch.utils.data import DataLoader
 from torch.optim import Optimizer
+from shutil import copy2
 
 import sys
 
@@ -25,8 +26,16 @@ class TrainConfig():
         if os.path.exists(f"{output_dir}/params.json"):
             with open(f"{output_dir}/params.json", "r+") as params_file:
                 old_params = AttrDict(json.load(params_file))
+
+                # The "weights" attribute is a tuple in AttrDict, but saved as a list. To compare these two, we make them both tuples:
+                if "weights" in old_params:
+                    old_params["weights"] = tuple(old_params["weights"])
+                
                 if old_params != self.params:
-                    print("New params differ, using new params could break things")
+                    print("New params differ, using new params could break things.")
+                    if input("Do you want to keep the old params file (y/n)? The model will still be trained on new params regardless.") == "y":
+                        time_stamp = datetime.now().strftime('%m-%d_%H%M%S')
+                        copy2(f"{output_dir}/params.json", f"{output_dir}/old_params_{time_stamp}.json")
                     params_file.seek(0)
                     json.dump(self.params, params_file)
                     params_file.truncate()
@@ -42,6 +51,7 @@ class TrainConfig():
             if input("Resume training? (y/n)") != "y":
                 return
         else:
+            output_dir = f"{output_dir}/{datetime.now().strftime('%m-%d_%H%M%S')}"
             print(f"Creating new log folder as {output_dir}")
         learner = PolyffusionLearner(
             output_dir, self.model, self.train_dl, self.val_dl, self.optimizer,
