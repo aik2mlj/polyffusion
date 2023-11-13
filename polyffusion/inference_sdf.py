@@ -250,7 +250,8 @@ class Experiments:
                         orig_noise=noise_seg,
                         uncond_scale=uncond_scale,
                         uncond_cond=uncond_cond_seg,
-                        cond_concat=cond_concat
+                        cond_concat=cond_concat,
+                        repaint_n=int(args.repaint_n)
                     )
                     if idx == 0:
                         gen.append(x0[:, :, 0 : half_len, :])
@@ -280,7 +281,8 @@ class Experiments:
                     orig_noise=noise,
                     uncond_scale=uncond_scale,
                     uncond_cond=uncond_cond,
-                    cond_concat=cond_concat
+                    cond_concat=cond_concat,
+                    repaint_n=int(args.repaint_n)
                 )
         # show_image(gen, "exp/img/gen.png")
         return gen
@@ -399,6 +401,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--inpaint_type", help="inpaint a song, type: {remaining, below, above, bars}"
     )
+    parser.add_argument("--repaint_n", default=1, help="n sampling steps in RePaint")
     parser.add_argument("--length", default=0, help="the generated length (in 8-bars)")
     # you usually don't need to use the following args
     parser.add_argument(

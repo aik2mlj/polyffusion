@@ -276,6 +276,7 @@ class SDFSampler(DiffusionSampler):
         uncond_scale: float = 1.,
         uncond_cond: Optional[torch.Tensor] = None,
         cond_concat=None,
+        repaint_n=1,
     ):
         """
         ### Painting Loop
@@ -296,31 +297,51 @@ class SDFSampler(DiffusionSampler):
 
         # Time steps to sample at $\tau_{S`}, \tau_{S' - 1}, \dots, \tau_1$
         time_steps = np.flip(self.time_steps[: t_start])
+        print(f"RePainting: sampling steps = {repaint_n}")
 
         for i, step in monit.enum('Paint', time_steps):
-            # Index $i$ in the list $[\tau_1, \tau_2, \dots, \tau_S]$
-            # index = len(time_steps) - i - 1
-            # Time step $\tau_i$
-            ts = x.new_full((bs, ), step, dtype=torch.long)
+            if orig is None:
+                # vanilla generation
+                ts = x.new_full((bs, ), step, dtype=torch.long)
 
-            # Sample $x_{\tau_{i-1}}$
-            x, _, _ = self.p_sample(
-                x,
-                cond,
-                ts,
-                step,
-                uncond_scale=uncond_scale,
-                uncond_cond=uncond_cond,
-                cond_concat=cond_concat,
-            )
-
-            # Replace the masked area with original image
-            if orig is not None:
+                # Sample $x_{\tau_{i-1}}$
+                x, _, _ = self.p_sample(
+                    x,
+                    cond,
+                    ts,
+                    step,
+                    uncond_scale=uncond_scale,
+                    uncond_cond=uncond_cond,
+                    cond_concat=cond_concat,
+                )
+            else:
+                # RePaint
+                # Replace the masked area with original image
                 assert mask is not None
                 # Get the $q_{\sigma,\tau}(x_{\tau_i}|x_0)$ for original image in latent space
-                orig_t = self.q_sample(orig, step, noise=orig_noise)
-                # Replace the masked area
-                x = orig_t * mask + x * (1 - mask)
+                for u in range(repaint_n):
+                    # Index $i$ in the list $[\tau_1, \tau_2, \dots, \tau_S]$
+                    # index = len(time_steps) - i - 1
+                    # Time step $\tau_i$
+                    orig_t = self.q_sample(orig, step, noise=orig_noise)
+                    ts = x.new_full((bs, ), step, dtype=torch.long)
+                    # Sample $x_{\tau_{i-1}}$
+                    x, _, _ = self.p_sample(
+                        x,
+                        cond,
+                        ts,
+                        step,
+                        uncond_scale=uncond_scale,
+                        uncond_cond=uncond_cond,
+                        cond_concat=cond_concat,
+                    )
+
+                    # Replace the masked area
+                    x = orig_t * mask + x * (1 - mask)
+                    if u < repaint_n - 1 and step > 0:
+                        noise = torch.randn_like(x, device=self.device)
+                        x = (1 - self.model.beta[step - 1]
+                            )**.5 * x + self.model.beta[step - 1] * noise
 
             s1 = step + 1
             if self.is_show_image:

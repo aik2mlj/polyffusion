@@ -3,6 +3,7 @@
 pretrained/
 result/
 exp/
+eval/
 
 
 # Byte-compiled / optimized / DLL files
