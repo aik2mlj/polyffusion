@@ -19,7 +19,7 @@ from utils import (
 
 def collate_fn(batch, shift):
     def sample_shift():
-        return np.random.choice(np.arange(-6, 7), 1)[0]
+        return np.random.choice(np.arange(-6, 6), 1)[0]
 
     prmat2c = []
     pnotree = []
