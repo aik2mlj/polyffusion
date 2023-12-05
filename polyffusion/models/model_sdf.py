@@ -200,6 +200,10 @@ class Polyffusion_SDF(nn.Module):
             # exit(0)
         elif self.cond_type == "txt":
             cond = self._encode_txt(prmat)
+        elif self.cond_type == "chord+txt":
+            zchd = self._encode_chord(chord)
+            ztxt = self._encode_txt(prmat)
+            cond = torch.cat([zchd, ztxt], dim=-1)
         else:
             raise NotImplementedError
         # recon_chord = self._decode_chord(cond)

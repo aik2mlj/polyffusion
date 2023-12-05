@@ -60,7 +60,7 @@ def dummy_cond_input(length, params):
     w = params.img_w
     prmat2c = torch.zeros([length, 2, h, w]).to(device)
     pnotree = torch.zeros([length, h, 20, 6]).to(device)
-    if params.cond_type == "chord":
+    if "chord" in params.cond_type:
         chord = torch.zeros([length, params.chd_n_step, params.chd_input_dim]).to(
             device
         )
@@ -594,7 +594,7 @@ if __name__ == "__main__":
             pnotree_enc, pnotree_dec = load_pretrained_pnotree_enc_dec(
                 PT_PNOTREE_PATH, 20, device
             )
-        elif params.cond_type == "chord":
+        elif "chord" in params.cond_type:
             if params.use_enc:
                 chord_enc, chord_dec = load_pretrained_chd_enc_dec(
                     PT_CHD_8BAR_PATH,
@@ -604,7 +604,7 @@ if __name__ == "__main__":
                     params.chd_z_dim,
                     params.chd_n_step,
                 )
-        elif params.cond_type == "txt":
+        elif "txt" in params.cond_type:
             if params.use_enc:
                 txt_enc = load_pretrained_txt_enc(
                     PT_POLYDIS_PATH,
@@ -661,6 +661,18 @@ if __name__ == "__main__":
             cond = model._encode_txt(prmat)
             if args.autoreg:
                 cond_mid = model._encode_txt(get_autoreg_data(prmat))
+        elif params.cond_type == "chord+txt":
+            assert chd is not None
+            assert prmat is not None
+            zchd = model._encode_chord(chd)
+            # print(chd_enc.shape)
+            polydis_chd = chd.view(-1, 8, 36)  # 2-bars
+            cond = torch.cat([zchd, ztxt], dim=-1)
+            if args.autoreg:
+                zchd_mid = model._encode_chord(get_autoreg_data(chd))
+                ztxt_mid = model._encode_txt(get_autoreg_data(prmat))
+                cond_mid = torch.cat([zchd_mid, ztxt_mid], dim=-1)
+
         else:
             raise NotImplementedError
 
