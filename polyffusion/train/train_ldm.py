@@ -8,7 +8,7 @@ from . import *
 from stable_diffusion.model.unet import UNetModel
 from stable_diffusion.latent_diffusion import LatentDiffusion
 from models.model_sdf import Polyffusion_SDF
-from data.dataloader import get_train_val_dataloaders
+from data.dataloader import get_train_val_dataloaders, get_custom_train_val_dataloaders
 from data.dataloader_musicalion import get_train_val_dataloaders as get_train_val_dataloaders_musicalion
 from dl_modules import ChordEncoder, ChordDecoder, TextureEncoder
 from dirs import PT_A2S_PATH, PT_CHD_8BAR_PATH, PT_PNOTREE_PATH, PT_POLYDIS_PATH
@@ -23,6 +23,7 @@ class LDM_TrainConfig(TrainConfig):
         use_autoencoder=False,
         use_musicalion=False,
         use_track=[0, 1, 2],
+        data_dir=None,
     ) -> None:
         super().__init__(params, None, output_dir)
         self.autoencoder = None
@@ -111,12 +112,14 @@ class LDM_TrainConfig(TrainConfig):
                 params.batch_size, params.num_workers, params.pin_memory
             )
         else:
-            self.train_dl, self.val_dl = get_train_val_dataloaders(
-                params.batch_size,
-                params.num_workers,
-                params.pin_memory,
-                use_track=use_track
-            )
+            if data_dir == None:
+                self.train_dl, self.val_dl = get_train_val_dataloaders(
+                    params.batch_size, params.num_workers, params.pin_memory
+                )
+            else:
+                self.train_dl, self.val_dl = get_custom_train_val_dataloaders(
+                    params.batch_size, data_dir, num_workers=params.num_workers, pin_memory=params.pin_memory
+                )
 
         # Create optimizer
         self.optimizer = torch.optim.Adam(

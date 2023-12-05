@@ -27,8 +27,8 @@ class DataSampleNpz:
     `__getitem__` is used for retrieving ready-made input segments to the model
     it will be called in DataLoader
     """
-    def __init__(self, song_fn, use_track=[0, 1, 2]) -> None:  # NOTE: use melody now!
-        self.fpath = os.path.join(POP909_DATA_DIR, song_fn)
+    def __init__(self, song_fn, use_track=[0, 1, 2], data_dir=POP909_DATA_DIR) -> None:  # NOTE: use melody now!
+        self.fpath = os.path.join(data_dir, song_fn)
         self.song_fn = song_fn
         """
         notes (onset_beat, onset_bin, duration, pitch, velocity)
@@ -89,10 +89,23 @@ class DataSampleNpz:
         """
 
         seg_mats = []
-        for track_idx in self.use_track:
-            notes = self.notes[track_idx]
-            start_table = self.start_table[track_idx]
 
+        # If more than one track:
+        if len(self.start_table.shape) > 0:
+            for track_idx in self.use_track:
+                notes = self.notes[track_idx]
+                start_table = self.start_table[track_idx]
+
+                s_ind = start_table[db]
+                if db + SEG_LGTH_BIN in start_table:
+                    e_ind = start_table[db + SEG_LGTH_BIN]
+                    note_seg = np.array(notes[s_ind : e_ind])
+                else:
+                    note_seg = np.array(notes[s_ind :])  # NOTE: may be wrong
+                seg_mats.extend(note_seg)
+        else:
+            notes = self.notes
+            start_table = self.start_table.tolist()
             s_ind = start_table[db]
             if db + SEG_LGTH_BIN in start_table:
                 e_ind = start_table[db + SEG_LGTH_BIN]
@@ -258,17 +271,17 @@ class PianoOrchDataset(Dataset):
             return song_data[song_item]
 
     @classmethod
-    def load_with_song_paths(cls, song_paths, debug=False, **kwargs):
-        data_samples = [DataSampleNpz(song_path, **kwargs) for song_path in song_paths]
+    def load_with_song_paths(cls, song_paths, data_dir=POP909_DATA_DIR, debug=False, **kwargs):
+        data_samples = [DataSampleNpz(song_path, data_dir=data_dir, **kwargs) for song_path in song_paths]
         return cls(data_samples, debug)
 
     @classmethod
     def load_train_and_valid_sets(cls, debug=False, **kwargs):
         split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "pop909.pickle"))
         print("load train valid set with:", kwargs)
-        return cls.load_with_song_paths(split[0], debug,
+        return cls.load_with_song_paths(split[0], debug=debug,
                                         **kwargs), cls.load_with_song_paths(
-                                            split[1], debug, **kwargs
+                                            split[1], debug=debug, **kwargs
                                         )
 
     @classmethod

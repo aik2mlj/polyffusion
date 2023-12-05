@@ -60,12 +60,43 @@ def collate_fn(batch, shift):
     else:
         return prmat2c, pnotree, chord, prmat
 
+def get_custom_train_val_dataloaders(
+    batch_size, data_dir, num_workers=0, pin_memory=False, debug=False, train_ratio=0.9, **kwargs
+):
+    all_data = next(os.walk(data_dir))[2]
+    train_num = int(len(all_data) * train_ratio)
+    train_files = all_data[:train_num]
+    val_files = all_data[train_num:]
+
+    train_dataset = PianoOrchDataset.load_with_song_paths(song_paths=train_files, data_dir=data_dir)
+    val_dataset = PianoOrchDataset.load_with_song_paths(song_paths=val_files, data_dir=data_dir)
+
+    train_dl = DataLoader(
+        train_dataset,
+        batch_size,
+        True,
+        collate_fn=lambda x: collate_fn(x, shift=True),
+        num_workers=num_workers,
+        pin_memory=pin_memory
+    )
+    val_dl = DataLoader(
+        val_dataset,
+        batch_size,
+        True,
+        collate_fn=lambda x: collate_fn(x, shift=False),
+        num_workers=num_workers,
+        pin_memory=pin_memory
+    )
+    print(
+    f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, train_segments={len(train_dataset)}, val_segments={len(val_dataset)} {kwargs}"
+    )
+    return train_dl, val_dl
 
 def get_train_val_dataloaders(
     batch_size, num_workers=0, pin_memory=False, debug=False, **kwargs
 ):
     train_dataset, val_dataset = PianoOrchDataset.load_train_and_valid_sets(
-        debug, **kwargs
+        debug=debug, **kwargs
     )
     train_dl = DataLoader(
         train_dataset,
@@ -84,7 +115,7 @@ def get_train_val_dataloaders(
         pin_memory=pin_memory
     )
     print(
-        f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, {kwargs}"
+    f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, train_segments={len(train_dataset)}, val_segments={len(val_dataset)} {kwargs}"
     )
     return train_dl, val_dl
 

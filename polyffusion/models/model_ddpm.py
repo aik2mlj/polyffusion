@@ -18,9 +18,9 @@ class Polyffusion_DDPM(nn.Module):
         self.ddpm = ddpm
 
     @classmethod
-    def load_trained(cls, ddpm, model_dir, params, max_simu_note=20):
+    def load_trained(cls, ddpm, chkpt_fpath, params, max_simu_note=20):
         model = cls(ddpm, params, max_simu_note)
-        trained_leaner = torch.load(f"{model_dir}/weights.pt")
+        trained_leaner = torch.load(chkpt_fpath)
         model.load_state_dict(trained_leaner["model"])
         return model
 
@@ -30,8 +30,9 @@ class Polyffusion_DDPM(nn.Module):
     def q_sample(self, x0: torch.Tensor, t: torch.Tensor):
         return self.ddpm.q_sample(x0, t)
 
-    def get_loss_dict(self, prmat):
+    def get_loss_dict(self, batch, step):
         """
         z_y is the stuff the diffusion model needs to learn
         """
-        return {"loss": self.ddpm.loss(prmat)}
+        prmat2c, pnotree, chord, prmat = batch
+        return {"loss": self.ddpm.loss(prmat2c)}
