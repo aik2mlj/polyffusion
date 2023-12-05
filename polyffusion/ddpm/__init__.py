@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -12,6 +12,7 @@ class DenoiseDiffusion(nn.Module):
     """
     ## Denoise Diffusion
     """
+
     def __init__(self, eps_model: nn.Module, n_steps: int, device: torch.device):
         """
         * `eps_model` is $\textcolor{lightgreen}{\epsilon_\theta}(x_t, t)$ model
@@ -25,7 +26,7 @@ class DenoiseDiffusion(nn.Module):
         self.beta = torch.linspace(0.0001, 0.02, n_steps).to(device)
 
         # $\alpha_t = 1 - \beta_t$
-        self.alpha = 1. - self.beta
+        self.alpha = 1.0 - self.beta
         # $\bar\alpha_t = \prod_{s=1}^t \alpha_s$
         self.alpha_bar = torch.cumprod(self.alpha, dim=0)
         # $T$
@@ -33,14 +34,15 @@ class DenoiseDiffusion(nn.Module):
         # $\sigma^2 = \beta$
         self.sigma2 = self.beta
 
-    def q_xt_x0(self, x0: torch.Tensor,
-                t: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def q_xt_x0(
+        self, x0: torch.Tensor, t: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         #### Get $q(x_t|x_0)$ distribution
         """
 
         # [gather](utils.html) $\alpha_t$ and compute $\sqrt{\bar\alpha_t} x_0$
-        mean = gather(self.alpha_bar, t)**0.5 * x0
+        mean = gather(self.alpha_bar, t) ** 0.5 * x0
         # $(1-\bar\alpha_t) \mathbf{I}$
         var = 1 - gather(self.alpha_bar, t)
         #
@@ -74,7 +76,7 @@ class DenoiseDiffusion(nn.Module):
         # $\alpha_t$
         alpha = gather(self.alpha, t)
         # $\frac{\beta}{\sqrt{1-\bar\alpha_t}}$
-        eps_coef = (1 - alpha) / (1 - alpha_bar)**.5
+        eps_coef = (1 - alpha) / (1 - alpha_bar) ** 0.5
         # $$\frac{1}{\sqrt{\alpha_t}} \Big(x_t -
         #      \frac{\beta_t}{\sqrt{1-\bar\alpha_t}}\textcolor{lightgreen}{\epsilon_\theta}(x_t, t) \Big)$$
         mean = 1 / (alpha**0.5) * (xt - eps_coef * eps_theta)
@@ -84,7 +86,7 @@ class DenoiseDiffusion(nn.Module):
         # $\epsilon \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$
         eps = torch.randn(xt.shape, device=xt.device)
         # Sample
-        return mean + (var**.5) * eps
+        return mean + (var**0.5) * eps
 
     def loss(self, x0: torch.Tensor, noise: Optional[torch.Tensor] = None):
         """
@@ -94,7 +96,7 @@ class DenoiseDiffusion(nn.Module):
         batch_size = x0.shape[0]
         # Get random $t$ for each sample in the batch
         t = torch.randint(
-            0, self.n_steps, (batch_size, ), device=x0.device, dtype=torch.long
+            0, self.n_steps, (batch_size,), device=x0.device, dtype=torch.long
         )
 
         # $\epsilon \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$

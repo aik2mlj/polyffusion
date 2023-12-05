@@ -1,18 +1,19 @@
-from abc import ABC,abstractmethod
-import pickle
 import os
+import pickle
+from abc import ABC, abstractmethod
 
-class LoadingPlaceholder():
-    def __init__(self,proxy,entry):
-        self.proxy=proxy
-        self.entry=entry
+
+class LoadingPlaceholder:
+    def __init__(self, proxy, entry):
+        self.proxy = proxy
+        self.entry = entry
         pass
 
     def fire(self):
         self.proxy.get(self.entry)
 
-class FeatureIO(ABC):
 
+class FeatureIO(ABC):
     @abstractmethod
     def read(self, filename, entry):
         pass
@@ -20,7 +21,7 @@ class FeatureIO(ABC):
     def safe_read(self, filename, entry):
         entry.prop.start_record_reading()
         try:
-            result=self.read(filename,entry)
+            result = self.read(filename, entry)
         except Exception:
             entry.prop.end_record_reading()
             raise
@@ -28,13 +29,13 @@ class FeatureIO(ABC):
         return result
 
     def try_mkdir(self, filename):
-        folder=os.path.dirname(filename)
-        if(not os.path.isdir(folder)):
+        folder = os.path.dirname(filename)
+        if not os.path.isdir(folder):
             os.makedirs(folder)
 
     def create(self, data, filename, entry):
         self.try_mkdir(filename)
-        self.write(data,filename,entry)
+        self.write(data, filename, entry)
 
     @abstractmethod
     def write(self, data, filename, entry):
@@ -58,39 +59,43 @@ class FeatureIO(ABC):
         return "txt"
 
     def file_to_evaluation_format(self, filename, entry):
-        raise Exception('Not supported by the io class')
+        raise Exception("Not supported by the io class")
 
     def data_to_evaluation_format(self, data, entry):
-        raise Exception('Not supported by the io class')
+        raise Exception("Not supported by the io class")
 
 
 def pickle_read(self, filename):
-    f = open(filename, 'rb')
+    f = open(filename, "rb")
     obj = pickle.load(f)
     f.close()
     return obj
 
+
 def pickle_write(self, data, filename):
-    f = open(filename, 'wb')
+    f = open(filename, "wb")
     pickle.dump(data, f)
     f.close()
 
 
 def create_svl_3d_data(labels, data):
-    assert (len(labels) == data.shape[1])
-    results_part1 = ['<bin number="%d" name="%s"/>' % (i, str(labels[i])) for i in range(len(labels))]
-    results_part2 = ['<row n="%d">%s</row>' % (i, ' '.join([
-        str(s) for s in data[i]
-    ])) for i in range(data.shape[0])]
-    return '\n'.join(results_part1) + '\n' + '\n'.join(results_part2)
+    assert len(labels) == data.shape[1]
+    results_part1 = [
+        '<bin number="%d" name="%s"/>' % (i, str(labels[i])) for i in range(len(labels))
+    ]
+    results_part2 = [
+        '<row n="%d">%s</row>' % (i, " ".join([str(s) for s in data[i]]))
+        for i in range(data.shape[0])
+    ]
+    return "\n".join(results_part1) + "\n" + "\n".join(results_part2)
 
 
-def framed_2d_feature_visualizer(entry,features, filename):
-    f = open(filename, 'w')
+def framed_2d_feature_visualizer(entry, features, filename):
+    f = open(filename, "w")
     for i in range(0, features.shape[0]):
         time = entry.prop.hop_length * i / entry.prop.sr
         f.write(str(time))
         for j in range(0, features.shape[1]):
-            f.write('\t' + str(features[i][j]))
-        f.write('\n')
+            f.write("\t" + str(features[i][j]))
+        f.write("\n")
     f.close()

@@ -15,11 +15,9 @@ params = AttrDict(
     learning_rate=5e-5,
     max_grad_norm=10,
     fp16=True,
-
     # Data params
     num_workers=4,
     pin_memory=True,
-
     # unet
     in_channels=2,
     out_channels=2,
@@ -30,26 +28,22 @@ params = AttrDict(
     n_heads=4,
     tf_layers=1,
     d_cond=d_cond,
-
     # ldm
     linear_start=0.00085,
     linear_end=0.0120,
     n_steps=1000,
     latent_scaling_factor=0.18215,
-
     # img
     img_h=128,
     img_w=128,
-
     # conditional
     cond_type="chord",
     cond_mode="mix",  # {mix, cond, uncond}
-
     # whether to use chord encoder from polydis
     use_enc=use_enc,
     chd_n_step=32,
     chd_input_dim=36,
     chd_z_input_dim=512,
     chd_hidden_dim=512,
-    chd_z_dim=chd_z_dim
+    chd_z_dim=chd_z_dim,
 )

@@ -1,6 +1,6 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
-    name='polyffusion',
+    name="polyffusion",
     packages=find_packages(),
 )

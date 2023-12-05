@@ -12,15 +12,16 @@ import os
 import random
 from pathlib import Path
 
-import PIL
 import numpy as np
+import PIL
 import torch
-from PIL import Image
-
 from labml import monit
 from labml.logger import inspect
+from PIL import Image
+
 from .latent_diffusion import LatentDiffusion
-from .model.autoencoder import Encoder, Decoder, Autoencoder
+from .model.autoencoder import Autoencoder, Decoder, Encoder
+
 # from model.clip_embedder import CLIPTextEmbedder
 from .model.unet import UNetModel
 
@@ -41,13 +42,13 @@ def load_model(path: Path = None) -> LatentDiffusion:
     """
 
     # Initialize the autoencoder
-    with monit.section('Initialize autoencoder'):
+    with monit.section("Initialize autoencoder"):
         encoder = Encoder(
             z_channels=4,
             in_channels=3,
             channels=128,
             channel_multipliers=[1, 2, 4, 4],
-            n_resnet_blocks=2
+            n_resnet_blocks=2,
         )
 
         decoder = Decoder(
@@ -55,7 +56,7 @@ def load_model(path: Path = None) -> LatentDiffusion:
             z_channels=4,
             channels=128,
             channel_multipliers=[1, 2, 4, 4],
-            n_resnet_blocks=2
+            n_resnet_blocks=2,
         )
 
         autoencoder = Autoencoder(
@@ -63,7 +64,7 @@ def load_model(path: Path = None) -> LatentDiffusion:
         )
 
     # Initialize the U-Net
-    with monit.section('Initialize U-Net'):
+    with monit.section("Initialize U-Net"):
         unet_model = UNetModel(
             in_channels=4,
             out_channels=4,
@@ -73,18 +74,18 @@ def load_model(path: Path = None) -> LatentDiffusion:
             channel_multipliers=[1, 2, 4, 4],
             n_heads=8,
             tf_layers=1,
-            d_cond=768
+            d_cond=768,
         )
 
     # Initialize the Latent Diffusion model
-    with monit.section('Initialize Latent Diffusion model'):
+    with monit.section("Initialize Latent Diffusion model"):
         model = LatentDiffusion(
             linear_start=0.00085,
             linear_end=0.0120,
             n_steps=1000,
             latent_scaling_factor=0.18215,
             autoencoder=autoencoder,
-            unet_model=unet_model
+            unet_model=unet_model,
         )
 
     # Load the checkpoint
@@ -92,17 +93,17 @@ def load_model(path: Path = None) -> LatentDiffusion:
         checkpoint = torch.load(path, map_location="cpu")
 
     # Set model state
-    with monit.section('Load state'):
+    with monit.section("Load state"):
         missing_keys, extra_keys = model.load_state_dict(
             checkpoint["state_dict"], strict=False
         )
 
     # Debugging output
     inspect(
-        global_step=checkpoint.get('global_step', -1),
+        global_step=checkpoint.get("global_step", -1),
         missing_keys=missing_keys,
         extra_keys=extra_keys,
-        _expand=True
+        _expand=True,
     )
 
     #
@@ -127,7 +128,7 @@ def load_img(path: str):
     h = h - h % 32
     image = image.resize((w, h), resample=PIL.Image.LANCZOS)
     # Convert to numpy and map to `[-1, 1]` for `[0, 255]`
-    image = np.array(image).astype(np.float32) * (2. / 255.0) - 1
+    image = np.array(image).astype(np.float32) * (2.0 / 255.0) - 1
     # Transpose to shape `[batch_size, channels, height, width]`
     image = image[None].transpose(0, 3, 1, 2)
     # Convert to torch
@@ -135,7 +136,7 @@ def load_img(path: str):
 
 
 def save_images(
-    images: torch.Tensor, dest_path: str, prefix: str = '', img_format: str = 'jpeg'
+    images: torch.Tensor, dest_path: str, prefix: str = "", img_format: str = "jpeg"
 ):
     """
     ### Save a images
@@ -156,7 +157,7 @@ def save_images(
 
     # Save images
     for i, img in enumerate(images):
-        img = Image.fromarray((255. * img).astype(np.uint8))
+        img = Image.fromarray((255.0 * img).astype(np.uint8))
         img.save(
             os.path.join(dest_path, f"{prefix}{i:05}.{img_format}"), format=img_format
         )

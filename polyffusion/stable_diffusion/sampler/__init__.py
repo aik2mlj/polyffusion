@@ -15,7 +15,7 @@ We have implemented the following [sampling algorithms](sampler/index.html):
 * [Denoising Diffusion Implicit Models (DDIM) Sampling](ddim.html)
 """
 
-from typing import Optional, List
+from typing import List, Optional
 
 import torch
 
@@ -26,6 +26,7 @@ class DiffusionSampler:
     """
     ## Base class for sampling algorithms
     """
+
     model: LatentDiffusion
 
     def __init__(self, model: LatentDiffusion):
@@ -39,8 +40,13 @@ class DiffusionSampler:
         self.n_steps = model.n_steps
 
     def get_eps(
-        self, x: torch.Tensor, t: torch.Tensor, c: torch.Tensor, *, uncond_scale: float,
-        uncond_cond: Optional[torch.Tensor]
+        self,
+        x: torch.Tensor,
+        t: torch.Tensor,
+        c: torch.Tensor,
+        *,
+        uncond_scale: float,
+        uncond_cond: Optional[torch.Tensor],
     ):
         """
         ## Get $\epsilon(x_t, c)$
@@ -54,9 +60,9 @@ class DiffusionSampler:
         """
         # When the scale $s = 1$
         # $$\epsilon_\theta(x_t, c) = \epsilon_\text{cond}(x_t, c)$$
-        if uncond_cond is None or uncond_scale == 1.:
+        if uncond_cond is None or uncond_scale == 1.0:
             return self.model(x, t, c)
-        elif uncond_scale == 0.:  # unconditional
+        elif uncond_scale == 0.0:  # unconditional
             return self.model(x, t, uncond_cond)
 
         # Duplicate $x_t$ and $t$
@@ -78,9 +84,9 @@ class DiffusionSampler:
         shape: List[int],
         cond: torch.Tensor,
         repeat_noise: bool = False,
-        temperature: float = 1.,
+        temperature: float = 1.0,
         x_last: Optional[torch.Tensor] = None,
-        uncond_scale: float = 1.,
+        uncond_scale: float = 1.0,
         uncond_cond: Optional[torch.Tensor] = None,
         skip_steps: int = 0,
     ):
@@ -108,7 +114,7 @@ class DiffusionSampler:
         orig: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
         orig_noise: Optional[torch.Tensor] = None,
-        uncond_scale: float = 1.,
+        uncond_scale: float = 1.0,
         uncond_cond: Optional[torch.Tensor] = None,
     ):
         """

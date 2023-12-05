@@ -1,9 +1,9 @@
+import numpy as np
 import torch
 from torch import nn
-from torch.distributions import Normal
-import numpy as np
-from .ptvae import RnnEncoder, RnnDecoder, PtvaeDecoder, TextureEncoder
 from torch.distributions import Normal, kl_divergence
+
+from .ptvae import PtvaeDecoder, RnnDecoder, RnnEncoder, TextureEncoder
 
 
 def get_zs_from_dists(dists, sample=False):
@@ -38,12 +38,12 @@ class DisentangleVAE(nn.Module):
 
     def confuse_prmat(self, pr_mat):
         non_zero_ent = torch.nonzero(pr_mat.long())
-        eps = torch.randint(0, 2, (non_zero_ent.size(0), ))
+        eps = torch.randint(0, 2, (non_zero_ent.size(0),))
         eps = ((2 * eps) - 1).long()
         confuse_ent = torch.clamp(non_zero_ent[:, 2] + eps, min=0, max=127)
-        pr_mat[non_zero_ent[:, 0], non_zero_ent[:, 1],
-               confuse_ent] = pr_mat[non_zero_ent[:, 0], non_zero_ent[:, 1],
-                                     non_zero_ent[:, 2]]
+        pr_mat[non_zero_ent[:, 0], non_zero_ent[:, 1], confuse_ent] = pr_mat[
+            non_zero_ent[:, 0], non_zero_ent[:, 1], non_zero_ent[:, 2]
+        ]
         return pr_mat
 
     def get_chroma(self, pr_mat):
@@ -119,9 +119,9 @@ class DisentangleVAE(nn.Module):
 
     def chord_loss(self, c, recon_root, recon_chroma, recon_bass):
         loss_fun = nn.CrossEntropyLoss()
-        root = c[:, :, 0 : 12].max(-1)[-1].view(-1).contiguous()
-        chroma = c[:, :, 12 : 24].long().view(-1).contiguous()
-        bass = c[:, :, 24 :].max(-1)[-1].view(-1).contiguous()
+        root = c[:, :, 0:12].max(-1)[-1].view(-1).contiguous()
+        chroma = c[:, :, 12:24].long().view(-1).contiguous()
+        bass = c[:, :, 24:].max(-1)[-1].view(-1).contiguous()
 
         recon_root = recon_root.view(-1, 12).contiguous()
         recon_chroma = recon_chroma.view(-1, 2).contiguous()
@@ -243,23 +243,17 @@ class DisentangleVAE(nn.Module):
         return self.inference_decode(z_chd, z_rhy)
 
     def gt_sample(self, x):
-        out = x[:, :, 1 :].numpy()
+        out = x[:, :, 1:].numpy()
         return out
 
     def interp(
-        self,
-        pr_mat1,
-        c1,
-        pr_mat2,
-        c2,
-        interp_chd=False,
-        interp_rhy=False,
-        int_count=10
+        self, pr_mat1, c1, pr_mat2, c2, interp_chd=False, interp_rhy=False, int_count=10
     ):
         dist_chd1, dist_rhy1 = self.inference_encode(pr_mat1, c1)
         dist_chd2, dist_rhy2 = self.inference_encode(pr_mat2, c2)
-        [z_chd1, z_rhy1, z_chd2, z_rhy2
-        ] = get_zs_from_dists([dist_chd1, dist_rhy1, dist_chd2, dist_rhy2], False)
+        [z_chd1, z_rhy1, z_chd2, z_rhy2] = get_zs_from_dists(
+            [dist_chd1, dist_rhy1, dist_chd2, dist_rhy2], False
+        )
         if interp_chd:
             z_chds = self.interp_z(z_chd1, z_chd2, int_count)
         else:
@@ -291,8 +285,8 @@ class DisentangleVAE(nn.Module):
             omega = np.arccos(np.dot(p0 / np.linalg.norm(p0), p1 / np.linalg.norm(p1)))
             so = np.sin(omega)
             return (
-                np.sin((1.0 - t) * omega)[:, None] / so * p0[None] +
-                np.sin(t * omega)[:, None] / so * p1[None]
+                np.sin((1.0 - t) * omega)[:, None] / so * p0[None]
+                + np.sin(t * omega)[:, None] / so * p1[None]
             )
 
         percentages = np.linspace(0.0, 1.0, interpolation_count)
@@ -303,8 +297,9 @@ class DisentangleVAE(nn.Module):
         length = np.linspace(
             np.log(np.linalg.norm(z1)), np.log(np.linalg.norm(z2)), interpolation_count
         )
-        out = (dirs * np.exp(length[:, None]
-                            )).reshape([interpolation_count] + list(result_shape))
+        out = (dirs * np.exp(length[:, None])).reshape(
+            [interpolation_count] + list(result_shape)
+        )
         # out = np.array([(1 - t) * z1 + t * z2 for t in percentages])
         return torch.from_numpy(out).to(self.device).float()
 

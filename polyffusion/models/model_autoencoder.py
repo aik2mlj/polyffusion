@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
-import sys
-
-from utils import *
-from stable_diffusion.model.autoencoder import Autoencoder
 import torch.nn.functional as F
+
+from stable_diffusion.model.autoencoder import Autoencoder
+from utils import *
 
 
 class Polyffusion_Autoencoder(nn.Module):

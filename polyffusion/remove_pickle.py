@@ -1,6 +1,6 @@
 import pickle
-import os
 import sys
+
 from dirs import *
 
 if __name__ == "__main__":

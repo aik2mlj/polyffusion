@@ -1,11 +1,11 @@
+import random
+
 import torch
 import torch.nn as nn
-import sys
-
-from utils import *
-from stable_diffusion.latent_diffusion import LatentDiffusion
 import torch.nn.functional as F
-import random
+
+from stable_diffusion.latent_diffusion import LatentDiffusion
+from utils import *
 
 
 class Polyffusion_SDF(nn.Module):
@@ -20,7 +20,7 @@ class Polyffusion_SDF(nn.Module):
         pnotree_dec=None,
         txt_enc=None,
         concat_blurry=False,
-        concat_ratio=1 / 8
+        concat_ratio=1 / 8,
     ):
         """
         cond_type: {chord, texture}
@@ -69,11 +69,17 @@ class Polyffusion_SDF(nn.Module):
         chord_dec=None,
         pnotree_enc=None,
         pnotree_dec=None,
-        txt_enc=None
+        txt_enc=None,
     ):
         model = cls(
-            ldm, cond_type, cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec,
-            txt_enc
+            ldm,
+            cond_type,
+            cond_mode,
+            chord_enc,
+            chord_dec,
+            pnotree_enc,
+            pnotree_dec,
+            txt_enc,
         )
         trained_leaner = torch.load(chkpt_fpath)
         model.load_state_dict(trained_leaner["model"])
@@ -120,7 +126,7 @@ class Polyffusion_SDF(nn.Module):
             # chord = torch.cat(chord_list, dim=1)
             # print(f"chord {chord.shape}")
             recon_root, recon_chroma, recon_bass = self.chord_dec(
-                z, inference=True, tfr=0.
+                z, inference=True, tfr=0.0
             )
             recon_root = F.one_hot(recon_root.max(-1)[-1], num_classes=12)
             recon_chroma = recon_chroma.max(-1)[-1]
@@ -167,7 +173,7 @@ class Polyffusion_SDF(nn.Module):
         for z_seg in z.split(z_dim, -1):
             z_seg = z_seg.squeeze()
             # print(f"z_seg {z_seg.shape}")
-            recon_pitch, recon_dur = self.pnotree_dec(z_seg, True, None, None, 0., 0.)
+            recon_pitch, recon_dur = self.pnotree_dec(z_seg, True, None, None, 0.0, 0.0)
 
             est_pitch = recon_pitch.max(-1)[1].unsqueeze(-1)  # (B, 32, 20, 1)
             est_dur = recon_dur.max(-1)[1]  # (B, 32, 11, 5)

@@ -1,18 +1,15 @@
-from mir import DataEntry
-from mir import io
+import os
+from os.path import join
+
+import numpy as np
+from chord_class import ChordClass
 from extractors.midi_utilities import (
-    get_valid_channel_count,
-    is_percussive_channel,
     MidiBeatExtractor,
 )
 from extractors.rule_based_channel_reweight import midi_to_thickness_and_bass_weights
-from midi_chord import ChordRecognition
-from chord_class import ChordClass
-import numpy as np
 from io_new.chordlab_io import ChordLabIO
-from io_new.downbeat_io import DownbeatIO
-import os
-from os.path import join
+from midi_chord import ChordRecognition
+from mir import DataEntry, io
 from tqdm import tqdm
 
 
@@ -36,7 +33,7 @@ def process_chord(entry, extra_division):
     midi = entry.midi
     beats = midi.get_beats()
     if extra_division > 1:
-        beat_interp = np.linspace(beats[:-1], beats[1 :], extra_division + 1).T
+        beat_interp = np.linspace(beats[:-1], beats[1:], extra_division + 1).T
         last_beat = beat_interp[-1, -1]
         beats = np.append(beat_interp[:, :-1].reshape((-1)), last_beat)
     downbeats = midi.get_downbeats()
@@ -81,8 +78,7 @@ def extract_in_folder():
         os.system(f"mkdir -p {join(dpath_output, piece)}")
         for ver in os.listdir(join(dpath, piece)):
             transcribe_cb1000_midi(
-                join(dpath, piece, ver),
-                join(dpath_output, piece, ver[:-4]) + ".out"
+                join(dpath, piece, ver), join(dpath_output, piece, ver[:-4]) + ".out"
             )
 
 

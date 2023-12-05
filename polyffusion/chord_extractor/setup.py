@@ -1,6 +1,6 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
-    name='chord_extractor',
+    name="chord_extractor",
     packages=find_packages(),
 )

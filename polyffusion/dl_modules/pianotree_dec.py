@@ -1,9 +1,10 @@
-from torch import nn
-import torch
 import random
-from torch.nn.utils.rnn import pack_padded_sequence
-import pretty_midi
+
 import numpy as np
+import pretty_midi
+import torch
+from torch import nn
+from torch.nn.utils.rnn import pack_padded_sequence
 
 
 class PianoTreeDecoder(nn.Module):
@@ -107,15 +108,16 @@ class PianoTreeDecoder(nn.Module):
     def get_len_index_tensor(self, ind_x):
         """Calculate the lengths ((B, 32), torch.LongTensor) of pgrid."""
         with torch.no_grad():
-            lengths = self.max_simu_note - (ind_x[:, :, :, 0] - self.pitch_pad
-                                            == 0).sum(dim=-1)
+            lengths = self.max_simu_note - (
+                ind_x[:, :, :, 0] - self.pitch_pad == 0
+            ).sum(dim=-1)
         return lengths
 
     def index_tensor_to_multihot_tensor(self, ind_x):
         """Transfer piano_grid to multi-hot piano_grid."""
         # ind_x: (B, 32, max_simu_note, 1 + dur_width)
         with torch.no_grad():
-            dur_part = ind_x[:, :, :, 1 :].float()
+            dur_part = ind_x[:, :, :, 1:].float()
             out = torch.zeros(
                 [
                     ind_x.size(0) * self.num_step * self.max_simu_note,
@@ -341,17 +343,17 @@ class PianoTreeDecoder(nn.Module):
     ):
         pitch_loss_func = nn.CrossEntropyLoss(ignore_index=self.pitch_pad)
         recon_pitch = recon_pitch.view(-1, recon_pitch.size(-1))
-        gt_pitch = x[:, :, 1 :, 0].contiguous().view(-1)
+        gt_pitch = x[:, :, 1:, 0].contiguous().view(-1)
         pitch_loss = pitch_loss_func(recon_pitch, gt_pitch)
 
         dur_loss_func = nn.CrossEntropyLoss(ignore_index=self.dur_pad)
         if not weighted_dur:
             recon_dur = recon_dur.view(-1, 2)
-            gt_dur = x[:, :, 1 :, 1 :].contiguous().view(-1)
+            gt_dur = x[:, :, 1:, 1:].contiguous().view(-1)
             dur_loss = dur_loss_func(recon_dur, gt_dur)
         else:
             recon_dur = recon_dur.view(-1, self.dur_width, 2)
-            gt_dur = x[:, :, 1 :, 1 :].contiguous().view(-1, self.dur_width)
+            gt_dur = x[:, :, 1:, 1:].contiguous().view(-1, self.dur_width)
             dur0 = dur_loss_func(recon_dur[:, 0, :], gt_dur[:, 0])
             dur1 = dur_loss_func(recon_dur[:, 1, :], gt_dur[:, 1])
             dur2 = dur_loss_func(recon_dur[:, 2, :], gt_dur[:, 2])
@@ -393,7 +395,7 @@ class PianoTreeDecoder(nn.Module):
 
     def grid_to_pr_and_notes(self, grid, bpm=60.0, start=0.0):
         if grid.shape[1] == self.max_simu_note:
-            grid = grid[:, 1 :]
+            grid = grid[:, 1:]
         pr = np.zeros((32, 128), dtype=int)
         alpha = 0.25 * 60 / bpm
         notes = []
@@ -403,7 +405,7 @@ class PianoTreeDecoder(nn.Module):
                 if note[0] == self.pitch_eos:
                     break
                 pitch = note[0] + self.min_pitch
-                dur = int("".join([str(_) for _ in note[1 :]]), 2) + 1
+                dur = int("".join([str(_) for _ in note[1:]]), 2) + 1
                 pr[t, pitch] = min(dur, 32 - t)
                 notes.append(
                     pretty_midi.Note(

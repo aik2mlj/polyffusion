@@ -11,11 +11,9 @@ params = AttrDict(
     learning_rate=5e-5,
     max_grad_norm=10,
     fp16=True,
-
     # Data params
     num_workers=4,
     pin_memory=True,
-
     # unet
     in_channels=2,
     out_channels=2,
@@ -26,25 +24,21 @@ params = AttrDict(
     n_heads=4,
     tf_layers=1,
     d_cond=d_cond,
-
     # ldm
     linear_start=0.00085,
     linear_end=0.0120,
     n_steps=1000,
     latent_scaling_factor=0.18215,
-
     # img
     img_h=128,
     img_w=128,
-
     # conditional
     cond_type="txt",
     cond_mode="mix",  # {mix, cond, uncond}
-
     # txt_enc
     use_enc=True,
     txt_emb_size=256,
     txt_hidden_dim=1024,
     txt_z_dim=256,
-    txt_num_channel=10
+    txt_num_channel=10,
 )

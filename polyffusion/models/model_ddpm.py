@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-from utils import *
+
 from ddpm import DenoiseDiffusion
-import torch.nn.functional as F
+from utils import *
 
 
 class Polyffusion_DDPM(nn.Module):

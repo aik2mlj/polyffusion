@@ -1,12 +1,10 @@
-import muspy
-import sys
-import pretty_midi as pm
-import os
-import numpy as np
-import mir_eval
 import csv
-from tqdm import tqdm
-from os.path import join
+import sys
+
+import mir_eval
+import muspy
+import numpy as np
+import pretty_midi as pm
 
 from chord_extractor import extract_chords_from_midi_file
 
@@ -58,7 +56,7 @@ def dedup_note_matrix(notes):
     notes_dedup = []
     for i, note in enumerate(notes):
         if i != 0:
-            if note[: 2] != last[: 2]:
+            if note[:2] != last[:2]:
                 # if start and pitch are not the same
                 notes_dedup.append(note)
         else:
@@ -102,7 +100,7 @@ def get_chord_matrix(fpath):
         end = float(line[1]) / ONE_BEAT
         chord = line[2]
 
-        while (beat_cnt < int(round(end))):
+        while beat_cnt < int(round(end)):
             beat_cnt += 1
             # see https://craffel.github.io/mir_eval/#mir_eval.chord.encode
             chd_enc = mir_eval.chord.encode(chord)
@@ -131,7 +129,7 @@ def retrieve_midi_from_chd(chords, output_fpath):
     piano = pm.Instrument(program=piano_program)
     for beat, chord in enumerate(chords):
         root = chord[0]
-        chroma = chord[1 : 13]
+        chroma = chord[1:13]
         bass = chord[13]
 
         chroma = np.roll(chroma, -bass)
@@ -142,7 +140,7 @@ def retrieve_midi_from_chd(chords, output_fpath):
                     velocity=80,
                     pitch=c3 + i + bass,
                     start=beat * ONE_BEAT,
-                    end=(beat + 1) * ONE_BEAT
+                    end=(beat + 1) * ONE_BEAT,
                 )
                 piano.notes.append(note)
 

@@ -19,9 +19,8 @@ class LPIPSWithDiscriminator(nn.Module):
         perceptual_weight=1.0,
         use_actnorm=False,
         disc_conditional=False,
-        disc_loss="hinge"
+        disc_loss="hinge",
     ):
-
         super().__init__()
         assert disc_loss in ["hinge", "vanilla"]
         self.kl_weight = kl_weight
@@ -32,9 +31,7 @@ class LPIPSWithDiscriminator(nn.Module):
         self.logvar = nn.Parameter(torch.ones(size=()) * logvar_init)
 
         self.discriminator = NLayerDiscriminator(
-            input_nc=disc_in_channels,
-            n_layers=disc_num_layers,
-            use_actnorm=use_actnorm
+            input_nc=disc_in_channels, n_layers=disc_num_layers, use_actnorm=use_actnorm
         ).apply(weights_init)
         self.discriminator_iter_start = disc_start
         self.disc_loss = hinge_d_loss if disc_loss == "hinge" else vanilla_d_loss
@@ -69,7 +66,7 @@ class LPIPSWithDiscriminator(nn.Module):
         last_layer=None,
         cond=None,
         split="train",
-        weights=None
+        weights=None,
     ):
         rec_loss = torch.abs(inputs.contiguous() - reconstructions.contiguous())
         if self.perceptual_weight > 0:
@@ -114,7 +111,11 @@ class LPIPSWithDiscriminator(nn.Module):
             disc_factor = adopt_weight(
                 self.disc_factor, global_step, threshold=self.discriminator_iter_start
             )
-            loss = weighted_nll_loss + self.kl_weight * kl_loss + d_weight * disc_factor * g_loss
+            loss = (
+                weighted_nll_loss
+                + self.kl_weight * kl_loss
+                + d_weight * disc_factor * g_loss
+            )
 
             log = {
                 "{}/total_loss".format(split): loss.clone().detach().mean(),
@@ -149,6 +150,6 @@ class LPIPSWithDiscriminator(nn.Module):
             log = {
                 "{}/disc_loss".format(split): d_loss.clone().detach().mean(),
                 "{}/logits_real".format(split): logits_real.detach().mean(),
-                "{}/logits_fake".format(split): logits_fake.detach().mean()
+                "{}/logits_fake".format(split): logits_fake.detach().mean(),
             }
             return d_loss, log

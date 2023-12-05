@@ -1,5 +1,6 @@
-from mir.io.feature_io_base import *
 import pretty_midi
+from mir.io.feature_io_base import *
+
 
 class MidiIO(FeatureIO):
     def read(self, filename, entry):

@@ -1,15 +1,16 @@
-from abc import ABC, abstractmethod
-from mir.common import SONIC_VISUALIZER_PATH, WORKING_PATH
-import subprocess
-import os
+import datetime
 import gc
+import os
+import random
+import subprocess
+import time
+from abc import ABC, abstractmethod
+
+import mir.cache
 import mir.io
 from joblib import Parallel, delayed
-import random
+from mir.common import SONIC_VISUALIZER_PATH, WORKING_PATH
 from pydub.utils import mediainfo
-import time
-import datetime
-import mir.cache
 
 
 class ProxyBase(ABC):
@@ -250,7 +251,7 @@ class DataEntry:
         output_name,
         cache_enabled=True,
         io_override=None,
-        **kwargs
+        **kwargs,
     ):
         extractor_proxy = ExtractorProxy(
             extractor_class, cache_enabled, io_override, **kwargs
@@ -394,7 +395,7 @@ class DataPool:
         self.name = name
         self.antidict = []
         self.default_prop = {}
-        for (k, v) in default_properties:
+        for k, v in default_properties:
             self.default_prop[k] = v
 
     def __getitem__(self, key):
@@ -511,7 +512,7 @@ class DataPool:
                     delta = 10
                 else:
                     print("They are:")
-                for (k, v) in self.dict.items():
+                for k, v in self.dict.items():
                     if k not in mark:
                         print(k)
                         delta -= 1
@@ -524,7 +525,7 @@ class DataPool:
         output_name,
         cache_enabled=True,
         io_override=None,
-        **kwargs
+        **kwargs,
     ):
         for entry in self.entries:
             entry.append_extractor(
@@ -532,7 +533,7 @@ class DataPool:
                 output_name,
                 cache_enabled=cache_enabled,
                 io_override=io_override,
-                **kwargs
+                **kwargs,
             )
 
     def activate_proxy(self, item, thread_number=1, timing=True, free=False):

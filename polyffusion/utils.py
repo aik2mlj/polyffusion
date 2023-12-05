@@ -1,21 +1,17 @@
-from dirs import *
-import numpy as np
 import pickle
-import os
-import pretty_midi as pm
-import muspy
-import torch
-from dl_modules import *
 from collections import OrderedDict
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import pretty_midi as pm
+import torch
+import torchvision.transforms as T
 from torch.distributions import Normal, kl_divergence
 from torch.nn.functional import interpolate
-import matplotlib.pyplot as plt
-import csv
-import mir_eval
-from PIL import Image
-import torchvision.transforms as T
-from torch.nn.modules.upsampling import Upsample
-import cv2
+
+from dirs import *
+from dl_modules import *
 
 
 def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
@@ -25,10 +21,14 @@ def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
     enc_checkpoint = OrderedDict()
     dec_checkpoint = OrderedDict()
     enc_param_list = [
-        "note_embedding", "enc_notes_gru", "enc_time_gru", "linear_mu", "linear_std"
+        "note_embedding",
+        "enc_notes_gru",
+        "enc_time_gru",
+        "linear_mu",
+        "linear_std",
     ]
     for k, v in checkpoint.items():
-        part = k.split('.')[0]
+        part = k.split(".")[0]
         # print(part)
         # name = '.'.join(k.split('.')[1 :])
         # print(part, name)
@@ -54,11 +54,12 @@ def load_pretrained_chd_enc_dec(
     if "model" in checkpoint:
         checkpoint = checkpoint["model"]
     from collections import OrderedDict
+
     enc_chkpt = OrderedDict()
     dec_chkpt = OrderedDict()
     for k, v in checkpoint.items():
-        part = k.split('.')[0]
-        name = '.'.join(k.split('.')[1 :])
+        part = k.split(".")[0]
+        name = ".".join(k.split(".")[1:])
         if part == "chord_enc":
             enc_chkpt[name] = v
         elif part == "chord_dec":
@@ -74,10 +75,11 @@ def load_pretrained_txt_enc(fpath, emb_size, hidden_dim, z_dim, num_channel):
     if "model" in checkpoint:
         checkpoint = checkpoint["model"]
     from collections import OrderedDict
+
     enc_chkpt = OrderedDict()
     for k, v in checkpoint.items():
-        part = k.split('.')[0]
-        name = '.'.join(k.split('.')[1 :])
+        part = k.split(".")[0]
+        name = ".".join(k.split(".")[1:])
         if part == "rhy_encoder":
             enc_chkpt[name] = v
     txt_enc.load_state_dict(enc_chkpt)
@@ -158,8 +160,9 @@ def nmat_to_pianotree_repr(
         # e.g., d = 4 -> bin_str = '00011'
         d = min(d, 32)
         bin_str = np.binary_repr(int(d) - 1, width=5)
-        pnotree[o, cur_idx[o],
-                1 :] = np.fromstring(" ".join(list(bin_str)), dtype=np.int64, sep=" ")
+        pnotree[o, cur_idx[o], 1:] = np.fromstring(
+            " ".join(list(bin_str)), dtype=np.int64, sep=" "
+        )
 
         # FIXME: when more than `max_note_count` notes are played in one step
         if cur_idx[o] < max_note_count - 1:
@@ -186,7 +189,7 @@ def pr_mat_pitch_shift(pr_mat, shift):
 def chd_pitch_shift(chd, shift):
     chd = chd.copy()
     chd[:, 0] = (chd[:, 0] + shift) % 12
-    chd[:, 1 : 13] = np.roll(chd[:, 1 : 13], shift, axis=-1)
+    chd[:, 1:13] = np.roll(chd[:, 1:13], shift, axis=-1)
     chd[:, -1] = (chd[:, -1] + shift) % 12
     return chd
 
@@ -195,7 +198,7 @@ def chd_to_onehot(chd):
     n_step = chd.shape[0]
     onehot_chd = np.zeros((n_step, 36), dtype=np.float32)
     onehot_chd[np.arange(n_step), chd[:, 0]] = 1
-    onehot_chd[:, 12 : 24] = chd[:, 1 : 13]
+    onehot_chd[:, 12:24] = chd[:, 1:13]
     onehot_chd[np.arange(n_step), 24 + chd[:, -1]] = 1
     return onehot_chd
 
@@ -203,9 +206,9 @@ def chd_to_onehot(chd):
 def onehot_to_chd(onehot):
     n_step = onehot.shape[0]
     chd = np.zeros((n_step, 14), dtype=np.float32)
-    chd[:, 0] = np.argmax(onehot[:, 0 : 12], axis=1)
-    chd[:, 1 : 13] = onehot[:, 12 : 24]
-    chd[:, 13] = np.argmax(onehot[:, 24 : 36], axis=1)
+    chd[:, 0] = np.argmax(onehot[:, 0:12], axis=1)
+    chd[:, 1:13] = onehot[:, 12:24]
+    chd[:, 13] = np.argmax(onehot[:, 24:36], axis=1)
     return chd
 
 
@@ -223,17 +226,17 @@ def nmat_to_prmat2c(nmat, n_step=32, use_track=None):
         for track_idx in use_track:
             for o, p, d in nmat[track_idx]:
                 if o < n_step:
-                    pr_mat[0, o, p] = 1.
+                    pr_mat[0, o, p] = 1.0
                     for dd in range(1, d):
                         if o + dd < n_step:
-                            pr_mat[1, o + dd, p] = 1.
+                            pr_mat[1, o + dd, p] = 1.0
     else:
         for o, p, d in nmat:
             if o < n_step:
-                pr_mat[0, o, p] = 1.
+                pr_mat[0, o, p] = 1.0
                 for dd in range(1, d):
                     if o + dd < n_step:
-                        pr_mat[1, o + dd, p] = 1.
+                        pr_mat[1, o + dd, p] = 1.0
     return pr_mat
 
 
@@ -263,8 +266,9 @@ def prmat2c_to_prmat(prmat2c, n_step=32):
                         if not (int(round(sustain[step_ind + dur, key])) > 0):
                             break
                         dur += 1
-                    prmat[bar_ind * ratio + step_ind // n_step, step_ind % n_step,
-                          key] = dur
+                    prmat[
+                        bar_ind * ratio + step_ind // n_step, step_ind % n_step, key
+                    ] = dur
     return prmat
 
 
@@ -331,8 +335,12 @@ def estx_to_midi_file(est_x, fpath, labels=None):
 
                 # print(f"({two_bar_ind}, {step_ind}, somekey, 0): {kth_key[0]}")
                 dur = (
-                    kth_key[5] + (kth_key[4] << 1) + (kth_key[3] << 2) +
-                    (kth_key[2] << 3) + (kth_key[1] << 4) + 1
+                    kth_key[5]
+                    + (kth_key[4] << 1)
+                    + (kth_key[3] << 2)
+                    + (kth_key[2] << 3)
+                    + (kth_key[1] << 4)
+                    + 1
                 )
                 note = pm.Note(
                     velocity=80,
@@ -373,7 +381,7 @@ def prmat_to_midi_file(prmat, fpath, labels=None):
                         velocity=80,
                         pitch=key,
                         start=t + step_ind * 1 / 8,
-                        end=min(t + (step_ind + int(dur)) * 1 / 8, t + t_bar)
+                        end=min(t + (step_ind + int(dur)) * 1 / 8, t + t_bar),
                     )
                     piano.notes.append(note)
         t += t_bar
@@ -407,9 +415,10 @@ def check_prmat2c_integrity(prmat2c, is_custom_round=False):
             for key, sus in enumerate(step):
                 sus = int(round_func(sus))
                 if sus > 0 and (
-                    step_ind == 0 or (
-                        int(round_func(onset[step_ind - 1, key])) == 0 and
-                        int(round_func(sustain[step_ind - 1, key])) == 0
+                    step_ind == 0
+                    or (
+                        int(round_func(onset[step_ind - 1, key])) == 0
+                        and int(round_func(sustain[step_ind - 1, key])) == 0
                     )
                 ):
                     # no onset, only sustain
@@ -457,10 +466,10 @@ def prmat2c_to_midi_file(
                         velocity=80,
                         pitch=key,
                         start=t + step_ind * 1 / 8,
-                        end=min(t + (step_ind + dur) * 1 / 8, t + t_bar)
+                        end=min(t + (step_ind + dur) * 1 / 8, t + t_bar),
                     )
                     if inp_mask is not None:
-                        if inp_mask[bar_ind, 0, step_ind, key] == 0.:
+                        if inp_mask[bar_ind, 0, step_ind, key] == 0.0:
                             inpainted.notes.append(note)
                         else:
                             origin.notes.append(note)
@@ -488,17 +497,17 @@ def chd_to_midi_file(chords, output_fpath, one_beat=0.5):
     midi = pm.PrettyMIDI()
     piano_program = pm.instrument_name_to_program("Acoustic Grand Piano")
     piano = pm.Instrument(program=piano_program)
-    t = 0.
+    t = 0.0
     for seg in chords:
         for beat, chord in enumerate(seg):
             if chord.shape[0] == 14:
                 root = int(chord[0])
-                chroma = chord[1 : 13].astype(int)
+                chroma = chord[1:13].astype(int)
                 bass = int(chord[13])
             elif chord.shape[0] == 36:
-                root = int(chord[0 : 12].argmax())
-                chroma = chord[12 : 24].astype(int)
-                bass = int(chord[24 :].argmax())
+                root = int(chord[0:12].argmax())
+                chroma = chord[12:24].astype(int)
+                bass = int(chord[24:].argmax())
 
             chroma = np.roll(chroma, -bass)
             c3 = 48
@@ -508,7 +517,7 @@ def chd_to_midi_file(chords, output_fpath, one_beat=0.5):
                         velocity=80,
                         pitch=c3 + i + bass,
                         start=t * one_beat,
-                        end=(t + 1) * one_beat
+                        end=(t + 1) * one_beat,
                     )
                     piano.notes.append(note)
             t += 1
@@ -562,7 +571,6 @@ def get_blurry_image(img: torch.Tensor, ratio=1 / 8):
 
 
 def get_blurry_image_2(img):
-
     # import required libraries
 
     # read the input image

@@ -1,16 +1,14 @@
 from tqdm import tqdm
+
+from data.dataloader import get_val_dataloader
 from inference_sdf import *
-from data.dataloader import get_val_dataloader, get_train_val_dataloaders
-from utils import nested_map, check_prmat2c_integrity
+from utils import check_prmat2c_integrity, nested_map
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def prompt_generation(
-    expr: Experiments,
-    num,
-    output_dir,
-    check_integrity=True
+    expr: Experiments, num, output_dir, check_integrity=True
 ):  # start from the 3-rd bar
     val_dl = get_val_dataloader(16)
     gen = []
@@ -21,7 +19,7 @@ def prompt_generation(
             batch, lambda x: x.to(device) if isinstance(x, torch.Tensor) else x
         )
         prmat2c, pnotree, chord, prmat = batch
-        x0 = expr.predict(prmat2c, None, 0., False)
+        x0 = expr.predict(prmat2c, None, 0.0, False)
         gen.append(x0)
         # orig = prmat2c
         # bar_list = [2, 3, 4, 5, 6, 7]
@@ -43,7 +41,7 @@ def acc_arrangement(expr: Experiments, num, output_dir):
         )
         prmat2c, pnotree, chord, prmat = batch
         x0 = expr.inpaint(
-            prmat2c, "below", prmat2c, None, uncond_scale=0., no_output=True
+            prmat2c, "below", prmat2c, None, uncond_scale=0.0, no_output=True
         )
         gen.append(x0)
     gen = torch.cat(gen)
@@ -65,16 +63,16 @@ def inpaint_bars(expr: Experiments, num, output_dir):
             "bars",
             prmat2c,
             None,
-            uncond_scale=0.,
+            uncond_scale=0.0,
             bar_list=[2, 3, 4, 5],
-            no_output=True
+            no_output=True,
         )
-        gen.append(x0[:, :, 32 : 96, :])  # NOTE: only output the inpainted notes
+        gen.append(x0[:, :, 32:96, :])  # NOTE: only output the inpainted notes
     gen = torch.cat(gen)
     prmat2c_to_midi_file(gen, f"{output_dir}/inp_bars.mid")
 
 
-def chd_conditioning(expr: Experiments, model, num, output_dir, uncond_scale=1.):
+def chd_conditioning(expr: Experiments, model, num, output_dir, uncond_scale=1.0):
     val_dl = get_val_dataloader(16)
     gen = []
     chd = []
@@ -98,7 +96,7 @@ def chd_conditioning(expr: Experiments, model, num, output_dir, uncond_scale=1.)
 
 
 def txt_conditioning(
-    expr: Experiments, model, num, output_dir, uncond_scale=1., use_track=[0, 1, 2]
+    expr: Experiments, model, num, output_dir, uncond_scale=1.0, use_track=[0, 1, 2]
 ):
     val_dl = get_val_dataloader(16, use_track=use_track)
     gen = []
@@ -124,7 +122,7 @@ def txt_conditioning(
 
 if __name__ == "__main__":
     parser.add_argument(
-        "--model_dir", help='directory in which trained model checkpoints are stored'
+        "--model_dir", help="directory in which trained model checkpoints are stored"
     )
     parser.add_argument("--type", help="{uncond, inp_below, inp_bars, chd}")
     parser.add_argument("--batch_num", default=10, help="how many batches to store")
@@ -132,18 +130,18 @@ if __name__ == "__main__":
     parser.add_argument("--seed")
     parser.add_argument(
         "--uncond_scale",
-        default=1.,
-        help="unconditional scale for classifier-free guidance"
+        default=1.0,
+        help="unconditional scale for classifier-free guidance",
     )
     parser.add_argument(
         "--chkpt_name",
         default="weights_best.pt",
-        help="which specific checkpoint to use (default: weights_best.pt)"
+        help="which specific checkpoint to use (default: weights_best.pt)",
     )
     parser.add_argument(
         "--show_image",
         action="store_true",
-        help="whether to show the images of generated piano-roll"
+        help="whether to show the images of generated piano-roll",
     )
     parser.add_argument("--use_track", help="use which tracks for pop909")
     args = parser.parse_args()
@@ -173,7 +171,7 @@ if __name__ == "__main__":
         channel_multipliers=params.channel_multipliers,
         n_heads=params.n_heads,
         tf_layers=params.tf_layers,
-        d_cond=params.d_cond
+        d_cond=params.d_cond,
     )
 
     ldm_model = LatentDiffusion(
@@ -182,7 +180,7 @@ if __name__ == "__main__":
         n_steps=params.n_steps,
         latent_scaling_factor=params.latent_scaling_factor,
         autoencoder=autoencoder,
-        unet_model=unet_model
+        unet_model=unet_model,
     )
 
     pnotree_enc, pnotree_dec = None, None
@@ -195,21 +193,35 @@ if __name__ == "__main__":
     elif params.cond_type == "chord":
         if params.use_enc:
             chord_enc, chord_dec = load_pretrained_chd_enc_dec(
-                PT_CHD_8BAR_PATH, params.chd_input_dim, params.chd_z_input_dim,
-                params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
+                PT_CHD_8BAR_PATH,
+                params.chd_input_dim,
+                params.chd_z_input_dim,
+                params.chd_hidden_dim,
+                params.chd_z_dim,
+                params.chd_n_step,
             )
     elif params.cond_type == "txt":
         if params.use_enc:
             txt_enc = load_pretrained_txt_enc(
-                PT_POLYDIS_PATH, params.txt_emb_size, params.txt_hidden_dim,
-                params.txt_z_dim, params.txt_num_channel
+                PT_POLYDIS_PATH,
+                params.txt_emb_size,
+                params.txt_hidden_dim,
+                params.txt_z_dim,
+                params.txt_num_channel,
             )
     else:
         raise NotImplementedError
 
     model = Polyffusion_SDF.load_trained(
-        ldm_model, f"{args.model_dir}/chkpts/{args.chkpt_name}", params.cond_type,
-        params.cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec, txt_enc
+        ldm_model,
+        f"{args.model_dir}/chkpts/{args.chkpt_name}",
+        params.cond_type,
+        params.cond_mode,
+        chord_enc,
+        chord_dec,
+        pnotree_enc,
+        pnotree_dec,
+        txt_enc,
     ).to(device)
     sampler = SDFSampler(
         model.ldm,
@@ -240,7 +252,7 @@ if __name__ == "__main__":
             num,
             args.output_dir,
             uncond_scale=float(args.uncond_scale),
-            use_track=use_track
+            use_track=use_track,
         )
     else:
         raise NotImplementedError

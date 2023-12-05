@@ -1,7 +1,7 @@
-from torch import nn
 import torch
-from torch.nn.utils.rnn import pack_padded_sequence
+from torch import nn
 from torch.distributions import Normal
+from torch.nn.utils.rnn import pack_padded_sequence
 
 
 class PianoTreeEncoder(nn.Module):
@@ -67,15 +67,16 @@ class PianoTreeEncoder(nn.Module):
     def get_len_index_tensor(self, ind_x):
         """Calculate the lengths ((B, 32), torch.LongTensor) of pgrid."""
         with torch.no_grad():
-            lengths = self.max_simu_note - (ind_x[:, :, :, 0] - self.pitch_pad
-                                            == 0).sum(dim=-1)
+            lengths = self.max_simu_note - (
+                ind_x[:, :, :, 0] - self.pitch_pad == 0
+            ).sum(dim=-1)
         return lengths.to("cpu")
 
     def index_tensor_to_multihot_tensor(self, ind_x):
         """Transfer piano_grid to multi-hot piano_grid."""
         # ind_x: (B, 32, max_simu_note, 1 + dur_width)
         with torch.no_grad():
-            dur_part = ind_x[:, :, :, 1 :].float()
+            dur_part = ind_x[:, :, :, 1:].float()
             out = torch.zeros(
                 [
                     ind_x.size(0) * self.num_step * self.max_simu_note,

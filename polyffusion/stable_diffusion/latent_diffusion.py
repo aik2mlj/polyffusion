@@ -21,13 +21,14 @@ For a simpler diffusion implementation refer to our [DDPM implementation](../ddp
 We use same notations for $\alpha_t$, $\beta_t$ schedules, etc.
 """
 
-from typing import List, Tuple, Optional
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from .model.autoencoder import Autoencoder
+
 # from model.clip_embedder import CLIPTextEmbedder
 from .model.unet import UNetModel
 
@@ -47,6 +48,7 @@ class LatentDiffusion(nn.Module):
     * [AutoEncoder](model/autoencoder.html)
     * [U-Net](model/unet.html) with [attention](model/unet_attention.html)
     """
+
     eps_model: UNetModel
     first_stage_model: Optional[Autoencoder] = None
 
@@ -85,11 +87,14 @@ class LatentDiffusion(nn.Module):
         self.n_steps = n_steps
 
         # $\beta$ schedule
-        beta = torch.linspace(
-            linear_start**0.5, linear_end**0.5, n_steps, dtype=torch.float64
-        )**2
+        beta = (
+            torch.linspace(
+                linear_start**0.5, linear_end**0.5, n_steps, dtype=torch.float64
+            )
+            ** 2
+        )
         # $\alpha_t = 1 - \beta_t$
-        alpha = 1. - beta
+        alpha = 1.0 - beta
         # $\bar\alpha_t = \prod_{s=1}^t \alpha_s$
         alpha_bar = torch.cumprod(alpha, dim=0)
         self.alpha = nn.Parameter(alpha.to(torch.float32), requires_grad=False)
@@ -112,8 +117,10 @@ class LatentDiffusion(nn.Module):
         We sample from that and multiply by the scaling factor.
         """
         if self.first_stage_model is not None:
-            return self.latent_scaling_factor * self.first_stage_model.encode(image
-                                                                             ).sample()
+            return (
+                self.latent_scaling_factor
+                * self.first_stage_model.encode(image).sample()
+            )
         else:
             return image
 
@@ -139,14 +146,15 @@ class LatentDiffusion(nn.Module):
         """
         return self.eps_model(x, t, context)
 
-    def q_xt_x0(self, x0: torch.Tensor,
-                t: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def q_xt_x0(
+        self, x0: torch.Tensor, t: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         #### Get $q(x_t|x_0)$ distribution
         """
 
         # [gather](utils.html) $\alpha_t$ and compute $\sqrt{\bar\alpha_t} x_0$
-        mean = gather(self.alpha_bar, t)**0.5 * x0
+        mean = gather(self.alpha_bar, t) ** 0.5 * x0
         # $(1-\bar\alpha_t) \mathbf{I}$
         var = 1 - gather(self.alpha_bar, t)
         #
@@ -180,7 +188,7 @@ class LatentDiffusion(nn.Module):
         # $\alpha_t$
         alpha = gather(self.alpha, t)
         # $\frac{\beta}{\sqrt{1-\bar\alpha_t}}$
-        eps_coef = (1 - alpha) / (1 - alpha_bar)**.5
+        eps_coef = (1 - alpha) / (1 - alpha_bar) ** 0.5
         # $$\frac{1}{\sqrt{\alpha_t}} \Big(x_t -
         #      \frac{\beta_t}{\sqrt{1-\bar\alpha_t}}\textcolor{lightgreen}{\epsilon_\theta}(x_t, t) \Big)$$
         mean = 1 / (alpha**0.5) * (xt - eps_coef * eps_theta)
@@ -190,7 +198,7 @@ class LatentDiffusion(nn.Module):
         # $\epsilon \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$
         eps = torch.randn(xt.shape, device=xt.device)
         # Sample
-        return mean + (var**.5) * eps
+        return mean + (var**0.5) * eps
 
     def loss(
         self,
@@ -206,7 +214,7 @@ class LatentDiffusion(nn.Module):
         batch_size = x0.shape[0]
         # Get random $t$ for each sample in the batch
         t = torch.randint(
-            0, self.n_steps, (batch_size, ), device=x0.device, dtype=torch.long
+            0, self.n_steps, (batch_size,), device=x0.device, dtype=torch.long
         )
         if self.first_stage_model is not None:
             x0 = self.autoencoder_encode(x0)

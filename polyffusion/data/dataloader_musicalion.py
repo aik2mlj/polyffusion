@@ -1,13 +1,14 @@
-import sys
-import os
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
-import numpy as np
 
 from data.dataset_musicalion import PianoOrchDataset_Musicalion
 from utils import (
-    pr_mat_pitch_shift, prmat2c_to_midi_file, pianotree_pitch_shift, estx_to_midi_file,
-    prmat_to_midi_file
+    estx_to_midi_file,
+    pianotree_pitch_shift,
+    pr_mat_pitch_shift,
+    prmat2c_to_midi_file,
+    prmat_to_midi_file,
 )
 
 
@@ -58,7 +59,7 @@ def get_train_val_dataloaders(batch_size, num_workers=0, pin_memory=False, debug
         True,
         collate_fn=lambda x: collate_fn(x, shift=True),
         num_workers=num_workers,
-        pin_memory=pin_memory
+        pin_memory=pin_memory,
     )
     val_dl = DataLoader(
         val_dataset,
@@ -66,7 +67,7 @@ def get_train_val_dataloaders(batch_size, num_workers=0, pin_memory=False, debug
         True,
         collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
-        pin_memory=pin_memory
+        pin_memory=pin_memory,
     )
     print(
         f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}"
@@ -86,7 +87,7 @@ if __name__ == "__main__":
         prmat2c = prmat2c.cpu().numpy()
         pnotree = pnotree.cpu().numpy()
         prmat = prmat.cpu().numpy()
-        prmat2c_to_midi_file(prmat2c, f"exp/m_dl_prmat2c.mid")
-        estx_to_midi_file(pnotree, f"exp/m_dl_pnotree.mid")
-        prmat_to_midi_file(prmat, f"exp/m_dl_prmat.mid")
+        prmat2c_to_midi_file(prmat2c, "exp/m_dl_prmat2c.mid")
+        estx_to_midi_file(pnotree, "exp/m_dl_pnotree.mid")
+        prmat_to_midi_file(prmat, "exp/m_dl_prmat.mid")
         exit(0)

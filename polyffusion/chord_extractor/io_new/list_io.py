@@ -1,7 +1,7 @@
 from mir.io.feature_io_base import *
 
-class ListIO(FeatureIO):
 
+class ListIO(FeatureIO):
     def read(self, filename, entry):
         return pickle_read(self, filename)
 

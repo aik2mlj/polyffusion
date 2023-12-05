@@ -22,12 +22,11 @@ This implementation contains a bunch of modifications to original U-Net (residua
 """
 
 import math
-from typing import Optional, Tuple, Union, List
+from typing import List, Optional, Tuple, Union
 
 import torch
-from torch import nn
-
 from labml_helpers.module import Module
+from torch import nn
 
 
 class Swish(Module):
@@ -36,6 +35,7 @@ class Swish(Module):
 
     $$x \cdot \sigma(x)$$
     """
+
     def forward(self, x):
         return x * torch.sigmoid(x)
 
@@ -44,6 +44,7 @@ class TimeEmbedding(nn.Module):
     """
     ### Embeddings for $t$
     """
+
     def __init__(self, n_channels: int):
         """
         * `n_channels` is the number of dimensions in the embedding
@@ -88,12 +89,13 @@ class ResidualBlock(Module):
     A residual block has two convolution layers with group normalization.
     Each resolution is processed with two residual blocks.
     """
+
     def __init__(
         self,
         in_channels: int,
         out_channels: int,
         time_channels: int,
-        n_groups: int = 32
+        n_groups: int = 32,
     ):
         """
         * `in_channels` is the number of input channels
@@ -148,6 +150,7 @@ class AttentionBlock(Module):
 
     This is similar to [transformer multi-head attention](../../transformers/mha.html).
     """
+
     def __init__(
         self, n_channels: int, n_heads: int = 1, d_k: int = None, n_groups: int = 32
     ):
@@ -191,11 +194,11 @@ class AttentionBlock(Module):
         # Split query, key, and values. Each of them will have shape `[batch_size, seq, n_heads, d_k]`
         q, k, v = torch.chunk(qkv, 3, dim=-1)
         # Calculate scaled dot-product $\frac{Q K^\top}{\sqrt{d_k}}$
-        attn = torch.einsum('bihd,bjhd->bijh', q, k) * self.scale
+        attn = torch.einsum("bihd,bjhd->bijh", q, k) * self.scale
         # Softmax along the sequence dimension $\underset{seq}{softmax}\Bigg(\frac{Q K^\top}{\sqrt{d_k}}\Bigg)$
         attn = attn.softmax(dim=2)
         # Multiply by values
-        res = torch.einsum('bijh,bjhd->bihd', attn, v)
+        res = torch.einsum("bijh,bjhd->bihd", attn, v)
         # Reshape to `[batch_size, seq, n_heads * d_k]`
         res = res.view(batch_size, -1, self.n_heads * self.d_k)
         # Transform to `[batch_size, seq, n_channels]`
@@ -217,6 +220,7 @@ class DownBlock(Module):
 
     This combines `ResidualBlock` and `AttentionBlock`. These are used in the first half of U-Net at each resolution.
     """
+
     def __init__(
         self, in_channels: int, out_channels: int, time_channels: int, has_attn: bool
     ):
@@ -239,6 +243,7 @@ class UpBlock(Module):
 
     This combines `ResidualBlock` and `AttentionBlock`. These are used in the second half of U-Net at each resolution.
     """
+
     def __init__(
         self, in_channels: int, out_channels: int, time_channels: int, has_attn: bool
     ):
@@ -266,6 +271,7 @@ class MiddleBlock(Module):
     It combines a `ResidualBlock`, `AttentionBlock`, followed by another `ResidualBlock`.
     This block is applied at the lowest resolution of the U-Net.
     """
+
     def __init__(self, n_channels: int, time_channels: int):
         super().__init__()
         self.res1 = ResidualBlock(n_channels, n_channels, time_channels)
@@ -283,6 +289,7 @@ class Upsample(nn.Module):
     """
     ### Scale up the feature map by $2 \times$
     """
+
     def __init__(self, n_channels):
         super().__init__()
         self.conv = nn.ConvTranspose2d(n_channels, n_channels, (4, 4), (2, 2), (1, 1))
@@ -298,6 +305,7 @@ class Downsample(nn.Module):
     """
     ### Scale down the feature map by $\frac{1}{2} \times$
     """
+
     def __init__(self, n_channels):
         super().__init__()
         self.conv = nn.Conv2d(n_channels, n_channels, (3, 3), (2, 2), (1, 1))
@@ -313,13 +321,14 @@ class UNet(Module):
     """
     ## U-Net
     """
+
     def __init__(
         self,
         image_channels: int = 3,
         n_channels: int = 64,
         ch_mults: Union[Tuple[int, ...], List[int]] = (1, 2, 2, 4),
         is_attn: Union[Tuple[bool, ...], List[int]] = (False, False, True, True),
-        n_blocks: int = 2
+        n_blocks: int = 2,
     ):
         """
         * `image_channels` is the number of channels in the image. $3$ for RGB.

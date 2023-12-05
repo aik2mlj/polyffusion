@@ -1,17 +1,21 @@
 # pyright: reportOptionalSubscript=false
 
-import sys
 import os
-import torch
-import numpy as np
 
+import numpy as np
+import torch
 from torch.utils.data import Dataset
-from utils import (
-    nmat_to_pianotree_repr, prmat2c_to_midi_file, nmat_to_prmat2c, estx_to_midi_file,
-    nmat_to_prmat, prmat_to_midi_file
-)
-from utils import read_dict
+
 from dirs import *
+from utils import (
+    estx_to_midi_file,
+    nmat_to_pianotree_repr,
+    nmat_to_prmat,
+    nmat_to_prmat2c,
+    prmat2c_to_midi_file,
+    prmat_to_midi_file,
+    read_dict,
+)
 
 SEG_LGTH = 32
 N_BIN = 4
@@ -27,6 +31,7 @@ class DataSampleNpz_Musicalion:
     `__getitem__` is used for retrieving ready-made input segments to the model
     it will be called in DataLoader
     """
+
     def __init__(self, song_fn) -> None:
         self.fpath = os.path.join(MUSICALION_DATA_DIR, song_fn)
         self.song_fn = song_fn
@@ -86,9 +91,9 @@ class DataSampleNpz_Musicalion:
         s_ind = self.start_table[db]
         if db + SEG_LGTH_BIN in self.start_table:
             e_ind = self.start_table[db + SEG_LGTH_BIN]
-            seg_mats = self.notes[s_ind : e_ind]
+            seg_mats = self.notes[s_ind:e_ind]
         else:
-            seg_mats = self.notes[s_ind :]  # NOTE: may be wrong
+            seg_mats = self.notes[s_ind:]  # NOTE: may be wrong
         return seg_mats.copy()
 
     @staticmethod
@@ -240,10 +245,9 @@ class PianoOrchDataset_Musicalion(Dataset):
 
     @classmethod
     def load_with_train_valid_paths(cls, tv_song_paths, **kwargs):
-        return cls.load_with_song_paths(tv_song_paths[0],
-                                        **kwargs), cls.load_with_song_paths(
-                                            tv_song_paths[1], **kwargs
-                                        )
+        return cls.load_with_song_paths(
+            tv_song_paths[0], **kwargs
+        ), cls.load_with_song_paths(tv_song_paths[1], **kwargs)
 
 
 if __name__ == "__main__":

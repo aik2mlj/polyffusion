@@ -13,12 +13,12 @@ This implements DDIM sampling from the paper
 [Denoising Diffusion Implicit Models](https://papers.labml.ai/paper/2010.02502)
 """
 
-from typing import Optional, List
+from typing import List, Optional
 
 import numpy as np
 import torch
-
 from labml import monit
+
 from ..latent_diffusion import LatentDiffusion
 from . import DiffusionSampler
 
@@ -56,7 +56,7 @@ class DDIMSampler(DiffusionSampler):
         model: LatentDiffusion,
         n_steps: int,
         ddim_discretize: str = "uniform",
-        ddim_eta: float = 0.
+        ddim_eta: float = 0.0,
     ):
         """
         :param model: is the model to predict noise $\epsilon_\text{cond}(x_t, c)$
@@ -71,13 +71,13 @@ class DDIMSampler(DiffusionSampler):
         self.n_steps = model.n_steps
 
         # Calculate $\tau$ to be uniformly distributed across $[1,2,\dots,T]$
-        if ddim_discretize == 'uniform':
+        if ddim_discretize == "uniform":
             c = self.n_steps // n_steps
             self.time_steps = np.asarray(list(range(0, self.n_steps, c))) + 1
         # Calculate $\tau$ to be quadratically distributed across $[1,2,\dots,T]$
-        elif ddim_discretize == 'quad':
+        elif ddim_discretize == "quad":
             self.time_steps = (
-                (np.linspace(0, np.sqrt(self.n_steps * .8), n_steps))**2
+                (np.linspace(0, np.sqrt(self.n_steps * 0.8), n_steps)) ** 2
             ).astype(int) + 1
         else:
             raise NotImplementedError(ddim_discretize)
@@ -92,21 +92,24 @@ class DDIMSampler(DiffusionSampler):
             self.ddim_alpha_sqrt = torch.sqrt(self.ddim_alpha)
             # $\alpha_{\tau_{i-1}}$
             self.ddim_alpha_prev = torch.cat(
-                [alpha_bar[0 : 1], alpha_bar[self.time_steps[:-1]]]
+                [alpha_bar[0:1], alpha_bar[self.time_steps[:-1]]]
             )
 
             # $$\sigma_{\tau_i} =
             # \eta \sqrt{\frac{1 - \alpha_{\tau_{i-1}}}{1 - \alpha_{\tau_i}}}
             # \sqrt{1 - \frac{\alpha_{\tau_i}}{\alpha_{\tau_{i-1}}}}$$
             self.ddim_sigma = (
-                ddim_eta * (
-                    (1 - self.ddim_alpha_prev) / (1 - self.ddim_alpha) *
-                    (1 - self.ddim_alpha / self.ddim_alpha_prev)
-                )**.5
+                ddim_eta
+                * (
+                    (1 - self.ddim_alpha_prev)
+                    / (1 - self.ddim_alpha)
+                    * (1 - self.ddim_alpha / self.ddim_alpha_prev)
+                )
+                ** 0.5
             )
 
             # $\sqrt{1 - \alpha_{\tau_i}}$
-            self.ddim_sqrt_one_minus_alpha = (1. - self.ddim_alpha)**.5
+            self.ddim_sqrt_one_minus_alpha = (1.0 - self.ddim_alpha) ** 0.5
 
     @torch.no_grad()
     def sample(
@@ -114,9 +117,9 @@ class DDIMSampler(DiffusionSampler):
         shape: List[int],
         cond: torch.Tensor,
         repeat_noise: bool = False,
-        temperature: float = 1.,
+        temperature: float = 1.0,
         x_last: Optional[torch.Tensor] = None,
-        uncond_scale: float = 1.,
+        uncond_scale: float = 1.0,
         uncond_cond: Optional[torch.Tensor] = None,
         skip_steps: int = 0,
     ):
@@ -143,13 +146,13 @@ class DDIMSampler(DiffusionSampler):
         x = x_last if x_last is not None else torch.randn(shape, device=device)
 
         # Time steps to sample at $\tau_{S - i'}, \tau_{S - i' - 1}, \dots, \tau_1$
-        time_steps = np.flip(self.time_steps)[skip_steps :]
+        time_steps = np.flip(self.time_steps)[skip_steps:]
 
-        for i, step in monit.enum('Sample', time_steps):
+        for i, step in monit.enum("Sample", time_steps):
             # Index $i$ in the list $[\tau_1, \tau_2, \dots, \tau_S]$
             index = len(time_steps) - i - 1
             # Time step $\tau_i$
-            ts = x.new_full((bs, ), step, dtype=torch.long)
+            ts = x.new_full((bs,), step, dtype=torch.long)
 
             # Sample $x_{\tau_{i-1}}$
             x, pred_x0, e_t = self.p_sample(
@@ -161,7 +164,7 @@ class DDIMSampler(DiffusionSampler):
                 repeat_noise=repeat_noise,
                 temperature=temperature,
                 uncond_scale=uncond_scale,
-                uncond_cond=uncond_cond
+                uncond_cond=uncond_cond,
             )
 
         # Return $x_0$
@@ -177,9 +180,9 @@ class DDIMSampler(DiffusionSampler):
         index: int,
         *,
         repeat_noise: bool = False,
-        temperature: float = 1.,
-        uncond_scale: float = 1.,
-        uncond_cond: Optional[torch.Tensor] = None
+        temperature: float = 1.0,
+        uncond_scale: float = 1.0,
+        uncond_cond: Optional[torch.Tensor] = None,
     ):
         """
         ### Sample $x_{\tau_{i-1}}$
@@ -208,8 +211,13 @@ class DDIMSampler(DiffusionSampler):
         return x_prev, pred_x0, e_t
 
     def get_x_prev_and_pred_x0(
-        self, e_t: torch.Tensor, index: int, x: torch.Tensor, *, temperature: float,
-        repeat_noise: bool
+        self,
+        e_t: torch.Tensor,
+        index: int,
+        x: torch.Tensor,
+        *,
+        temperature: float,
+        repeat_noise: bool,
     ):
         """
         ### Sample $x_{\tau_{i-1}}$ given $\epsilon_\theta(x_{\tau_i}}$
@@ -229,14 +237,14 @@ class DDIMSampler(DiffusionSampler):
         pred_x0 = (x - sqrt_one_minus_alpha * e_t) / (alpha**0.5)
         # Direction pointing to $x_t$
         # $$\sqrt{1 - \alpha_{\tau_{i- 1}} - \sigma_{\tau_i}^2} \cdot \epsilon_\theta(x_{\tau_i})$$
-        dir_xt = (1. - alpha_prev - sigma**2).sqrt() * e_t
+        dir_xt = (1.0 - alpha_prev - sigma**2).sqrt() * e_t
 
         # No noise is added, when $\eta = 0$
-        if sigma == 0.:
-            noise = 0.
+        if sigma == 0.0:
+            noise = 0.0
         # If same noise is used for all samples in the batch
         elif repeat_noise:
-            noise = torch.randn((1, *x.shape[1 :]), device=x.device)
+            noise = torch.randn((1, *x.shape[1:]), device=x.device)
             # Different noise for each sample
         else:
             noise = torch.randn(x.shape, device=x.device)
@@ -278,8 +286,10 @@ class DDIMSampler(DiffusionSampler):
         # Sample from
         #  $$q_{\sigma,\tau}(x_t|x_0) =
         #          \mathcal{N} \Big(x_t; \sqrt{\alpha_{\tau_i}} x_0, (1-\alpha_{\tau_i}) \mathbf{I} \Big)$$
-        return self.ddim_alpha_sqrt[index] * x0 + self.ddim_sqrt_one_minus_alpha[
-            index] * noise
+        return (
+            self.ddim_alpha_sqrt[index] * x0
+            + self.ddim_sqrt_one_minus_alpha[index] * noise
+        )
 
     @torch.no_grad()
     def paint(
@@ -291,7 +301,7 @@ class DDIMSampler(DiffusionSampler):
         orig: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
         orig_noise: Optional[torch.Tensor] = None,
-        uncond_scale: float = 1.,
+        uncond_scale: float = 1.0,
         uncond_cond: Optional[torch.Tensor] = None,
     ):
         """
@@ -312,13 +322,13 @@ class DDIMSampler(DiffusionSampler):
         bs = x.shape[0]
 
         # Time steps to sample at $\tau_{S`}, \tau_{S' - 1}, \dots, \tau_1$
-        time_steps = np.flip(self.time_steps[: t_start])
+        time_steps = np.flip(self.time_steps[:t_start])
 
-        for i, step in monit.enum('Paint', time_steps):
+        for i, step in monit.enum("Paint", time_steps):
             # Index $i$ in the list $[\tau_1, \tau_2, \dots, \tau_S]$
             index = len(time_steps) - i - 1
             # Time step $\tau_i$
-            ts = x.new_full((bs, ), step, dtype=torch.long)
+            ts = x.new_full((bs,), step, dtype=torch.long)
 
             # Sample $x_{\tau_{i-1}}$
             x, _, _ = self.p_sample(
@@ -328,7 +338,7 @@ class DDIMSampler(DiffusionSampler):
                 step,
                 index=index,
                 uncond_scale=uncond_scale,
-                uncond_cond=uncond_cond
+                uncond_cond=uncond_cond,
             )
 
             # Replace the masked area with original image

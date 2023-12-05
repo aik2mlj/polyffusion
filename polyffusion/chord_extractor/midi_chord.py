@@ -1,7 +1,7 @@
 import numpy as np
-from mir import io
 from chord_class import ChordClass
 from extractors.midi_utilities import is_percussive_channel
+from mir import io
 
 
 class ChordRecognition:

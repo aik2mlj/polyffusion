@@ -1,11 +1,11 @@
-import numpy as np
-import os
-import torch
 import json
-import torch.nn as nn
-from tqdm import tqdm
-from torch.utils.tensorboard.writer import SummaryWriter
+import os
 from typing import Optional
+
+import torch
+import torch.nn as nn
+from torch.utils.tensorboard.writer import SummaryWriter
+from tqdm import tqdm
 
 from dirs import *
 from utils import nested_map
@@ -26,7 +26,7 @@ class PolyffusionLearner:
         self.param_scheduler = param_scheduler  # teacher-forcing stuff
         self.step = 0
         self.epoch = 0
-        self.grad_norm = 0.
+        self.grad_norm = 0.0
         self.summary_writer = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.autocast = torch.cuda.amp.autocast(enabled=params.fp16)
@@ -66,16 +66,14 @@ class PolyffusionLearner:
         return {
             "step": self.step,
             "epoch": self.epoch,
-            "model":
-                {
-                    k: v.cpu() if isinstance(v, torch.Tensor) else v
-                    for k, v in model_state.items()
-                },
-            "optimizer":
-                {
-                    k: v.cpu() if isinstance(v, torch.Tensor) else v
-                    for k, v in self.optimizer.state_dict().items()
-                },
+            "model": {
+                k: v.cpu() if isinstance(v, torch.Tensor) else v
+                for k, v in model_state.items()
+            },
+            "optimizer": {
+                k: v.cpu() if isinstance(v, torch.Tensor) else v
+                for k, v in self.optimizer.state_dict().items()
+            },
             "scaler": self.scaler.state_dict(),
         }
 
@@ -132,14 +130,16 @@ class PolyffusionLearner:
                 tqdm(self.train_dl, desc=f"Epoch {self.epoch}")
             ):
                 batch = nested_map(
-                    batch, lambda x: x.to(self.device)
-                    if isinstance(x, torch.Tensor) else x
+                    batch,
+                    lambda x: x.to(self.device) if isinstance(x, torch.Tensor) else x,
                 )
                 losses, scheduled_params = self.train_step(batch)
                 # check NaN
                 for loss_value in list(losses.values()):
-                    if isinstance(loss_value,
-                                  torch.Tensor) and torch.isnan(loss_value).any():
+                    if (
+                        isinstance(loss_value, torch.Tensor)
+                        and torch.isnan(loss_value).any()
+                    ):
                         raise RuntimeError(
                             f"Detected NaN loss at step {self.step}, epoch {self.epoch}"
                         )

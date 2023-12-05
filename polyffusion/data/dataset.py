@@ -1,17 +1,23 @@
 # pyright: reportOptionalSubscript=false
 
 import os
-import torch
-import numpy as np
-import sys
 
+import numpy as np
+import torch
 from torch.utils.data import Dataset
-from utils import (
-    nmat_to_pianotree_repr, prmat2c_to_midi_file, nmat_to_prmat2c, chd_to_midi_file,
-    estx_to_midi_file, nmat_to_prmat, prmat_to_midi_file, show_image, chd_to_onehot
-)
-from utils import read_dict
+
 from dirs import *
+from utils import (
+    chd_to_midi_file,
+    chd_to_onehot,
+    estx_to_midi_file,
+    nmat_to_pianotree_repr,
+    nmat_to_prmat,
+    nmat_to_prmat2c,
+    prmat2c_to_midi_file,
+    prmat_to_midi_file,
+    read_dict,
+)
 
 SEG_LGTH = 32
 N_BIN = 4
@@ -27,7 +33,10 @@ class DataSampleNpz:
     `__getitem__` is used for retrieving ready-made input segments to the model
     it will be called in DataLoader
     """
-    def __init__(self, song_fn, use_track=[0, 1, 2], data_dir=POP909_DATA_DIR) -> None:  # NOTE: use melody now!
+
+    def __init__(
+        self, song_fn, use_track=[0, 1, 2], data_dir=POP909_DATA_DIR
+    ) -> None:  # NOTE: use melody now!
         self.fpath = os.path.join(data_dir, song_fn)
         self.song_fn = song_fn
         """
@@ -99,9 +108,9 @@ class DataSampleNpz:
                 s_ind = start_table[db]
                 if db + SEG_LGTH_BIN in start_table:
                     e_ind = start_table[db + SEG_LGTH_BIN]
-                    note_seg = np.array(notes[s_ind : e_ind])
+                    note_seg = np.array(notes[s_ind:e_ind])
                 else:
-                    note_seg = np.array(notes[s_ind :])  # NOTE: may be wrong
+                    note_seg = np.array(notes[s_ind:])  # NOTE: may be wrong
                 seg_mats.extend(note_seg)
         else:
             notes = self.notes
@@ -109,9 +118,9 @@ class DataSampleNpz:
             s_ind = start_table[db]
             if db + SEG_LGTH_BIN in start_table:
                 e_ind = start_table[db + SEG_LGTH_BIN]
-                note_seg = np.array(notes[s_ind : e_ind])
+                note_seg = np.array(notes[s_ind:e_ind])
             else:
-                note_seg = np.array(notes[s_ind :])  # NOTE: may be wrong
+                note_seg = np.array(notes[s_ind:])  # NOTE: may be wrong
             seg_mats.extend(note_seg)
 
         seg_mats = np.array(seg_mats)
@@ -206,9 +215,7 @@ class DataSampleNpz:
         chord = self.chord[db // N_BIN : db // N_BIN + SEG_LGTH]
         if chord.shape[0] < SEG_LGTH:
             chord = np.append(
-                chord,
-                np.zeros([SEG_LGTH - chord.shape[0], 14], dtype=np.int32),
-                axis=0
+                chord, np.zeros([SEG_LGTH - chord.shape[0], 14], dtype=np.int32), axis=0
             )
 
         return seg_prmat2c, seg_pnotree, chord, seg_prmat
@@ -271,18 +278,22 @@ class PianoOrchDataset(Dataset):
             return song_data[song_item]
 
     @classmethod
-    def load_with_song_paths(cls, song_paths, data_dir=POP909_DATA_DIR, debug=False, **kwargs):
-        data_samples = [DataSampleNpz(song_path, data_dir=data_dir, **kwargs) for song_path in song_paths]
+    def load_with_song_paths(
+        cls, song_paths, data_dir=POP909_DATA_DIR, debug=False, **kwargs
+    ):
+        data_samples = [
+            DataSampleNpz(song_path, data_dir=data_dir, **kwargs)
+            for song_path in song_paths
+        ]
         return cls(data_samples, debug)
 
     @classmethod
     def load_train_and_valid_sets(cls, debug=False, **kwargs):
         split = read_dict(os.path.join(TRAIN_SPLIT_DIR, "pop909.pickle"))
         print("load train valid set with:", kwargs)
-        return cls.load_with_song_paths(split[0], debug=debug,
-                                        **kwargs), cls.load_with_song_paths(
-                                            split[1], debug=debug, **kwargs
-                                        )
+        return cls.load_with_song_paths(
+            split[0], debug=debug, **kwargs
+        ), cls.load_with_song_paths(split[1], debug=debug, **kwargs)
 
     @classmethod
     def load_valid_set(cls, debug=False, **kwargs):
@@ -291,10 +302,9 @@ class PianoOrchDataset(Dataset):
 
     @classmethod
     def load_with_train_valid_paths(cls, tv_song_paths, debug=False, **kwargs):
-        return cls.load_with_song_paths(tv_song_paths[0], debug,
-                                        **kwargs), cls.load_with_song_paths(
-                                            tv_song_paths[1], debug, **kwargs
-                                        )
+        return cls.load_with_song_paths(
+            tv_song_paths[0], debug, **kwargs
+        ), cls.load_with_song_paths(tv_song_paths[1], debug, **kwargs)
 
 
 if __name__ == "__main__":

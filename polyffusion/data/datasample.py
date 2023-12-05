@@ -4,18 +4,22 @@ This is for directly get DataSampleNpz from a midi file when inference.
 """
 
 import sys
-import os
-import torch
-import numpy as np
-from data.midi_to_data import get_data_for_single_midi
 
-from torch.utils.data import Dataset
-from utils import (
-    nmat_to_pianotree_repr, prmat2c_to_midi_file, nmat_to_prmat2c, estx_to_midi_file,
-    nmat_to_prmat, prmat_to_midi_file, chd_to_onehot, chd_to_midi_file
-)
-from utils import read_dict
+import numpy as np
+import torch
+
+from data.midi_to_data import get_data_for_single_midi
 from dirs import *
+from utils import (
+    chd_to_midi_file,
+    chd_to_onehot,
+    estx_to_midi_file,
+    nmat_to_pianotree_repr,
+    nmat_to_prmat,
+    nmat_to_prmat2c,
+    prmat2c_to_midi_file,
+    prmat_to_midi_file,
+)
 
 SEG_LGTH = 32
 N_BIN = 4
@@ -28,6 +32,7 @@ class DataSample:
     `__getitem__` is used for retrieving ready-made input segments to the model
     it will be called in DataLoader
     """
+
     def __init__(self, data) -> None:
         """
         notes (onset_beat, onset_bin, duration, pitch, velocity)
@@ -86,9 +91,9 @@ class DataSample:
         s_ind = self.start_table[db]
         if db + SEG_LGTH_BIN in self.start_table:
             e_ind = self.start_table[db + SEG_LGTH_BIN]
-            seg_mats = self.notes[s_ind : e_ind]
+            seg_mats = self.notes[s_ind:e_ind]
         else:
-            seg_mats = self.notes[s_ind :]  # NOTE: may be wrong
+            seg_mats = self.notes[s_ind:]  # NOTE: may be wrong
         return seg_mats.copy()
 
     @staticmethod
@@ -174,9 +179,7 @@ class DataSample:
         chord = self.chord[db // N_BIN : db // N_BIN + SEG_LGTH]
         if chord.shape[0] < SEG_LGTH:
             chord = np.append(
-                chord,
-                np.zeros([SEG_LGTH - chord.shape[0], 14], dtype=np.int32),
-                axis=0
+                chord, np.zeros([SEG_LGTH - chord.shape[0], 14], dtype=np.int32), axis=0
             )
 
         return seg_prmat2c, seg_pnotree, chord, seg_prmat

@@ -13,12 +13,12 @@ For a simpler DDPM implementation refer to our [DDPM implementation](../../ddpm/
 We use same notations for $\alpha_t$, $\beta_t$ schedules, etc.
 """
 
-from typing import Optional, List
+from typing import List, Optional
 
 import numpy as np
 import torch
-
 from labml import monit
+
 from ..latent_diffusion import LatentDiffusion
 from . import DiffusionSampler
 
@@ -63,26 +63,27 @@ class DDPMSampler(DiffusionSampler):
             # $\beta_t$ schedule
             beta = self.model.beta
             #  $\bar\alpha_{t-1}$
-            alpha_bar_prev = torch.cat([alpha_bar.new_tensor([1.]), alpha_bar[:-1]])
+            alpha_bar_prev = torch.cat([alpha_bar.new_tensor([1.0]), alpha_bar[:-1]])
 
             # $\sqrt{\bar\alpha}$
-            self.sqrt_alpha_bar = alpha_bar**.5
+            self.sqrt_alpha_bar = alpha_bar**0.5
             # $\sqrt{1 - \bar\alpha}$
-            self.sqrt_1m_alpha_bar = alpha_bar**.5
+            self.sqrt_1m_alpha_bar = alpha_bar**0.5
             # $\frac{1}{\sqrt{\bar\alpha_t}}$
-            self.sqrt_recip_alpha_bar = alpha_bar**-.5
+            self.sqrt_recip_alpha_bar = alpha_bar**-0.5
             # $\sqrt{\frac{1}{\bar\alpha_t} - 1}$
-            self.sqrt_recip_m1_alpha_bar = (1 / alpha_bar - 1)**.5
+            self.sqrt_recip_m1_alpha_bar = (1 / alpha_bar - 1) ** 0.5
 
             # $\frac{1 - \bar\alpha_{t-1}}{1 - \bar\alpha_t} \beta_t$
-            variance = beta * (1. - alpha_bar_prev) / (1. - alpha_bar)
+            variance = beta * (1.0 - alpha_bar_prev) / (1.0 - alpha_bar)
             # Clamped log of $\tilde\beta_t$
             self.log_var = torch.log(torch.clamp(variance, min=1e-20))
             # $\frac{\sqrt{\bar\alpha_{t-1}}\beta_t}{1 - \bar\alpha_t}$
-            self.mean_x0_coef = beta * (alpha_bar_prev**.5) / (1. - alpha_bar)
+            self.mean_x0_coef = beta * (alpha_bar_prev**0.5) / (1.0 - alpha_bar)
             # $\frac{\sqrt{\alpha_t}(1 - \bar\alpha_{t-1})}{1-\bar\alpha_t}$
-            self.mean_xt_coef = (1. - alpha_bar_prev) * ((1 - beta)**
-                                                         0.5) / (1. - alpha_bar)
+            self.mean_xt_coef = (
+                (1.0 - alpha_bar_prev) * ((1 - beta) ** 0.5) / (1.0 - alpha_bar)
+            )
 
     @torch.no_grad()
     def sample(
@@ -90,9 +91,9 @@ class DDPMSampler(DiffusionSampler):
         shape: List[int],
         cond: torch.Tensor,
         repeat_noise: bool = False,
-        temperature: float = 1.,
+        temperature: float = 1.0,
         x_last: Optional[torch.Tensor] = None,
-        uncond_scale: float = 1.,
+        uncond_scale: float = 1.0,
         uncond_cond: Optional[torch.Tensor] = None,
         skip_steps: int = 0,
     ):
@@ -119,12 +120,12 @@ class DDPMSampler(DiffusionSampler):
         x = x_last if x_last is not None else torch.randn(shape, device=device)
 
         # Time steps to sample at $T - t', T - t' - 1, \dots, 1$
-        time_steps = np.flip(self.time_steps)[skip_steps :]
+        time_steps = np.flip(self.time_steps)[skip_steps:]
 
         # Sampling loop
-        for step in monit.iterate('Sample', time_steps):
+        for step in monit.iterate("Sample", time_steps):
             # Time step $t$
-            ts = x.new_full((bs, ), step, dtype=torch.long)
+            ts = x.new_full((bs,), step, dtype=torch.long)
 
             # Sample $x_{t-1}$
             x, pred_x0, e_t = self.p_sample(
@@ -135,7 +136,7 @@ class DDPMSampler(DiffusionSampler):
                 repeat_noise=repeat_noise,
                 temperature=temperature,
                 uncond_scale=uncond_scale,
-                uncond_cond=uncond_cond
+                uncond_cond=uncond_cond,
             )
 
         # Return $x_0$
@@ -149,9 +150,9 @@ class DDPMSampler(DiffusionSampler):
         t: torch.Tensor,
         step: int,
         repeat_noise: bool = False,
-        temperature: float = 1.,
-        uncond_scale: float = 1.,
-        uncond_cond: Optional[torch.Tensor] = None
+        temperature: float = 1.0,
+        uncond_scale: float = 1.0,
+        uncond_cond: Optional[torch.Tensor] = None,
     ):
         """
         ### Sample $x_{t-1}$ from $p_\theta(x_{t-1} | x_t)$
@@ -206,7 +207,7 @@ class DDPMSampler(DiffusionSampler):
             noise = 0
         # If same noise is used for all samples in the batch
         elif repeat_noise:
-            noise = torch.randn((1, *x.shape[1 :]))
+            noise = torch.randn((1, *x.shape[1:]))
         # Different noise for each sample
         else:
             noise = torch.randn(x.shape)

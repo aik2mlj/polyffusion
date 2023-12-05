@@ -1,13 +1,12 @@
 import torch
-import sys
-import os
+
+from data.dataloader import get_custom_train_val_dataloaders, get_train_val_dataloaders
+from dl_modules import ChordDecoder, ChordEncoder
+from models.model_chd_8bar import Chord_8Bar
+from train.scheduler import ParameterScheduler, TeacherForcingScheduler
 
 # from stable_diffusion.model.autoencoder import Autoencoder, Encoder, Decoder
 from . import *
-from data.dataloader import get_train_val_dataloaders, get_custom_train_val_dataloaders
-from dl_modules import ChordEncoder, ChordDecoder
-from models.model_chd_8bar import Chord_8Bar
-from train.scheduler import TeacherForcingScheduler, ParameterScheduler
 
 
 class Chord8bar_TrainConfig(TrainConfig):
@@ -23,20 +22,20 @@ class Chord8bar_TrainConfig(TrainConfig):
         self.chord_enc = ChordEncoder(
             input_dim=params.chd_input_dim,
             hidden_dim=params.chd_hidden_dim,
-            z_dim=params.chd_z_dim
+            z_dim=params.chd_z_dim,
         )
         self.chord_dec = ChordDecoder(
             input_dim=params.chd_input_dim,
             z_input_dim=params.chd_z_input_dim,
             hidden_dim=params.chd_hidden_dim,
             z_dim=params.chd_z_dim,
-            n_step=params.chd_n_step
+            n_step=params.chd_n_step,
         )
         self.model = Chord_8Bar(
             self.chord_enc,
             self.chord_dec,
         ).to(self.device)
-        
+
         # Create dataloader
         if data_dir == None:
             self.train_dl, self.val_dl = get_train_val_dataloaders(
@@ -44,7 +43,10 @@ class Chord8bar_TrainConfig(TrainConfig):
             )
         else:
             self.train_dl, self.val_dl = get_custom_train_val_dataloaders(
-                params.batch_size, data_dir, num_workers=params.num_workers, pin_memory=params.pin_memory
+                params.batch_size,
+                data_dir,
+                num_workers=params.num_workers,
+                pin_memory=params.pin_memory,
             )
 
         # Create optimizer

@@ -31,6 +31,7 @@ class UNetModel(nn.Module):
     """
     ## U-Net model
     """
+
     def __init__(
         self,
         *,
@@ -42,7 +43,7 @@ class UNetModel(nn.Module):
         channel_multipliers: List[int],
         n_heads: int,
         tf_layers: int = 1,
-        d_cond: int = 768
+        d_cond: int = 768,
     ):
         """
         :param in_channels: is the number of channels in the input feature map
@@ -123,7 +124,7 @@ class UNetModel(nn.Module):
                     ResBlock(
                         channels + input_block_channels.pop(),
                         d_time_emb,
-                        out_channels=channels_list[i]
+                        out_channels=channels_list[i],
                     )
                 ]
                 channels = channels_list[i]
@@ -158,8 +159,9 @@ class UNetModel(nn.Module):
         half = self.channels // 2
         # $\frac{1}{10000^{\frac{2i}{c}}}$
         frequencies = torch.exp(
-            -math.log(max_period) *
-            torch.arange(start=0, end=half, dtype=torch.float32) / half
+            -math.log(max_period)
+            * torch.arange(start=0, end=half, dtype=torch.float32)
+            / half
         ).to(device=time_steps.device)
         # $\frac{t}{10000^{\frac{2i}{c}}}$
         args = time_steps[:, None].float() * frequencies[None]
@@ -201,6 +203,7 @@ class TimestepEmbedSequential(nn.Sequential):
     This sequential module can compose of different modules suck as `ResBlock`,
     `nn.Conv` and `SpatialTransformer` and calls them with the matching signatures
     """
+
     def forward(self, x, t_emb, cond=None):
         for layer in self:
             if isinstance(layer, ResBlock):
@@ -216,6 +219,7 @@ class UpSample(nn.Module):
     """
     ### Up-sampling layer
     """
+
     def __init__(self, channels: int):
         """
         :param channels: is the number of channels
@@ -238,6 +242,7 @@ class DownSample(nn.Module):
     """
     ## Down-sampling layer
     """
+
     def __init__(self, channels: int):
         """
         :param channels: is the number of channels
@@ -258,6 +263,7 @@ class ResBlock(nn.Module):
     """
     ## ResNet Block
     """
+
     def __init__(self, channels: int, d_t_emb: int, *, out_channels=None):
         """
         :param channels: the number of input channels
@@ -283,8 +289,10 @@ class ResBlock(nn.Module):
         )
         # Final convolution layer
         self.out_layers = nn.Sequential(
-            normalization(out_channels), nn.SiLU(), nn.Dropout(0.),
-            nn.Conv2d(out_channels, out_channels, 3, padding=1)
+            normalization(out_channels),
+            nn.SiLU(),
+            nn.Dropout(0.0),
+            nn.Conv2d(out_channels, out_channels, 3, padding=1),
         )
 
         # `channels` to `out_channels` mapping layer for residual connection
@@ -314,6 +322,7 @@ class GroupNorm32(nn.GroupNorm):
     """
     ### Group normalization with float32 casting
     """
+
     def forward(self, x):
         return super().forward(x.float()).type(x.dtype)
 
@@ -343,7 +352,7 @@ def _test_time_embeddings():
         channel_multipliers=[],
         n_heads=1,
         tf_layers=1,
-        d_cond=1
+        d_cond=1,
     )
     te = m.time_step_embedding(torch.arange(0, 1000))
     plt.plot(np.arange(1000), te[:, [50, 100, 190, 260]].numpy())
@@ -353,5 +362,5 @@ def _test_time_embeddings():
 
 
 #
-if __name__ == '__main__':
+if __name__ == "__main__":
     _test_time_embeddings()

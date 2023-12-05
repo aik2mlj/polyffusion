@@ -30,8 +30,9 @@ class Autoencoder(nn.Module):
 
     This consists of the encoder and decoder modules.
     """
+
     def __init__(
-        self, encoder: 'Encoder', decoder: 'Decoder', emb_channels: int, z_channels: int
+        self, encoder: "Encoder", decoder: "Decoder", emb_channels: int, z_channels: int
     ):
         """
         :param encoder: is the encoder
@@ -53,7 +54,7 @@ class Autoencoder(nn.Module):
         # embedding space
         self.post_quant_conv = nn.Conv2d(emb_channels, z_channels, 1)
 
-    def encode(self, img: torch.Tensor) -> 'GaussianDistribution':
+    def encode(self, img: torch.Tensor) -> "GaussianDistribution":
         """
         ### Encode images to latent representation
 
@@ -101,7 +102,7 @@ class Autoencoder(nn.Module):
             0,
             step,
             last_layer=self.get_last_layer(),
-            split="train"
+            split="train",
         )
         return {
             "loss": aeloss,
@@ -112,9 +113,15 @@ class Encoder(nn.Module):
     """
     ## Encoder module
     """
+
     def __init__(
-        self, *, channels: int, channel_multipliers: List[int], n_resnet_blocks: int,
-        in_channels: int, z_channels: int
+        self,
+        *,
+        channels: int,
+        channel_multipliers: List[int],
+        n_resnet_blocks: int,
+        in_channels: int,
+        z_channels: int,
     ):
         """
         :param channels: is the number of channels in the first convolution layer
@@ -201,9 +208,15 @@ class Decoder(nn.Module):
     """
     ## Decoder module
     """
+
     def __init__(
-        self, *, channels: int, channel_multipliers: List[int], n_resnet_blocks: int,
-        out_channels: int, z_channels: int
+        self,
+        *,
+        channels: int,
+        channel_multipliers: List[int],
+        n_resnet_blocks: int,
+        out_channels: int,
+        z_channels: int,
     ):
         """
         :param channels: is the number of channels in the final convolution layer
@@ -293,6 +306,7 @@ class GaussianDistribution:
     """
     ## Gaussian Distribution
     """
+
     def __init__(self, parameters: torch.Tensor):
         """
         :param parameters: are the means and log of variances of the embedding of shape
@@ -314,6 +328,7 @@ class AttnBlock(nn.Module):
     """
     ## Attention block
     """
+
     def __init__(self, channels: int):
         """
         :param channels: is the number of channels
@@ -350,11 +365,11 @@ class AttnBlock(nn.Module):
         v = v.view(b, c, h * w)
 
         # Compute $\underset{seq}{softmax}\Bigg(\frac{Q K^\top}{\sqrt{d_{key}}}\Bigg)$
-        attn = torch.einsum('bci,bcj->bij', q, k) * self.scale
+        attn = torch.einsum("bci,bcj->bij", q, k) * self.scale
         attn = F.softmax(attn, dim=2)
 
         # Compute $\underset{seq}{softmax}\Bigg(\frac{Q K^\top}{\sqrt{d_{key}}}\Bigg)V$
-        out = torch.einsum('bij,bcj->bci', attn, v)
+        out = torch.einsum("bij,bcj->bci", attn, v)
 
         # Reshape back to `[batch_size, channels, height, width]`
         out = out.view(b, c, h, w)
@@ -369,6 +384,7 @@ class UpSample(nn.Module):
     """
     ## Up-sampling layer
     """
+
     def __init__(self, channels: int):
         """
         :param channels: is the number of channels
@@ -391,6 +407,7 @@ class DownSample(nn.Module):
     """
     ## Down-sampling layer
     """
+
     def __init__(self, channels: int):
         """
         :param channels: is the number of channels
@@ -413,6 +430,7 @@ class ResnetBlock(nn.Module):
     """
     ## ResNet Block
     """
+
     def __init__(self, in_channels: int, out_channels: int):
         """
         :param in_channels: is the number of channels in the input

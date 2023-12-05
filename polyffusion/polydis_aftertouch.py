@@ -1,11 +1,7 @@
-from polydis.model import DisentangleVAE
-from polydis.ptvae import RnnEncoder, TextureEncoder, PtvaeEncoder, PtvaeDecoder, RnnDecoder
-from utils import estx_to_midi_file
-from datetime import datetime
-
 import torch
-import pretty_midi as pm
-import sys
+
+from polydis.model import DisentangleVAE
+from utils import estx_to_midi_file
 
 model_path = "pretrained/polydis/model_master_final.pt"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

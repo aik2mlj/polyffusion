@@ -7,15 +7,12 @@ params = AttrDict(
     learning_rate=2e-5,
     max_grad_norm=10,
     fp16=False,
-
     # Data params
     num_workers=4,
     pin_memory=True,
-
     # Model params
     beta=0.1,
     weights=(1, 0.5),
-
     # Number of channels in the image. $3$ for RGB.
     image_channels=2,
     # Image size

@@ -1,7 +1,8 @@
 import os
-import pretty_midi as pm
-import numpy as np
 from os.path import join
+
+import numpy as np
+import pretty_midi as pm
 from tqdm import tqdm
 
 ORIGIN_DIR = "data/POP09-PIANOROLL-4-bin-quantization"
@@ -44,7 +45,7 @@ def dedup_note_matrix(notes):
     notes_dedup = []
     for i, note in enumerate(notes):
         if i != 0:
-            if note[: 2] != last[: 2]:
+            if note[:2] != last[:2]:
                 # if start and pitch are not the same
                 notes_dedup.append(note)
         else:
@@ -87,8 +88,10 @@ def get_downbeat_pos_and_filter(notes, beats):
     # print(db_pos)
     db_pos_filter = []
     for idx, db in enumerate(db_pos):
-        if idx + (SEG_LGTH / BEAT) <= len(db_pos) and db_pos[idx +
-                                                             1] - db == BEAT * BIN:
+        if (
+            idx + (SEG_LGTH / BEAT) <= len(db_pos)
+            and db_pos[idx + 1] - db == BEAT * BIN
+        ):
             db_pos_filter.append(True)
         else:
             db_pos_filter.append(False)

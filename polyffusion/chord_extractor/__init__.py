@@ -1,8 +1,10 @@
-from .main import transcribe_cb1000_midi
+import csv
 import sys
+
 import mir_eval
 import numpy as np
-import csv
+
+from .main import transcribe_cb1000_midi
 
 
 def get_chord_from_chdfile(fpath, one_beat=0.5, rounding=True):

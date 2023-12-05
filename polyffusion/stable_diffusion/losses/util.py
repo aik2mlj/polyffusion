@@ -1,4 +1,6 @@
-import os, hashlib
+import hashlib
+import os
+
 import requests
 from tqdm import tqdm
 
@@ -156,20 +158,24 @@ class ActNorm(nn.Module):
         self.scale = nn.Parameter(torch.ones(1, num_features, 1, 1))
         self.allow_reverse_init = allow_reverse_init
 
-        self.register_buffer('initialized', torch.tensor(0, dtype=torch.uint8))
+        self.register_buffer("initialized", torch.tensor(0, dtype=torch.uint8))
 
     def initialize(self, input):
         with torch.no_grad():
             flatten = input.permute(1, 0, 2, 3).contiguous().view(input.shape[1], -1)
             mean = (
-                flatten.mean(1).unsqueeze(1).unsqueeze(2).unsqueeze(3).permute(
-                    1, 0, 2, 3
-                )
+                flatten.mean(1)
+                .unsqueeze(1)
+                .unsqueeze(2)
+                .unsqueeze(3)
+                .permute(1, 0, 2, 3)
             )
             std = (
-                flatten.std(1).unsqueeze(1).unsqueeze(2).unsqueeze(3).permute(
-                    1, 0, 2, 3
-                )
+                flatten.std(1)
+                .unsqueeze(1)
+                .unsqueeze(2)
+                .unsqueeze(3)
+                .permute(1, 0, 2, 3)
             )
 
             self.loc.data.copy_(-mean)
@@ -237,6 +243,7 @@ class AbstractEncoder(nn.Module):
 
 class Labelator(AbstractEncoder):
     """Net2Net Interface for Class-Conditional Model"""
+
     def __init__(self, n_classes, quantize_interface=True):
         super().__init__()
         self.n_classes = n_classes
@@ -272,9 +279,10 @@ if __name__ == "__main__":
         "keyc": {
             "cc1": 1,
             "cc2": 2,
-        }
+        },
     }
     from omegaconf import OmegaConf
+
     config = OmegaConf.create(config)
     print(config)
     retrieve(config, "keya")

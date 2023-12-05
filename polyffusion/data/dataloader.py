@@ -1,14 +1,19 @@
-import sys
 import os
-import torch
-import random
-from torch.utils.data import DataLoader
+
 import numpy as np
+import torch
+from torch.utils.data import DataLoader
 
 from data.dataset import PianoOrchDataset
 from utils import (
-    pr_mat_pitch_shift, prmat2c_to_midi_file, chd_to_onehot, chd_pitch_shift,
-    chd_to_midi_file, estx_to_midi_file, pianotree_pitch_shift, prmat_to_midi_file
+    chd_pitch_shift,
+    chd_to_midi_file,
+    chd_to_onehot,
+    estx_to_midi_file,
+    pianotree_pitch_shift,
+    pr_mat_pitch_shift,
+    prmat2c_to_midi_file,
+    prmat_to_midi_file,
 )
 
 # SEED = 7890
@@ -60,16 +65,27 @@ def collate_fn(batch, shift):
     else:
         return prmat2c, pnotree, chord, prmat
 
+
 def get_custom_train_val_dataloaders(
-    batch_size, data_dir, num_workers=0, pin_memory=False, debug=False, train_ratio=0.9, **kwargs
+    batch_size,
+    data_dir,
+    num_workers=0,
+    pin_memory=False,
+    debug=False,
+    train_ratio=0.9,
+    **kwargs,
 ):
     all_data = next(os.walk(data_dir))[2]
     train_num = int(len(all_data) * train_ratio)
     train_files = all_data[:train_num]
     val_files = all_data[train_num:]
 
-    train_dataset = PianoOrchDataset.load_with_song_paths(song_paths=train_files, data_dir=data_dir)
-    val_dataset = PianoOrchDataset.load_with_song_paths(song_paths=val_files, data_dir=data_dir)
+    train_dataset = PianoOrchDataset.load_with_song_paths(
+        song_paths=train_files, data_dir=data_dir
+    )
+    val_dataset = PianoOrchDataset.load_with_song_paths(
+        song_paths=val_files, data_dir=data_dir
+    )
 
     train_dl = DataLoader(
         train_dataset,
@@ -77,7 +93,7 @@ def get_custom_train_val_dataloaders(
         True,
         collate_fn=lambda x: collate_fn(x, shift=True),
         num_workers=num_workers,
-        pin_memory=pin_memory
+        pin_memory=pin_memory,
     )
     val_dl = DataLoader(
         val_dataset,
@@ -85,12 +101,13 @@ def get_custom_train_val_dataloaders(
         True,
         collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
-        pin_memory=pin_memory
+        pin_memory=pin_memory,
     )
     print(
-    f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, train_segments={len(train_dataset)}, val_segments={len(val_dataset)} {kwargs}"
+        f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, train_segments={len(train_dataset)}, val_segments={len(val_dataset)} {kwargs}"
     )
     return train_dl, val_dl
+
 
 def get_train_val_dataloaders(
     batch_size, num_workers=0, pin_memory=False, debug=False, **kwargs
@@ -104,7 +121,7 @@ def get_train_val_dataloaders(
         True,
         collate_fn=lambda x: collate_fn(x, shift=True),
         num_workers=num_workers,
-        pin_memory=pin_memory
+        pin_memory=pin_memory,
     )
     val_dl = DataLoader(
         val_dataset,
@@ -112,10 +129,10 @@ def get_train_val_dataloaders(
         True,
         collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
-        pin_memory=pin_memory
+        pin_memory=pin_memory,
     )
     print(
-    f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, train_segments={len(train_dataset)}, val_segments={len(val_dataset)} {kwargs}"
+        f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, train_segments={len(train_dataset)}, val_segments={len(val_dataset)} {kwargs}"
     )
     return train_dl, val_dl
 
@@ -130,7 +147,7 @@ def get_val_dataloader(
         True,
         collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
-        pin_memory=pin_memory
+        pin_memory=pin_memory,
     )
     print(
         f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, {kwargs}"
@@ -153,8 +170,8 @@ if __name__ == "__main__":
         chord = chord.cpu().numpy()
         prmat = prmat.cpu().numpy()
         # chord = [onehot_to_chd(onehot) for onehot in chord]
-        prmat2c_to_midi_file(prmat2c, f"exp/dl_prmat2c.mid")
-        estx_to_midi_file(pnotree, f"exp/dl_pnotree.mid")
+        prmat2c_to_midi_file(prmat2c, "exp/dl_prmat2c.mid")
+        estx_to_midi_file(pnotree, "exp/dl_pnotree.mid")
         chd_to_midi_file(chord, "exp/dl_chord.mid")
-        prmat_to_midi_file(prmat, f"exp/dl_prmat.mid")
+        prmat_to_midi_file(prmat, "exp/dl_prmat.mid")
         exit(0)

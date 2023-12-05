@@ -1,4 +1,5 @@
 import functools
+
 import torch.nn as nn
 
 from .util import ActNorm
@@ -6,17 +7,18 @@ from .util import ActNorm
 
 def weights_init(m):
     classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
+    if classname.find("Conv") != -1:
         nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
+    elif classname.find("BatchNorm") != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
 
 class NLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator as in Pix2Pix
-        --> see https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
+    --> see https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
     """
+
     def __init__(self, input_nc=3, ndf=64, n_layers=3, use_actnorm=False):
         """Construct a PatchGAN discriminator
         Parameters:
@@ -30,9 +32,9 @@ class NLayerDiscriminator(nn.Module):
             norm_layer = nn.BatchNorm2d
         else:
             norm_layer = ActNorm
-        if type(
-            norm_layer
-        ) == functools.partial:  # no need to use bias as BatchNorm2d has affine parameters
+        if (
+            type(norm_layer) == functools.partial
+        ):  # no need to use bias as BatchNorm2d has affine parameters
             use_bias = norm_layer.func != nn.BatchNorm2d
         else:
             use_bias = norm_layer != nn.BatchNorm2d
@@ -41,7 +43,7 @@ class NLayerDiscriminator(nn.Module):
         padw = 1
         sequence = [
             nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
-            nn.LeakyReLU(0.2, True)
+            nn.LeakyReLU(0.2, True),
         ]
         nf_mult = 1
         nf_mult_prev = 1
@@ -55,10 +57,10 @@ class NLayerDiscriminator(nn.Module):
                     kernel_size=kw,
                     stride=2,
                     padding=padw,
-                    bias=use_bias
+                    bias=use_bias,
                 ),
                 norm_layer(ndf * nf_mult),
-                nn.LeakyReLU(0.2, True)
+                nn.LeakyReLU(0.2, True),
             ]
 
         nf_mult_prev = nf_mult
@@ -70,10 +72,10 @@ class NLayerDiscriminator(nn.Module):
                 kernel_size=kw,
                 stride=1,
                 padding=padw,
-                bias=use_bias
+                bias=use_bias,
             ),
             norm_layer(ndf * nf_mult),
-            nn.LeakyReLU(0.2, True)
+            nn.LeakyReLU(0.2, True),
         ]
 
         sequence += [

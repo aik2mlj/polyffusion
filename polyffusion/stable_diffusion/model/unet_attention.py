@@ -27,6 +27,7 @@ class SpatialTransformer(nn.Module):
     """
     ## Spatial Transformer
     """
+
     def __init__(self, channels: int, n_heads: int, n_layers: int, d_cond: int):
         """
         :param channels: is the number of channels in the feature map
@@ -47,7 +48,8 @@ class SpatialTransformer(nn.Module):
             [
                 BasicTransformerBlock(
                     channels, n_heads, channels // n_heads, d_cond=d_cond
-                ) for _ in range(n_layers)
+                )
+                for _ in range(n_layers)
             ]
         )
 
@@ -88,6 +90,7 @@ class BasicTransformerBlock(nn.Module):
     """
     ### Transformer Layer
     """
+
     def __init__(self, d_model: int, n_heads: int, d_head: int, d_cond: int):
         """
         :param d_model: is the input embedding size
@@ -136,7 +139,7 @@ class CrossAttention(nn.Module):
         d_cond: int,
         n_heads: int,
         d_head: int,
-        is_inplace: bool = True
+        is_inplace: bool = True,
     ):
         """
         :param d_model: is the input embedding size
@@ -172,6 +175,7 @@ class CrossAttention(nn.Module):
             # [https://github.com/HazyResearch/flash-attention](https://github.com/HazyResearch/flash-attention)
             # and then running `python setup.py install`
             from flash_attn.flash_attention import FlashAttention
+
             self.flash = FlashAttention()
             # Set the scale for scaled dot-product attention.
             self.flash.softmax_scale = self.scale
@@ -196,7 +200,12 @@ class CrossAttention(nn.Module):
         v = self.to_v(cond)
 
         # Use flash attention if it's available and the head size is less than or equal to `128`
-        if CrossAttention.use_flash_attention and self.flash is not None and not has_cond and self.d_head <= 128:
+        if (
+            CrossAttention.use_flash_attention
+            and self.flash is not None
+            and not has_cond
+            and self.d_head <= 128
+        ):
             return self.flash_attention(q, k, v)
         # Otherwise, fallback to normal attention
         else:
@@ -229,7 +238,7 @@ class CrossAttention(nn.Module):
         elif self.d_head <= 128:
             pad = 128 - self.d_head
         else:
-            raise ValueError(f'Head size ${self.d_head} too large for Flash Attention')
+            raise ValueError(f"Head size ${self.d_head} too large for Flash Attention")
 
         # Pad the heads
         if pad:
@@ -252,34 +261,34 @@ class CrossAttention(nn.Module):
     def normal_attention(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor):
         """
         #### Normal Attention
-        
+
         :param q: are the query vectors before splitting heads, of shape `[batch_size, seq, d_attn]`
         :param k: are the query vectors before splitting heads, of shape `[batch_size, seq, d_attn]`
         :param v: are the query vectors before splitting heads, of shape `[batch_size, seq, d_attn]`
         """
 
         # Split them to heads of shape `[batch_size, seq_len, n_heads, d_head]`
-        q = q.view(*q.shape[: 2], self.n_heads, -1)
-        k = k.view(*k.shape[: 2], self.n_heads, -1)
-        v = v.view(*v.shape[: 2], self.n_heads, -1)
+        q = q.view(*q.shape[:2], self.n_heads, -1)
+        k = k.view(*k.shape[:2], self.n_heads, -1)
+        v = v.view(*v.shape[:2], self.n_heads, -1)
 
         # Calculate attention $\frac{Q K^\top}{\sqrt{d_{key}}}$
-        attn = torch.einsum('bihd,bjhd->bhij', q, k) * self.scale
+        attn = torch.einsum("bihd,bjhd->bhij", q, k) * self.scale
 
         # Compute softmax
         # $$\underset{seq}{softmax}\Bigg(\frac{Q K^\top}{\sqrt{d_{key}}}\Bigg)$$
         if self.is_inplace:
             half = attn.shape[0] // 2
-            attn[half :] = attn[half :].softmax(dim=-1)
-            attn[: half] = attn[: half].softmax(dim=-1)
+            attn[half:] = attn[half:].softmax(dim=-1)
+            attn[:half] = attn[:half].softmax(dim=-1)
         else:
             attn = attn.softmax(dim=-1)
 
         # Compute attention output
         # $$\underset{seq}{softmax}\Bigg(\frac{Q K^\top}{\sqrt{d_{key}}}\Bigg)V$$
-        out = torch.einsum('bhij,bjhd->bihd', attn, v)
+        out = torch.einsum("bhij,bjhd->bihd", attn, v)
         # Reshape to `[batch_size, height * width, n_heads * d_head]`
-        out = out.reshape(*out.shape[: 2], -1)
+        out = out.reshape(*out.shape[:2], -1)
         # Map to `[batch_size, height * width, d_model]` with a linear layer
         return self.to_out(out)
 
@@ -288,6 +297,7 @@ class FeedForward(nn.Module):
     """
     ### Feed-Forward Network
     """
+
     def __init__(self, d_model: int, d_mult: int = 4):
         """
         :param d_model: is the input embedding size
@@ -295,8 +305,9 @@ class FeedForward(nn.Module):
         """
         super().__init__()
         self.net = nn.Sequential(
-            GeGLU(d_model, d_model * d_mult), nn.Dropout(0.),
-            nn.Linear(d_model * d_mult, d_model)
+            GeGLU(d_model, d_model * d_mult),
+            nn.Dropout(0.0),
+            nn.Linear(d_model * d_mult, d_model),
         )
 
     def forward(self, x: torch.Tensor):
@@ -309,6 +320,7 @@ class GeGLU(nn.Module):
 
     $$\text{GeGLU}(x) = (xW + b) * \text{GELU}(xV + c)$$
     """
+
     def __init__(self, d_in: int, d_out: int):
         super().__init__()
         # Combined linear projections $xW + b$ and $xV + c$

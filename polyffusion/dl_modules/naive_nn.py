@@ -1,6 +1,4 @@
 from torch import nn
-import torch.distributions
-from torch.distributions import Normal
 
 
 class NaiveNN(nn.Module):

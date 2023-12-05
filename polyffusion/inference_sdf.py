@@ -13,45 +13,46 @@ For a simpler DDPM implementation refer to our [DDPM implementation](../../ddpm/
 We use same notations for $\alpha_t$, $\beta_t$ schedules, etc.
 """
 
-from typing import Optional, List
+import json
+import pickle
+import random
+from argparse import ArgumentParser
+from datetime import datetime
+from os.path import join
 from pathlib import Path
-import numpy as np
+from typing import Optional
 
 import numpy as np
 import torch
-import json
-import random
-import pretty_midi as pm
 
-from labml import monit
-from stable_diffusion.latent_diffusion import LatentDiffusion
-from stable_diffusion.model.unet import UNetModel
-from models.model_sdf import Polyffusion_SDF
-# from params_sdf import params
-from params import AttrDict
-
-from os.path import join
-from argparse import ArgumentParser
-import pickle
-from tqdm import tqdm
-from datetime import datetime
-
+from data.datasample import DataSample
 from data.dataset import DataSampleNpz
 from data.dataset_musicalion import DataSampleNpz_Musicalion
-from dirs import *
-from utils import (
-    prmat2c_to_midi_file, show_image, chd_to_midi_file, estx_to_midi_file,
-    load_pretrained_pnotree_enc_dec, load_pretrained_txt_enc,
-    load_pretrained_chd_enc_dec, prmat_to_midi_file, show_image, prmat2c_to_prmat,
-    get_blurry_image
-)
-from sampler_sdf import SDFSampler
-from polydis_aftertouch import PolydisAftertouch
-from data.datasample import DataSample
 from data.midi_to_data import get_data_for_single_midi
+from dirs import *
+from models.model_sdf import Polyffusion_SDF
+
+# from params_sdf import params
+from params import AttrDict
+from polydis_aftertouch import PolydisAftertouch
+from sampler_sdf import SDFSampler
+from stable_diffusion.latent_diffusion import LatentDiffusion
+from stable_diffusion.model.unet import UNetModel
+from utils import (
+    chd_to_midi_file,
+    estx_to_midi_file,
+    get_blurry_image,
+    load_pretrained_chd_enc_dec,
+    load_pretrained_pnotree_enc_dec,
+    load_pretrained_txt_enc,
+    prmat2c_to_midi_file,
+    prmat2c_to_prmat,
+    prmat_to_midi_file,
+    show_image,
+)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-parser = ArgumentParser(description='inference a Polyffusion model')
+parser = ArgumentParser(description="inference a Polyffusion model")
 
 
 def dummy_cond_input(length, params):
@@ -60,8 +61,9 @@ def dummy_cond_input(length, params):
     prmat2c = torch.zeros([length, 2, h, w]).to(device)
     pnotree = torch.zeros([length, h, 20, 6]).to(device)
     if params.cond_type == "chord":
-        chord = torch.zeros([length, params.chd_n_step,
-                             params.chd_input_dim]).to(device)
+        chord = torch.zeros([length, params.chd_n_step, params.chd_input_dim]).to(
+            device
+        )
     else:
         chord = None
     prmat = torch.zeros([length, h, w]).to(device)
@@ -77,8 +79,12 @@ def get_data_preprocessed(song, data_type):
     if chord is not None:
         chord_np = chord.cpu().numpy()
         chd_to_midi_file(chord_np, f"exp/{data_type}_chord.mid")
-        return prmat2c.to(device), pnotree.to(device), chord.to(device
-                                                               ), prmat.to(device)
+        return (
+            prmat2c.to(device),
+            pnotree.to(device),
+            chord.to(device),
+            prmat.to(device),
+        )
     else:
         return prmat2c.to(device), pnotree.to(device), None, prmat.to(device)
 
@@ -127,7 +133,7 @@ def get_mask(orig, inpaint_type, bar_list=None):
         mask = orig.clone()
     elif inpaint_type == "below":
         # inpaint the below area (inpaint accompaniment for melody)
-        orig_onset = orig[:, 0, :, :]  #(, 128, 128)
+        orig_onset = orig[:, 0, :, :]  # (, 128, 128)
         step_size = orig_onset.shape[1]
         pitch_size = orig_onset.shape[2]
         orig_onset = orig_onset.reshape((B * step_size, pitch_size))  # (steps, pitches)
@@ -142,7 +148,7 @@ def get_mask(orig, inpaint_type, bar_list=None):
                 min_pitch[idx] = min_pitch[idx - 1]
         mask = torch.zeros_like(orig_onset)
         for step in range(B * step_size):
-            mask[step, min_pitch[step]:] = 1
+            mask[step, min_pitch[step] :] = 1
         mask = mask.reshape((B, step_size, pitch_size))
 
         mask = mask.unsqueeze(1)
@@ -150,7 +156,7 @@ def get_mask(orig, inpaint_type, bar_list=None):
 
     elif inpaint_type == "above":
         # inpaint the above area (inpaint melody for accompaniment)
-        orig_onset = orig[:, 0, :, :]  #(, 128, 128)
+        orig_onset = orig[:, 0, :, :]  # (, 128, 128)
         step_size = orig_onset.shape[1]
         pitch_size = orig_onset.shape[2]
         orig_onset = orig_onset.reshape((B * step_size, pitch_size))  # (steps, pitches)
@@ -194,7 +200,7 @@ class Experiments:
         self,
         cond: torch.Tensor,
         cond_mid: Optional[torch.Tensor] = None,
-        uncond_scale=1.,
+        uncond_scale=1.0,
         autoreg=False,
         orig=None,
         mask=None,
@@ -216,7 +222,10 @@ class Experiments:
                 assert cond_mid is not None
                 half_len = self.params.img_h // 2
                 single_shape = [
-                    1, self.params.out_channels, self.params.img_h, self.params.img_w
+                    1,
+                    self.params.out_channels,
+                    self.params.img_h,
+                    self.params.img_w,
                 ]
                 orig_mid = get_autoreg_data(orig, split_dim=2)
                 mask_mid = get_autoreg_data(mask, split_dim=2)
@@ -238,8 +247,8 @@ class Experiments:
                         mask_seg = mask[idx // 2].unsqueeze(0)
                         noise_seg = noise[idx // 2].unsqueeze(0)
                     if idx != 0:
-                        orig_seg[:, :, 0 : half_len, :] = new_inpainted_half
-                        mask_seg[:, :, 0 : half_len, :] = 1
+                        orig_seg[:, :, 0:half_len, :] = new_inpainted_half
+                        mask_seg[:, :, 0:half_len, :] = 1
                     xt = self.sampler.q_sample(orig_seg, t_idx, noise_seg)
                     x0 = sampler.paint(
                         xt,
@@ -251,14 +260,14 @@ class Experiments:
                         uncond_scale=uncond_scale,
                         uncond_cond=uncond_cond_seg,
                         cond_concat=cond_concat,
-                        repaint_n=int(args.repaint_n)
+                        repaint_n=int(args.repaint_n),
                     )
                     if idx == 0:
-                        gen.append(x0[:, :, 0 : half_len, :])
+                        gen.append(x0[:, :, 0:half_len, :])
                     # show_image(x0, f"exp/img/autoreg_{idx}.png")
                     # show_image(mask_seg, f"exp/img/autoreg_mask_{idx}.png", mask=True)
 
-                    new_inpainted_half = x0[:, :, half_len :, :]
+                    new_inpainted_half = x0[:, :, half_len:, :]
                     gen.append(new_inpainted_half)
 
                 gen = torch.cat(gen, dim=0)
@@ -282,7 +291,7 @@ class Experiments:
                     uncond_scale=uncond_scale,
                     uncond_cond=uncond_cond,
                     cond_concat=cond_concat,
-                    repaint_n=int(args.repaint_n)
+                    repaint_n=int(args.repaint_n),
                 )
         # show_image(gen, "exp/img/gen.png")
         return gen
@@ -291,13 +300,13 @@ class Experiments:
         self,
         cond: torch.Tensor,
         cond_mid: Optional[torch.Tensor] = None,
-        uncond_scale=1.,
+        uncond_scale=1.0,
         autoreg=False,
         polydis_recon=False,
         polydis_chd=None,
         no_output=False,
         cond_concat=None,
-        output_dir="exp"
+        output_dir="exp",
     ):
         gen = self.predict(
             cond,
@@ -310,12 +319,16 @@ class Experiments:
         if not no_output:
             output_stamp = f"{self.model_label}_[scale={uncond_scale}{',autoreg' if autoreg else ''}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
             prmat2c = gen.cpu().numpy()
-            prmat2c_to_midi_file(prmat2c, os.path.join(output_dir, f"{output_stamp}.mid"))
+            prmat2c_to_midi_file(
+                prmat2c, os.path.join(output_dir, f"{output_stamp}.mid")
+            )
             if polydis_recon:
                 aftertouch = PolydisAftertouch()
                 prmat = prmat2c_to_prmat(prmat2c)
                 print(prmat.shape)
-                prmat_to_midi_file(prmat, os.path.join(output_dir, f"{output_stamp}.mid"))
+                prmat_to_midi_file(
+                    prmat, os.path.join(output_dir, f"{output_stamp}.mid")
+                )
                 prmat = torch.from_numpy(prmat)
                 chd = polydis_chd
                 aftertouch.reconstruct(prmat, chd, f"exp/{output_stamp}")
@@ -329,11 +342,11 @@ class Experiments:
         cond_mid: Optional[torch.Tensor] = None,
         autoreg=False,
         orig_noise: Optional[torch.Tensor] = None,
-        uncond_scale: float = 1.,
+        uncond_scale: float = 1.0,
         bar_list=None,
         no_output=False,
         cond_concat=None,
-        output_dir="exp"
+        output_dir="exp",
     ):
         # show_image(orig, "exp/img/orig.png")
         orig_noise = orig_noise or torch.randn(orig.shape, device=device)
@@ -349,13 +362,15 @@ class Experiments:
             output_stamp = f"{self.model_label}_inp_{inpaint_type}[scale={uncond_scale}{',autoreg' if autoreg else ''}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
             prmat2c = gen.cpu().numpy()
             mask = mask.cpu().numpy()
-            prmat2c_to_midi_file(prmat2c, os.path.join(output_dir, f"{output_stamp}.mid"), inp_mask=mask)
+            prmat2c_to_midi_file(
+                prmat2c, os.path.join(output_dir, f"{output_stamp}.mid"), inp_mask=mask
+            )
         return gen
 
     def show_q_imgs(self, prmat2c):
         if int(args.length) > 0:
             prmat2c = prmat2c[: int(args.length)]
-        show_image(prmat2c, f"exp/img/q0.png")
+        show_image(prmat2c, "exp/img/q0.png")
         for step in self.sampler.time_steps:
             s1 = step + 1
             if s1 % 100 == 0 or (s1 <= 100 and s1 % 25 == 0):
@@ -365,40 +380,39 @@ class Experiments:
 
 if __name__ == "__main__":
     parser.add_argument(
-        "--model_dir", help='directory in which trained model checkpoints are stored'
+        "--model_dir", help="directory in which trained model checkpoints are stored"
     )
     parser.add_argument(
         "--uncond_scale",
-        default=1.,
-        help="unconditional scale for classifier-free guidance"
+        default=1.0,
+        help="unconditional scale for classifier-free guidance",
     )
     parser.add_argument("--seed", help="use a specific seed for inference")
     parser.add_argument(
         "--autoreg",
         action="store_true",
-        help="autoregressively inpaint the music segments"
+        help="autoregressively inpaint the music segments",
     )
     parser.add_argument(
         "--from_dataset",
         default="pop909",
-        help="choose condition from a dataset {pop909(default), musicalion}"
+        help="choose condition from a dataset {pop909(default), musicalion}",
     )
     parser.add_argument(
         "--from_midi", help="choose condition from a specific midi file"
     )
     parser.add_argument(
         "--inpaint_from_midi",
-        help=
-        "choose the midi file for inpainting. if unspecified, use a song from dataset"
+        help="choose the midi file for inpainting. if unspecified, use a song from dataset",
     )
     parser.add_argument(
         "--inpaint_from_dataset",
         default="pop909",
-        help="inpaint a song from a dataset {pop909(default), musicalion}"
+        help="inpaint a song from a dataset {pop909(default), musicalion}",
     )
     parser.add_argument(
         "--inpaint_pop909_use_track",
-        help="which tracks to use as original song for inpainting (default: 0,1,2)"
+        help="which tracks to use as original song for inpainting (default: 0,1,2)",
     )
     parser.add_argument(
         "--inpaint_type", help="inpaint a song, type: {remaining, below, above, bars}"
@@ -409,38 +423,38 @@ if __name__ == "__main__":
     parser.add_argument(
         "--show_image",
         action="store_true",
-        help="whether to show the images of generated piano-roll"
+        help="whether to show the images of generated piano-roll",
     )
     parser.add_argument(
         "--polydis_recon",
         action="store_true",
-        help=
-        "whether to use polydis to reconstruct the generated midi from diffusion model"
+        help="whether to use polydis to reconstruct the generated midi from diffusion model",
     )
     parser.add_argument(
         "--chkpt_name",
         default="weights_best.pt",
-        help="which specific checkpoint to use (default: weights_best.pt)"
+        help="which specific checkpoint to use (default: weights_best.pt)",
     )
     parser.add_argument(
         "--only_q_imgs",
         action="store_true",
-        help="only show q_sample results (for testing)"
+        help="only show q_sample results (for testing)",
     )
     parser.add_argument(
         "--split_inpaint",
         action="store_true",
-        help=
-        "only split inpainted result according to the inpaint type (for testing). (inpaint: original, condition: inpainted)"
+        help="only split inpainted result according to the inpaint type (for testing). (inpaint: original, condition: inpainted)",
     )
     parser.add_argument(
         "--polydis_txt",
         action="store_true",
-        help="use polydis to generate texture-like MIDI. For comparison."
+        help="use polydis to generate texture-like MIDI. For comparison.",
     )
-    parser.add_argument("--num_generate", default=1, help="the number of samples to generate")
     parser.add_argument(
-        "--output_dir", default="exp", help='directory to store generated midis'
+        "--num_generate", default=1, help="the number of samples to generate"
+    )
+    parser.add_argument(
+        "--output_dir", default="exp", help="directory to store generated midis"
     )
 
     args = parser.parse_args()
@@ -470,7 +484,7 @@ if __name__ == "__main__":
         channel_multipliers=params.channel_multipliers,
         n_heads=params.n_heads,
         tf_layers=params.tf_layers,
-        d_cond=params.d_cond
+        d_cond=params.d_cond,
     )
 
     ldm_model = LatentDiffusion(
@@ -479,7 +493,7 @@ if __name__ == "__main__":
         n_steps=params.n_steps,
         latent_scaling_factor=params.latent_scaling_factor,
         autoencoder=autoencoder,
-        unet_model=unet_model
+        unet_model=unet_model,
     )
 
     if not os.path.exists(args.output_dir):
@@ -495,7 +509,7 @@ if __name__ == "__main__":
             if args.inpaint_from_midi is not None:
                 song_fn_inp = args.inpaint_from_midi
                 data_inp = get_data_for_single_midi(
-                    args.inpaint_from_midi, f"exp/chords_extracted_inpaint.out"
+                    args.inpaint_from_midi, "exp/chords_extracted_inpaint.out"
                 )
                 data_sample_inp = DataSample(data_inp)
                 prmat2c_inp, _, _, _ = get_data_preprocessed(data_sample_inp, "inpaint")
@@ -517,7 +531,7 @@ if __name__ == "__main__":
             print(f"Inpainting midi file: {song_fn_inp}")
 
         # condition data ready
-        if float(args.uncond_scale) == 0.:
+        if float(args.uncond_scale) == 0.0:
             print("unconditional generation...")
             if int(args.length) > 0:
                 length = int(args.length)
@@ -530,13 +544,21 @@ if __name__ == "__main__":
             print("getting the condition from...")
             if args.from_midi is not None:
                 song_fn = args.from_midi
-                data = get_data_for_single_midi(args.from_midi, f"exp/chords_extracted.out")
+                data = get_data_for_single_midi(
+                    args.from_midi, "exp/chords_extracted.out"
+                )
                 data_sample = DataSample(data)
-                prmat2c, pnotree, chd, prmat = get_data_preprocessed(data_sample, "cond")
+                prmat2c, pnotree, chd, prmat = get_data_preprocessed(
+                    data_sample, "cond"
+                )
             elif args.from_dataset == "musicalion":
-                prmat2c, pnotree, chd, prmat, song_fn = choose_song_from_val_dl_musicalion(
-                    "cond"
-                )  # here chd is None
+                (
+                    prmat2c,
+                    pnotree,
+                    chd,
+                    prmat,
+                    song_fn,
+                ) = choose_song_from_val_dl_musicalion("cond")  # here chd is None
                 assert params.cond_type != "chord"
             elif args.from_dataset == "pop909":
                 prmat2c, pnotree, chd, prmat, song_fn = choose_song_from_val_dl("cond")
@@ -548,7 +570,9 @@ if __name__ == "__main__":
         if args.split_inpaint:
             print("only split prmat2c according to the inpainting type")
             mask = get_mask(orig=prmat2c_inp, inpaint_type=args.inpaint_type)
-            prmat2c_to_midi_file(prmat2c, f"{args.from_midi[:-4]}_split.mid", inp_mask=mask)
+            prmat2c_to_midi_file(
+                prmat2c, f"{args.from_midi[:-4]}_split.mid", inp_mask=mask
+            )
             exit(0)
 
         # for polydis comparison
@@ -556,10 +580,10 @@ if __name__ == "__main__":
             aftertouch = PolydisAftertouch()
             polydis_prmat = prmat.view(-1, 32, 128)
             print(polydis_prmat.shape)
-            prmat_to_midi_file(polydis_prmat, f"exp/polydis_txt_prmat.mid")
+            prmat_to_midi_file(polydis_prmat, "exp/polydis_txt_prmat.mid")
             polydis_chd = chd.view(-1, 8, 36)  # 2-bars
             aftertouch.reconstruct(
-                polydis_prmat, polydis_chd, f"exp/polydis_txt", chd_sample=True
+                polydis_prmat, polydis_chd, "exp/polydis_txt", chd_sample=True
             )
             exit(0)
 
@@ -573,21 +597,35 @@ if __name__ == "__main__":
         elif params.cond_type == "chord":
             if params.use_enc:
                 chord_enc, chord_dec = load_pretrained_chd_enc_dec(
-                    PT_CHD_8BAR_PATH, params.chd_input_dim, params.chd_z_input_dim,
-                    params.chd_hidden_dim, params.chd_z_dim, params.chd_n_step
+                    PT_CHD_8BAR_PATH,
+                    params.chd_input_dim,
+                    params.chd_z_input_dim,
+                    params.chd_hidden_dim,
+                    params.chd_z_dim,
+                    params.chd_n_step,
                 )
         elif params.cond_type == "txt":
             if params.use_enc:
                 txt_enc = load_pretrained_txt_enc(
-                    PT_POLYDIS_PATH, params.txt_emb_size, params.txt_hidden_dim,
-                    params.txt_z_dim, params.txt_num_channel
+                    PT_POLYDIS_PATH,
+                    params.txt_emb_size,
+                    params.txt_hidden_dim,
+                    params.txt_z_dim,
+                    params.txt_num_channel,
                 )
         else:
             raise NotImplementedError
 
         model = Polyffusion_SDF.load_trained(
-            ldm_model, f"{args.model_dir}/chkpts/{args.chkpt_name}", params.cond_type,
-            params.cond_mode, chord_enc, chord_dec, pnotree_enc, pnotree_dec, txt_enc
+            ldm_model,
+            f"{args.model_dir}/chkpts/{args.chkpt_name}",
+            params.cond_type,
+            params.cond_mode,
+            chord_enc,
+            chord_dec,
+            pnotree_enc,
+            pnotree_dec,
+            txt_enc,
         ).to(device)
         sampler = SDFSampler(
             model.ldm,
@@ -608,7 +646,7 @@ if __name__ == "__main__":
             if args.autoreg:
                 cond_mid = model._encode_pnotree(get_autoreg_data(pnotree))
             pnotree_recon = model._decode_pnotree(cond)
-            estx_to_midi_file(pnotree_recon, f"exp/pnotree_recon.mid")
+            estx_to_midi_file(pnotree_recon, "exp/pnotree_recon.mid")
         elif params.cond_type == "chord":
             # print(chd.shape)
             assert chd is not None
@@ -628,7 +666,7 @@ if __name__ == "__main__":
 
         # concat conditioning
         cond_concat = None
-        if hasattr(params, 'concat_blurry') and params.concat_blurry:
+        if hasattr(params, "concat_blurry") and params.concat_blurry:
             assert prmat2c is not None
             show_image(prmat2c, "exp/img/cond_concat_orig.png")
             cond_concat = get_blurry_image(prmat2c, params.concat_ratio)
@@ -662,7 +700,7 @@ if __name__ == "__main__":
                 autoreg=args.autoreg,
                 orig_noise=None,
                 uncond_scale=float(args.uncond_scale),
-                cond_concat=cond_concat
+                cond_concat=cond_concat,
             )
         else:
             expmt.generate(
@@ -673,5 +711,5 @@ if __name__ == "__main__":
                 polydis_recon=args.polydis_recon,
                 polydis_chd=polydis_chd,
                 cond_concat=cond_concat,
-                output_dir=args.output_dir
+                output_dir=args.output_dir,
             )

@@ -1,11 +1,9 @@
-from argparse import ArgumentParser
-import sys
+from data.dataloader import get_custom_train_val_dataloaders, get_train_val_dataloaders
+from ddpm import DenoiseDiffusion
+from ddpm.unet import UNet
+from models.model_ddpm import Polyffusion_DDPM
 
 from . import *
-from ddpm.unet import UNet
-from ddpm import DenoiseDiffusion
-from models.model_ddpm import Polyffusion_DDPM
-from data.dataloader import get_train_val_dataloaders, get_custom_train_val_dataloaders
 
 
 class DDPM_TrainConfig(TrainConfig):
@@ -42,7 +40,10 @@ class DDPM_TrainConfig(TrainConfig):
             )
         else:
             self.train_dl, self.val_dl = get_custom_train_val_dataloaders(
-                params.batch_size, data_dir, num_workers=params.num_workers, pin_memory=params.pin_memory
+                params.batch_size,
+                data_dir,
+                num_workers=params.num_workers,
+                pin_memory=params.pin_memory,
             )
         # Create optimizer
         self.optimizer = torch.optim.Adam(
