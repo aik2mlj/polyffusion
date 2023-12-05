@@ -594,7 +594,7 @@ if __name__ == "__main__":
             pnotree_enc, pnotree_dec = load_pretrained_pnotree_enc_dec(
                 PT_PNOTREE_PATH, 20, device
             )
-        elif "chord" in params.cond_type:
+        if "chord" in params.cond_type:
             if params.use_enc:
                 chord_enc, chord_dec = load_pretrained_chd_enc_dec(
                     PT_CHD_8BAR_PATH,
@@ -604,7 +604,7 @@ if __name__ == "__main__":
                     params.chd_z_dim,
                     params.chd_n_step,
                 )
-        elif "txt" in params.cond_type:
+        if "txt" in params.cond_type:
             if params.use_enc:
                 txt_enc = load_pretrained_txt_enc(
                     PT_POLYDIS_PATH,
@@ -613,8 +613,6 @@ if __name__ == "__main__":
                     params.txt_z_dim,
                     params.txt_num_channel,
                 )
-        else:
-            raise NotImplementedError
 
         model = Polyffusion_SDF.load_trained(
             ldm_model,
