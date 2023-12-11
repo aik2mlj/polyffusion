@@ -4,6 +4,7 @@ pretrained/
 result/
 exp/
 eval/
+wandb/
 
 
 # Byte-compiled / optimized / DLL files
