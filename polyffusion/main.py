@@ -10,6 +10,7 @@ from params.params_sdf_pnotree import params as params_sdf_pnotree
 from params.params_sdf_txt import params as params_sdf_txt
 from params.parmas_sdf_txtvnl import params as params_sdf_txtvnl
 from params.params_sdf_chd8bar_txt import params as params_sdf_chd8bar_txt
+from params.params_sdf_chd8bar_txt_mix2 import params as params_sdf_chd8bar_txt_mix2
 from train.train_autoencoder import Autoencoder_TrainConfig
 from train.train_chd_8bar import Chord8bar_TrainConfig
 from train.train_ddpm import DDPM_TrainConfig
@@ -69,6 +70,13 @@ if __name__ == "__main__":
     elif args.model == "ldm_chd8bar+txt":
         config = LDM_TrainConfig(
             params_sdf_chd8bar_txt,
+            args.output_dir,
+            use_track=use_track,
+            data_dir=args.data_dir,
+        )
+    elif args.model == "ldm_chd8bar+txt_mix2":
+        config = LDM_TrainConfig(
+            params_sdf_chd8bar_txt_mix2,
             args.output_dir,
             use_track=use_track,
             data_dir=args.data_dir,

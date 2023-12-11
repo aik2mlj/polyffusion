@@ -3,7 +3,6 @@ import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from stable_diffusion.latent_diffusion import LatentDiffusion
 from utils import *
 
@@ -203,6 +202,11 @@ class Polyffusion_SDF(nn.Module):
         elif self.cond_type == "chord+txt":
             zchd = self._encode_chord(chord)
             ztxt = self._encode_txt(prmat)
+            if self.cond_mode == "mix2":
+                if random.random() < 0.2:
+                    zchd = (-torch.ones_like(zchd)).to(self.device)  # a bunch of -1
+                if random.random() < 0.2:
+                    ztxt = (-torch.ones_like(ztxt)).to(self.device)  # a bunch of -1
             cond = torch.cat([zchd, ztxt], dim=-1)
         else:
             raise NotImplementedError
@@ -212,7 +216,7 @@ class Polyffusion_SDF(nn.Module):
 
         if self.cond_mode == "uncond":
             cond = (-torch.ones_like(cond)).to(self.device)  # a bunch of -1
-        elif self.cond_mode == "mix":
+        elif self.cond_mode == "mix" or self.cond_mode == "mix2":
             if random.random() < 0.2:
                 cond = (-torch.ones_like(cond)).to(self.device)  # a bunch of -1
 
