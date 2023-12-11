@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
+import wandb
 
 from dirs import *
 from utils import nested_map
@@ -46,6 +47,7 @@ class PolyffusionLearner:
                 json.dump(self.params, params_file)
 
         print(json.dumps(self.params, sort_keys=True, indent=4))
+        wandb.init(project=f"Polyff-{output_dir}".replace("/", "-"), config=params)
 
     def _write_summary(self, losses: dict, scheduled_params: Optional[dict], type):
         """type: train or val"""
@@ -60,6 +62,11 @@ class PolyffusionLearner:
         writer.add_scalars(type, summary_losses, self.step)
         writer.flush()
         self.summary_writer = writer
+
+        wandb_losses = {}
+        for k, v in summary_losses.items():
+            wandb_losses[f"{type}/{k}"] = v
+        wandb.log(wandb_losses)
 
     def state_dict(self):
         model_state = self.model.state_dict()
