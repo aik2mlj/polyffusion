@@ -14,6 +14,7 @@ We use same notations for $\alpha_t$, $\beta_t$ schedules, etc.
 """
 
 import json
+import os
 import pickle
 import random
 from argparse import ArgumentParser
@@ -250,7 +251,7 @@ class Experiments:
                         orig_seg[:, :, 0:half_len, :] = new_inpainted_half
                         mask_seg[:, :, 0:half_len, :] = 1
                     xt = self.sampler.q_sample(orig_seg, t_idx, noise_seg)
-                    x0 = sampler.paint(
+                    x0 = self.sampler.paint(
                         xt,
                         cond_seg,
                         t_idx,
@@ -635,7 +636,7 @@ if __name__ == "__main__":
             expmt.show_q_imgs(prmat2c)
             exit(0)
 
-        # conditions ready
+        # encoded conditions ready
         polydis_chd = None
         cond_mid = None  # for autoregressive inpainting
         if params.cond_type == "pnotree":
@@ -663,6 +664,7 @@ if __name__ == "__main__":
             assert chd is not None
             assert prmat is not None
             zchd = model._encode_chord(chd)
+            ztxt = model._encode_txt(prmat)
             # print(chd_enc.shape)
             polydis_chd = chd.view(-1, 8, 36)  # 2-bars
             cond = torch.cat([zchd, ztxt], dim=-1)
