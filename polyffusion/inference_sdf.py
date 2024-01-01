@@ -360,7 +360,7 @@ class Experiments:
         )
 
         if not no_output:
-            output_stamp = f"{self.model_label}_inp_{inpaint_type}[scale={uncond_scale}{',autoreg' if autoreg else ''}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
+            output_stamp = f"{self.model_label}_inp{args.repaint_n}_{inpaint_type}[scale={uncond_scale}{',autoreg' if autoreg else ''}]_{datetime.now().strftime('%m-%d_%H%M%S')}"
             prmat2c = gen.cpu().numpy()
             mask = mask.cpu().numpy()
             prmat2c_to_midi_file(

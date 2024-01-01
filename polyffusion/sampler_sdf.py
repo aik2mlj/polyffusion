@@ -292,7 +292,6 @@ class SDFSampler(DiffusionSampler):
 
         # Time steps to sample at $\tau_{S`}, \tau_{S' - 1}, \dots, \tau_1$
         time_steps = np.flip(self.time_steps[:t_start])
-        print(time_steps)
         print(f"RePainting: sampling steps = {repaint_n}")
 
         for i, step in monit.enum("Paint", time_steps):
