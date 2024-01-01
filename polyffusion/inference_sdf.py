@@ -459,7 +459,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    model_label = Path(args.model_dir).name
+    model_label = Path(args.model_dir).parent.name
     print(f"model_label: {model_label}")
 
     if args.seed is not None:
