@@ -77,6 +77,7 @@ def get_data_preprocessed(song, data_type):
     pnotree_np = pnotree.cpu().numpy()
     prmat2c_to_midi_file(prmat2c_np, f"exp/{data_type}_prmat2c.mid")
     estx_to_midi_file(pnotree_np, f"exp/{data_type}_pnotree.mid")
+    prmat_to_midi_file(prmat, f"exp/{data_type}_prmat.mid")
     if chord is not None:
         chord_np = chord.cpu().numpy()
         chd_to_midi_file(chord_np, f"exp/{data_type}_chord.mid")
@@ -332,7 +333,7 @@ class Experiments:
                 )
                 prmat = torch.from_numpy(prmat)
                 chd = polydis_chd
-                aftertouch.reconstruct(prmat, chd, f"exp/{output_stamp}")
+                aftertouch.reconstruct(prmat, chd, f"exp/{output_stamp}_recon.mid")
         return gen
 
     def inpaint(
@@ -403,6 +404,10 @@ if __name__ == "__main__":
         "--from_midi", help="choose condition from a specific midi file"
     )
     parser.add_argument(
+        "--from_midi2",
+        help="(incase two conditions are required) choose condition from a specific midi file",
+    )
+    parser.add_argument(
         "--inpaint_from_midi",
         help="choose the midi file for inpainting. if unspecified, use a song from dataset",
     )
@@ -447,9 +452,14 @@ if __name__ == "__main__":
         help="only split inpainted result according to the inpaint type (for testing). (inpaint: original, condition: inpainted)",
     )
     parser.add_argument(
-        "--polydis_txt",
+        "--polydis",
         action="store_true",
-        help="use polydis to generate texture-like MIDI. For comparison.",
+        help="use polydis to generate MIDI. For comparison.",
+    )
+    parser.add_argument(
+        "--polydis_chd_resample",
+        action="store_true",
+        help="Whether to resample chord with polydis generation",
     )
     parser.add_argument(
         "--num_generate", default=1, help="the number of samples to generate"
@@ -545,9 +555,7 @@ if __name__ == "__main__":
             print("getting the condition from...")
             if args.from_midi is not None:
                 song_fn = args.from_midi
-                data = get_data_for_single_midi(
-                    args.from_midi, "exp/chords_extracted.out"
-                )
+                data = get_data_for_single_midi(song_fn, "exp/chords_extracted.out")
                 data_sample = DataSample(data)
                 prmat2c, pnotree, chd, prmat = get_data_preprocessed(
                     data_sample, "cond"
@@ -565,7 +573,24 @@ if __name__ == "__main__":
                 prmat2c, pnotree, chd, prmat, song_fn = choose_song_from_val_dl("cond")
             else:
                 raise NotImplementedError
-            print(f"using the {params.cond_type} of midi file: {song_fn}")
+            print(f"using the {params.cond_type.split('+')[0]} of midi file: {song_fn}")
+
+            # if both chord and texture are required
+            if params.cond_type == "chord+txt":
+                if args.from_midi2 is not None:
+                    song_fn = args.from_midi2
+                    data = get_data_for_single_midi(song_fn, "exp/chords_extracted.out")
+                    data_sample = DataSample(data)
+                    _, _, _, prmat = get_data_preprocessed(data_sample, "cond2")
+                elif args.from_dataset == "musicalion":
+                    _, _, _, prmat, song_fn = choose_song_from_val_dl_musicalion(
+                        "cond2"
+                    )
+                elif args.from_dataset == "pop909":
+                    _, _, _, prmat, song_fn = choose_song_from_val_dl("cond2")
+                else:
+                    raise NotImplementedError
+                print(f"using the txt of midi file: {song_fn}")
 
         # for demonstrating diffusion process
         if args.split_inpaint:
@@ -577,16 +602,24 @@ if __name__ == "__main__":
             exit(0)
 
         # for polydis comparison
-        if args.polydis_txt:
+        if args.polydis:
+            assert chd is not None
+            assert prmat is not None
+            if chd.shape[0] != prmat.shape[0]:
+                min_size = min(chd.shape[0], prmat.shape[0])
+                chd = chd[:min_size]
+                prmat = prmat[:min_size]
             aftertouch = PolydisAftertouch()
             polydis_prmat = prmat.view(-1, 32, 128)
             print(polydis_prmat.shape)
-            prmat_to_midi_file(polydis_prmat, "exp/polydis_txt_prmat.mid")
+            prmat_to_midi_file(polydis_prmat, "exp/polydis_prmat.mid")
             polydis_chd = chd.view(-1, 8, 36)  # 2-bars
             aftertouch.reconstruct(
-                polydis_prmat, polydis_chd, "exp/polydis_txt", chd_sample=True
+                polydis_prmat,
+                polydis_chd,
+                "exp/polydis_gen.mid",
+                chd_sample=args.polydis_chd_resample,
             )
-            exit(0)
 
         pnotree_enc, pnotree_dec = None, None
         chord_enc, chord_dec = None, None
@@ -663,6 +696,10 @@ if __name__ == "__main__":
         elif params.cond_type == "chord+txt":
             assert chd is not None
             assert prmat is not None
+            if chd.shape[0] != prmat.shape[0]:
+                min_size = min(chd.shape[0], prmat.shape[0])
+                chd = chd[:min_size]
+                prmat = prmat[:min_size]
             zchd = model._encode_chord(chd)
             ztxt = model._encode_txt(prmat)
             # print(chd_enc.shape)

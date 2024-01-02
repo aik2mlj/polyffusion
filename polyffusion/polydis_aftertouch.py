@@ -28,7 +28,7 @@ class PolydisAftertouch:
         chd = chd.to(device).float()
         prmat = prmat.to(device).float()
         est_x = self.model.inference(prmat, chd, sample=False, chd_sample=chd_sample)
-        estx_to_midi_file(est_x, fn + "_recon.mid")
+        estx_to_midi_file(est_x, fn)
 
 
 if __name__ == "__main__":
