@@ -36,9 +36,11 @@ from models.model_sdf import Polyffusion_SDF
 # from params_sdf import params
 from params import AttrDict
 from polydis_aftertouch import PolydisAftertouch
+from sampler_ddim import DDIMSampler
 from sampler_sdf import SDFSampler
 from stable_diffusion.latent_diffusion import LatentDiffusion
 from stable_diffusion.model.unet import UNetModel
+from stable_diffusion.sampler import DiffusionSampler
 from utils import (
     chd_to_midi_file,
     estx_to_midi_file,
@@ -193,7 +195,7 @@ def get_mask(orig, inpaint_type, bar_list=None):
 
 
 class Experiments:
-    def __init__(self, model_label, params, sampler: SDFSampler) -> None:
+    def __init__(self, model_label, params, sampler: DiffusionSampler) -> None:
         self.model_label = model_label
         self.params = params
         self.sampler = sampler
@@ -422,6 +424,22 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--inpaint_type", help="inpaint a song, type: {remaining, below, above, bars}"
+    )
+    parser.add_argument(
+        "--ddim",
+        action="store_true",
+        help="whether to use DDIM sampler",
+    )
+    parser.add_argument(
+        "--ddim_discretize",
+        default="uniform",
+        help="whether to use uniform or quad discretization in DDIM",
+    )
+    parser.add_argument("--ddim_eta", default=0.0, help="ddim eta")
+    parser.add_argument(
+        "--ddim_steps",
+        default=50,
+        help="number of ddim sampling steps",
     )
     parser.add_argument("--repaint_n", default=1, help="n sampling steps in RePaint")
     parser.add_argument("--length", default=0, help="the generated length (in 8-bars)")
@@ -659,11 +677,19 @@ if __name__ == "__main__":
             pnotree_dec,
             txt_enc,
         ).to(device)
-        sampler = SDFSampler(
-            model.ldm,
-            is_autocast=params.fp16,
-            is_show_image=args.show_image,
-        )
+        if args.ddim:
+            sampler = DDIMSampler(
+                model.ldm,
+                int(args.ddim_steps),
+                args.ddim_discretize,
+                int(args.ddim_eta),
+            )
+        else:
+            sampler = SDFSampler(
+                model.ldm,
+                is_autocast=params.fp16,
+                is_show_image=args.show_image,
+            )
         expmt = Experiments(model_label, params, sampler)
         if args.only_q_imgs:
             expmt.show_q_imgs(prmat2c)
