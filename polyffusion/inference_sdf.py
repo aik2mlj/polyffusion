@@ -219,7 +219,10 @@ class Experiments:
         if orig is None or mask is None:
             orig = torch.zeros(shape, device=device)
             mask = torch.zeros(shape, device=device)
-        t_idx = self.params.n_steps - 1
+        if args.ddim:
+            t_idx = args.ddim_steps - 1
+        else:
+            t_idx = self.params.n_steps - 1
         noise = torch.randn(shape, device=device)
         with torch.no_grad():
             if autoreg:

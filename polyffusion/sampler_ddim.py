@@ -15,7 +15,7 @@ class DDIMSampler(DiffusionSampler):
 
     This extends the [`DiffusionSampler` base class](index.html).
 
-    DDPM samples images by repeatedly removing noise by sampling step by step using,
+    DDIM samples images by repeatedly removing noise by sampling step by step using,
 
     \begin{align}
     x_{\tau_{i-1}} &= \sqrt{\alpha_{\tau_{i-1}}}\Bigg(
@@ -43,6 +43,8 @@ class DDIMSampler(DiffusionSampler):
         n_steps: int,
         ddim_discretize: str = "uniform",
         ddim_eta: float = 0.0,
+        is_autocast=False,
+        is_show_image=False,
     ):
         """
         :param model: is the model to predict noise $\epsilon_\text{cond}(x_t, c)$
@@ -53,6 +55,10 @@ class DDIMSampler(DiffusionSampler):
             sampling process deterministic.
         """
         super().__init__(model)
+
+        self.is_show_image = is_show_image
+        self.autocast = torch.cuda.amp.autocast(enabled=is_autocast)
+
         # Number of steps, $T$
         self.n_steps = model.n_steps
 
@@ -107,7 +113,7 @@ class DDIMSampler(DiffusionSampler):
         x_last: Optional[torch.Tensor] = None,
         uncond_scale: float = 1.0,
         uncond_cond: Optional[torch.Tensor] = None,
-        skip_steps: int = 0,
+        t_start: int = 0,
     ):
         """
         ### Sampling Loop
@@ -132,7 +138,7 @@ class DDIMSampler(DiffusionSampler):
         x = x_last if x_last is not None else torch.randn(shape, device=device)
 
         # Time steps to sample at $\tau_{S - i'}, \tau_{S - i' - 1}, \dots, \tau_1$
-        time_steps = np.flip(self.time_steps)[skip_steps:]
+        time_steps = np.flip(self.time_steps)[t_start:]
 
         for i, step in monit.enum("Sample", time_steps):
             # Index $i$ in the list $[\tau_1, \tau_2, \dots, \tau_S]$
@@ -153,6 +159,11 @@ class DDIMSampler(DiffusionSampler):
                 uncond_cond=uncond_cond,
             )
 
+            if self.is_show_image:
+                show_image(x, f"exp/img/x{step + 1}.png")
+
+        if self.is_show_image:
+            show_image(x, "exp/img/x0.png")
         # Return $x_0$
         return x
 
@@ -169,6 +180,7 @@ class DDIMSampler(DiffusionSampler):
         temperature: float = 1.0,
         uncond_scale: float = 1.0,
         uncond_cond: Optional[torch.Tensor] = None,
+        cond_concat=None,
     ):
         """
         ### Sample $x_{\tau_{i-1}}$
@@ -185,8 +197,19 @@ class DDIMSampler(DiffusionSampler):
         :param uncond_cond: is the conditional embedding for empty prompt $c_u$
         """
 
-        # Get $\epsilon_\theta(x_{\tau_i}}$
-        e_t = self.get_eps(x, t, c, uncond_scale=uncond_scale, uncond_cond=uncond_cond)
+        # Get $\epsilon_\theta(x_{\tau_i})$
+        if cond_concat is not None:
+            e_t = self.get_eps(
+                torch.concat([x, cond_concat], dim=1),
+                t,
+                c,
+                uncond_scale=uncond_scale,
+                uncond_cond=uncond_cond,
+            )
+        else:
+            e_t = self.get_eps(
+                x, t, c, uncond_scale=uncond_scale, uncond_cond=uncond_cond
+            )
 
         # Calculate $x_{\tau_{i - 1}}$ and predicted $x_0$
         x_prev, pred_x0 = self.get_x_prev_and_pred_x0(
@@ -206,7 +229,7 @@ class DDIMSampler(DiffusionSampler):
         repeat_noise: bool,
     ):
         """
-        ### Sample $x_{\tau_{i-1}}$ given $\epsilon_\theta(x_{\tau_i}}$
+        ### Sample $x_{\tau_{i-1}}$ given $\epsilon_\theta(x_{\tau_i})$
         """
 
         # $\alpha_{\tau_i}$
@@ -289,6 +312,8 @@ class DDIMSampler(DiffusionSampler):
         orig_noise: Optional[torch.Tensor] = None,
         uncond_scale: float = 1.0,
         uncond_cond: Optional[torch.Tensor] = None,
+        cond_concat=None,
+        repaint_n=1,
     ):
         """
         ### Painting Loop
@@ -308,7 +333,7 @@ class DDIMSampler(DiffusionSampler):
         bs = x.shape[0]
 
         # Time steps to sample at $\tau_{S`}, \tau_{S' - 1}, \dots, \tau_1$
-        time_steps = np.flip(self.time_steps[:t_start])
+        time_steps = np.flip(self.time_steps[: t_start + 1])
 
         for i, step in monit.enum("Paint", time_steps):
             # Index $i$ in the list $[\tau_1, \tau_2, \dots, \tau_S]$
@@ -325,6 +350,7 @@ class DDIMSampler(DiffusionSampler):
                 index=index,
                 uncond_scale=uncond_scale,
                 uncond_cond=uncond_cond,
+                cond_concat=cond_concat,
             )
 
             # Replace the masked area with original image
