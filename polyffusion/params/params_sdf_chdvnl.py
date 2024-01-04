@@ -38,12 +38,12 @@ params = AttrDict(
     img_w=128,
     # conditional
     cond_type="chord",
-    cond_mode="uncond",  # {mix, cond, uncond}
+    cond_mode="mix",  # {mix, cond, uncond}
     # whether to use chord encoder from polydis
     use_enc=use_enc,
-    # chd_n_step=32,
-    # chd_input_dim=36,
-    # chd_z_input_dim=512,
-    # chd_hidden_dim=512,
-    # chd_z_dim=chd_z_dim,
+    chd_n_step=32,
+    chd_input_dim=36,
+    chd_z_input_dim=512,
+    chd_hidden_dim=512,
+    chd_z_dim=chd_z_dim,
 )

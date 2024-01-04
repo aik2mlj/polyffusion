@@ -4,6 +4,7 @@ from params.params_autoencoder import params as params_autoencoder
 from params.params_chd_8bar import params as params_chd_8bar
 from params.params_ddpm import params as params_ddpm
 from params.params_sdf import params as params_sdf
+from params.params_sdf_chdvnl import params as params_sdf_chdvnl
 from params.params_sdf_chd8bar import params as params_sdf_chd8bar
 from params.params_sdf_concat import params as params_sdf_concat
 from params.params_sdf_pnotree import params as params_sdf_pnotree
@@ -38,9 +39,16 @@ if __name__ == "__main__":
     if args.pop909_use_track is not None:
         use_track = [int(x) for x in args.pop909_use_track.split(",")]
 
-    if args.model == "ldm_chdvnl":
+    if args.model == "ldm":
         config = LDM_TrainConfig(
             params_sdf, args.output_dir, use_track=use_track, data_dir=args.data_dir
+        )
+    elif args.model == "ldm_chdvnl":
+        config = LDM_TrainConfig(
+            params_sdf_chdvnl,
+            args.output_dir,
+            use_track=use_track,
+            data_dir=args.data_dir,
         )
     elif args.model == "ldm_chd8bar":
         config = LDM_TrainConfig(
