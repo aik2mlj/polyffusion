@@ -15,7 +15,7 @@ from utils import (
 )
 
 # from stable_diffusion.model.autoencoder import Autoencoder, Encoder, Decoder
-from . import *
+from . import TrainConfig
 
 
 class LDM_TrainConfig(TrainConfig):
@@ -81,7 +81,7 @@ class LDM_TrainConfig(TrainConfig):
             self.pnotree_enc, self.pnotree_dec = load_pretrained_pnotree_enc_dec(
                 PT_PNOTREE_PATH, 20, self.device
             )
-        elif params.cond_type == "chord":
+        if "chord" in params.cond_type:
             if params.use_enc:
                 self.chord_enc, self.chord_dec = load_pretrained_chd_enc_dec(
                     PT_CHD_8BAR_PATH,
@@ -91,7 +91,7 @@ class LDM_TrainConfig(TrainConfig):
                     params.chd_z_dim,
                     params.chd_n_step,
                 )
-        elif params.cond_type == "txt":
+        if "txt" in params.cond_type:
             if params.use_enc:
                 self.txt_enc = load_pretrained_txt_enc(
                     PT_POLYDIS_PATH,
@@ -100,8 +100,6 @@ class LDM_TrainConfig(TrainConfig):
                     params.txt_z_dim,
                     params.txt_num_channel,
                 )
-        else:
-            raise NotImplementedError
         self.model = Polyffusion_SDF(
             self.ldm_model,
             cond_type=params.cond_type,
@@ -124,7 +122,7 @@ class LDM_TrainConfig(TrainConfig):
                 params.batch_size, params.num_workers, params.pin_memory
             )
         else:
-            if data_dir == None:
+            if data_dir is None:
                 self.train_dl, self.val_dl = get_train_val_dataloaders(
                     params.batch_size, params.num_workers, params.pin_memory
                 )

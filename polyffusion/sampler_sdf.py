@@ -291,7 +291,7 @@ class SDFSampler(DiffusionSampler):
         bs = x.shape[0]
 
         # Time steps to sample at $\tau_{S`}, \tau_{S' - 1}, \dots, \tau_1$
-        time_steps = np.flip(self.time_steps[:t_start])
+        time_steps = np.flip(self.time_steps[: t_start + 1])
         print(f"RePainting: sampling steps = {repaint_n}")
 
         for i, step in monit.enum("Paint", time_steps):
@@ -314,15 +314,21 @@ class SDFSampler(DiffusionSampler):
                 # Replace the masked area with original image
                 assert mask is not None
                 # Get the $q_{\sigma,\tau}(x_{\tau_i}|x_0)$ for original image in latent space
+                x_t = x
                 for u in range(repaint_n):
                     # Index $i$ in the list $[\tau_1, \tau_2, \dots, \tau_S]$
                     # index = len(time_steps) - i - 1
                     # Time step $\tau_i$
-                    orig_t = self.q_sample(orig, step, noise=orig_noise)
-                    ts = x.new_full((bs,), step, dtype=torch.long)
+                    noise = (
+                        torch.randn_like(orig, device=self.device)
+                        if step > 0
+                        else torch.zeros_like(orig, device=self.device)
+                    )
+                    x_kn_tm1 = self.q_sample(orig, step, noise=noise)
+                    ts = x_t.new_full((bs,), step, dtype=torch.long)
                     # Sample $x_{\tau_{i-1}}$
-                    x, _, _ = self.p_sample(
-                        x,
+                    x_unkn_tm1, _, _ = self.p_sample(
+                        x_t,
                         cond,
                         ts,
                         step,
@@ -332,10 +338,10 @@ class SDFSampler(DiffusionSampler):
                     )
 
                     # Replace the masked area
-                    x = orig_t * mask + x * (1 - mask)
+                    x = x_kn_tm1 * mask + x_unkn_tm1 * (1 - mask)
                     if u < repaint_n - 1 and step > 0:
-                        noise = torch.randn_like(x, device=self.device)
-                        x = (
+                        noise = torch.randn_like(orig, device=self.device)
+                        x_t = (
                             1 - self.model.beta[step - 1]
                         ) ** 0.5 * x + self.model.beta[step - 1] * noise
 

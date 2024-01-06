@@ -1,12 +1,9 @@
 from . import AttrDict
 
-use_enc = False
 chd_z_dim = 512
+txt_z_dim = 256 * 4  # 4 pnotree concated, each 256
 
-if use_enc:
-    d_cond = chd_z_dim
-else:
-    d_cond = 36 * 32
+d_cond = chd_z_dim + txt_z_dim
 
 params = AttrDict(
     # Training params
@@ -37,13 +34,17 @@ params = AttrDict(
     img_h=128,
     img_w=128,
     # conditional
-    cond_type="chord",
-    cond_mode="uncond",  # {mix, cond, uncond}
+    cond_type="chord+txt",
+    cond_mode="mix",  # {mix, cond, uncond}
     # whether to use chord encoder from polydis
-    use_enc=use_enc,
+    use_enc=True,
     chd_n_step=32,
     chd_input_dim=36,
-    # chd_z_input_dim=512,
-    # chd_hidden_dim=512,
-    # chd_z_dim=chd_z_dim,
+    chd_z_input_dim=512,
+    chd_hidden_dim=512,
+    chd_z_dim=chd_z_dim,
+    txt_emb_size=256,
+    txt_hidden_dim=1024,
+    txt_z_dim=256,
+    txt_num_channel=10,
 )
