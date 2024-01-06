@@ -452,13 +452,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ddim_discretize",
         default="uniform",
-        help="whether to use uniform or quad discretization in DDIM",
+        help="whether to use uniform or quad discretization in DDIM {uniform(default), quad}",
     )
-    parser.add_argument("--ddim_eta", default=0.0, help="ddim eta")
+    parser.add_argument("--ddim_eta", default=0.0, help="ddim eta, default: 0.0")
     parser.add_argument(
         "--ddim_steps",
         default=50,
-        help="number of ddim sampling steps",
+        help="number of ddim sampling steps, default: 50",
     )
     parser.add_argument("--repaint_n", default=1, help="n sampling steps in RePaint")
     parser.add_argument("--length", default=0, help="the generated length (in 8-bars)")

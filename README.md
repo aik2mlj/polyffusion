@@ -44,6 +44,7 @@ python polyffusion/main.py --model [model] --output_dir [output_dir]
 ```
 
 The models that can be selected (which make sense):
+
 - `ldm_chd8bar`: conditioned on latent chord representations encoded by a pre-trained chord encoder.
 - `ldm_txt`: conditioned on latent texture representations encoded by a pre-trained texture encoder.
 - `ldm_chdvnl`: conditioned on vanilla chord representations.
@@ -51,6 +52,7 @@ The models that can be selected (which make sense):
 - `ddpm`: vanilla diffusion model from DDPM without conditioning.
 
 Examples:
+
 ```shell
 python polyffusion/main.py --model ldm_chd8bar --output_dir result/ldm_chd8bar
 ```
@@ -62,14 +64,19 @@ If you'd like to test our trained checkpoints, please access the folder [here](h
 ## Inference
 
 Please see the helping messages by running
+
 ```shell
 python polyffusion/inference_sdf.py --help
 ```
 
 Examples:
+
 ```shell
 # unconditional generation of length 10x8 bars
 python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=0. --length=10
+
+# conditional generation using DDIM sampler (default guidance scale = 1)
+python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --ddim --ddim_steps=80 --ddim_eta=0.0 --ddim_discretize=uniform
 
 # conditional generation with guidance scale = 5, conditional chord progressions chosen from a song from POP909 validation set.
 python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=5.
