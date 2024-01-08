@@ -331,7 +331,7 @@ class Experiments:
                 f"{',autoreg' if autoreg else ''}"
                 f"{',ddim' + str(args.ddim_steps) + '_eta' + str(args.ddim_eta) + '_' + str(args.ddim_discretize) if args.ddim else ''}"
                 "]"
-                f"_{datetime.now().strftime('%m-%d_%H%M%S')}"
+                f"_{datetime.now().strftime('%y-%m-%d_%H%M%S')}"
             )
             prmat2c = gen.cpu().numpy()
             prmat2c_to_midi_file(
@@ -381,7 +381,7 @@ class Experiments:
                 f"{',autoreg' if autoreg else ''}"
                 f"{',ddim' + str(args.ddim_steps) + '_eta' + str(args.ddim_eta) + '_' + str(args.ddim_discretize) if args.ddim else ''}"
                 "]"
-                f"_{datetime.now().strftime('%m-%d_%H%M%S')}"
+                f"_{datetime.now().strftime('%y-%m-%d_%H%M%S')}"
             )
             prmat2c = gen.cpu().numpy()
             mask = mask.cpu().numpy()

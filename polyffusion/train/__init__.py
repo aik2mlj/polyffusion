@@ -38,7 +38,7 @@ class TrainConfig:
                         )
                         == "y"
                     ):
-                        time_stamp = datetime.now().strftime("%m-%d_%H%M%S")
+                        time_stamp = datetime.now().strftime("%y-%m-%d_%H%M%S")
                         copy2(
                             f"{output_dir}/params.json",
                             f"{output_dir}/old_params_{time_stamp}.json",

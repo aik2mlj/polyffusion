@@ -1,6 +1,7 @@
 from . import AttrDict
 
 params = AttrDict(
+    model_name="autoencoder",
     # Training params
     batch_size=16,
     max_epoch=100,

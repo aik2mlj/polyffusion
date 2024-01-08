@@ -6,6 +6,7 @@ txt_z_dim = 256 * 4  # 4 pnotree concated, each 256
 d_cond = chd_z_dim + txt_z_dim
 
 params = AttrDict(
+    model_name="sdf_chd8bar_txt_mix2",
     # Training params
     batch_size=16,
     max_epoch=100,

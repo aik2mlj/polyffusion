@@ -5,6 +5,7 @@ pnotree_z_dim = 512 * 4  # 4 pnotree concated, each 512
 d_cond = pnotree_z_dim
 
 params = AttrDict(
+    model_name="sdf_pnotree",
     # Training params
     batch_size=16,
     max_epoch=50,

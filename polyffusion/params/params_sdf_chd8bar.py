@@ -9,6 +9,7 @@ else:
     d_cond = 36 * 32
 
 params = AttrDict(
+    model_name="sdf_chd8bar",
     # Training params
     batch_size=16,
     max_epoch=100,

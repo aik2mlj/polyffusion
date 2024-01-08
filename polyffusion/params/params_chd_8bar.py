@@ -3,6 +3,7 @@ from . import AttrDict
 chd_z_dim = 512
 
 params = AttrDict(
+    model_name="chd_8bar",
     # Training params
     batch_size=128,
     max_epoch=1000,

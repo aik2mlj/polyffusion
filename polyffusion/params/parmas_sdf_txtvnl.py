@@ -5,6 +5,7 @@ txt_z_dim = 128
 d_cond = txt_z_dim
 
 params = AttrDict(
+    model_name="sdf_txtvnl",
     # Training params
     batch_size=16,
     max_epoch=200,

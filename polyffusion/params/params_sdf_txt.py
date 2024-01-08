@@ -5,6 +5,7 @@ txt_z_dim = 256 * 4  # 4 pnotree concated, each 256
 d_cond = txt_z_dim
 
 params = AttrDict(
+    model_name="sdf_txt",
     # Training params
     batch_size=16,
     max_epoch=200,
