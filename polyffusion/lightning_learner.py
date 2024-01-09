@@ -1,26 +1,23 @@
 import json
-from pathlib import Path
+import os
 
 import lightning
 import torch
 
-from dirs import *
-
 
 class LightningLearner(lightning.LightningModule):
-    def __init__(self, output_dir, model, optimizer, params, param_scheduler):
-        self.model_name = Path(output_dir).parent.name
-        self.output_dir = output_dir
-        self.log_dir = f"{output_dir}/logs"
-        self.checkpoint_dir = f"{output_dir}/chkpts"
+    def __init__(self, model, optimizer, params, param_scheduler):
+        super().__init__()
         self.model = model
         self.optimizer = optimizer
         self.params = params
         self.param_scheduler = param_scheduler  # teacher-forcing stuff
 
         print(json.dumps(self.params, sort_keys=True, indent=4))
+        self.save_hyperparameters("params", "param_scheduler")
 
-        self.save_hyperparameters("output_dir", "params", "param_scheduler")
+    def _categorize_loss_dict(self, loss_dict, category):
+        return {f"{category}/{k}": v for k, v in loss_dict.items()}
 
     def training_step(self, batch, batch_idx):
         if self.param_scheduler is not None:
@@ -38,12 +35,11 @@ class LightningLearner(lightning.LightningModule):
                 raise RuntimeError(
                     f"Detected NaN loss at step {self.global_step}, epoch {self.epoch}"
                 )
+        loss = loss_dict["loss"]
 
-        for k, v in loss_dict.items():
-            loss_dict[f"train/{k}"] = v
+        loss_dict = self._categorize_loss_dict(loss_dict, "train")
         self.log_dict(loss_dict, prog_bar=True)
 
-        loss = loss_dict["loss"]
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -56,8 +52,7 @@ class LightningLearner(lightning.LightningModule):
             scheduled_params = None
             loss_dict = self.model.get_loss_dict(batch, self.global_step)
 
-        for k, v in loss_dict.items():
-            loss_dict[f"val/{k}"] = v
+        loss_dict = self._categorize_loss_dict(loss_dict, "val")
         self.log_dict(loss_dict)
 
     def configure_optimizers(self):
