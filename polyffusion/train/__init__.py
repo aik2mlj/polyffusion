@@ -81,6 +81,7 @@ class TrainConfig:
             p.numel() for p in self.model.parameters() if p.requires_grad
         )
         print(f"Total parameters: {total_parameters}")
+        print(json.dumps(self.params, sort_keys=True, indent=4))
 
         checkpoint_callback = ModelCheckpoint(
             dirpath=self.checkpoint_dir,

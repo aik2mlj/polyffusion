@@ -13,7 +13,6 @@ class LightningLearner(lightning.LightningModule):
         self.params = params
         self.param_scheduler = param_scheduler  # teacher-forcing stuff
 
-        print(json.dumps(self.params, sort_keys=True, indent=4))
         self.save_hyperparameters("params", "param_scheduler")
 
     def _categorize_loss_dict(self, loss_dict, category):
