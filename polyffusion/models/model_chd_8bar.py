@@ -8,7 +8,6 @@ from utils import *
 class Chord_8Bar(nn.Module):
     def __init__(self, chord_enc: ChordEncoder, chord_dec: ChordDecoder):
         super(Chord_8Bar, self).__init__()
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.chord_enc = chord_enc
         self.chord_dec = chord_dec
 

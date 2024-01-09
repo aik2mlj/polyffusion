@@ -13,17 +13,16 @@ class DenoiseDiffusion(nn.Module):
     ## Denoise Diffusion
     """
 
-    def __init__(self, eps_model: nn.Module, n_steps: int, device: torch.device):
+    def __init__(self, eps_model: nn.Module, n_steps: int):
         """
         * `eps_model` is $\textcolor{lightgreen}{\epsilon_\theta}(x_t, t)$ model
         * `n_steps` is $t$
-        * `device` is the device to place constants on
         """
         super().__init__()
         self.eps_model = eps_model
 
         # Create $\beta_1, \dots, \beta_T$ linearly increasing variance schedule
-        self.beta = torch.linspace(0.0001, 0.02, n_steps).to(device)
+        self.beta = torch.linspace(0.0001, 0.02, n_steps)
 
         # $\alpha_t = 1 - \beta_t$
         self.alpha = 1.0 - self.beta
@@ -84,7 +83,7 @@ class DenoiseDiffusion(nn.Module):
         var = gather(self.sigma2, t)
 
         # $\epsilon \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$
-        eps = torch.randn(xt.shape, device=xt.device)
+        eps = torch.randn(xt.shape)
         # Sample
         return mean + (var**0.5) * eps
 
@@ -95,9 +94,7 @@ class DenoiseDiffusion(nn.Module):
         # Get batch size
         batch_size = x0.shape[0]
         # Get random $t$ for each sample in the batch
-        t = torch.randint(
-            0, self.n_steps, (batch_size,), device=x0.device, dtype=torch.long
-        )
+        t = torch.randint(0, self.n_steps, (batch_size,), dtype=torch.long)
 
         # $\epsilon \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$
         if noise is None:

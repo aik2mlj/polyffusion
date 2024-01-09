@@ -14,7 +14,6 @@ class Polyffusion_DDPM(nn.Module):
     ):
         super(Polyffusion_DDPM, self).__init__()
         self.params = params
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.ddpm = ddpm
 
     @classmethod

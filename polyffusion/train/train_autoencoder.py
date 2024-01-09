@@ -39,10 +39,10 @@ class Autoencoder_TrainConfig(TrainConfig):
             z_channels=params.z_channels,
         )
 
-        self.model = Polyffusion_Autoencoder(autoencoder).to(self.device)
+        self.model = Polyffusion_Autoencoder(autoencoder)
 
         # Create dataloader
-        if data_dir == None:
+        if data_dir is None:
             self.train_dl, self.val_dl = get_train_val_dataloaders(
                 params.batch_size, params.num_workers, params.pin_memory
             )

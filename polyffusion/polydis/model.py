@@ -26,10 +26,9 @@ def kl_with_normal(dist):
 
 
 class DisentangleVAE(nn.Module):
-    def __init__(self, name, device, chd_encoder, rhy_encoder, decoder, chd_decoder):
+    def __init__(self, name, chd_encoder, rhy_encoder, decoder, chd_decoder):
         super(DisentangleVAE, self).__init__()
         self.name = name
-        self.device = device
         self.chd_encoder = chd_encoder
         self.rhy_encoder = rhy_encoder
         self.decoder = decoder
@@ -48,14 +47,14 @@ class DisentangleVAE(nn.Module):
 
     def get_chroma(self, pr_mat):
         bs = pr_mat.size(0)
-        pad = torch.zeros(bs, 32, 4).to(self.device)
+        pad = torch.zeros(bs, 32, 4)
         pr_mat = torch.cat([pr_mat, pad], dim=-1)
         c = pr_mat.view(bs, 32, -1, 12).contiguous()
         c = c.sum(dim=-2)  # (bs, 32, 12)
         c = c.view(bs, 8, 4, 12)
         c = c.sum(dim=-2).float()
         c = torch.log(c + 1)
-        return c.to(self.device)
+        return c
 
     def run(self, x, c, pr_mat, tfr1, tfr2, tfr3, confuse=True):
         # NOTE: dist means distribution
@@ -197,7 +196,7 @@ class DisentangleVAE(nn.Module):
             z_chd, z_rhy = get_zs_from_dists([dist_chd, dist_rhy], sample)
             if chd_sample:
                 dist = Normal(torch.zeros_like(z_chd), torch.ones_like(z_chd))
-                z_chd = dist.sample().to(self.device)
+                z_chd = dist.sample()
             dec_z = torch.cat([z_chd, z_rhy], dim=-1)
             pitch_outs, dur_outs = self.decoder(dec_z, True, None, None, 0.0, 0.0)
             est_x, _, _ = self.decoder.output_to_numpy(pitch_outs, dur_outs)
@@ -301,18 +300,16 @@ class DisentangleVAE(nn.Module):
             [interpolation_count] + list(result_shape)
         )
         # out = np.array([(1 - t) * z1 + t * z2 for t in percentages])
-        return torch.from_numpy(out).to(self.device).float()
+        return torch.from_numpy(out).float()
 
     @staticmethod
-    def init_model(device=None, chd_size=256, txt_size=256, num_channel=10):
+    def init_model(chd_size=256, txt_size=256, num_channel=10):
         name = "disvae"
-        if device is None:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # chd_encoder = RnnEncoder(36, 1024, 256)
         chd_encoder = RnnEncoder(36, 1024, chd_size)
         # rhy_encoder = TextureEncoder(256, 1024, 256)
         rhy_encoder = TextureEncoder(256, 1024, txt_size, num_channel)
-        # pt_encoder = PtvaeEncoder(device=device, z_size=152)
+        # pt_encoder = PtvaeEncoder(z_size=152)
         # chd_decoder = RnnDecoder(z_dim=256)
         chd_decoder = RnnDecoder(z_dim=chd_size)
         # pt_decoder = PtvaeDecoder(note_embedding=None,
@@ -321,16 +318,11 @@ class DisentangleVAE(nn.Module):
             note_embedding=None, dec_dur_hid_size=64, z_size=chd_size + txt_size
         )
 
-        model = DisentangleVAE(
-            name, device, chd_encoder, rhy_encoder, pt_decoder, chd_decoder
-        )
+        model = DisentangleVAE(name, chd_encoder, rhy_encoder, pt_decoder, chd_decoder)
         return model
 
-    def load_model(self, model_path, map_location=None):
-        if map_location is None:
-            map_location = self.device
-        dic = torch.load(model_path, map_location=map_location)
+    def load_model(self, model_path):
+        dic = torch.load(model_path)
         for name in list(dic.keys()):
             dic[name.replace("module.", "")] = dic.pop(name)
         self.load_state_dict(dic)
-        self.to(self.device)

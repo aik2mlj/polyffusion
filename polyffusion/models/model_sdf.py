@@ -28,7 +28,6 @@ class Polyffusion_SDF(nn.Module):
         use_enc: whether to use pretrained chord encoder to generate encoded condition
         """
         super(Polyffusion_SDF, self).__init__()
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.ldm = ldm
         self.cond_type = cond_type
         self.cond_mode = cond_mode
@@ -204,9 +203,9 @@ class Polyffusion_SDF(nn.Module):
             ztxt = self._encode_txt(prmat)
             if self.cond_mode == "mix2":
                 if random.random() < 0.2:
-                    zchd = (-torch.ones_like(zchd)).to(self.device)  # a bunch of -1
+                    zchd = -torch.ones_like(zchd)  # a bunch of -1
                 if random.random() < 0.2:
-                    ztxt = (-torch.ones_like(ztxt)).to(self.device)  # a bunch of -1
+                    ztxt = -torch.ones_like(ztxt)  # a bunch of -1
             cond = torch.cat([zchd, ztxt], dim=-1)
         else:
             raise NotImplementedError
@@ -215,10 +214,10 @@ class Polyffusion_SDF(nn.Module):
         # exit(0)
 
         if self.cond_mode == "uncond":
-            cond = (-torch.ones_like(cond)).to(self.device)  # a bunch of -1
+            cond = -torch.ones_like(cond)  # a bunch of -1
         elif self.cond_mode == "mix" or self.cond_mode == "mix2":
             if random.random() < 0.2:
-                cond = (-torch.ones_like(cond)).to(self.device)  # a bunch of -1
+                cond = -torch.ones_like(cond)  # a bunch of -1
 
         # if self.is_autoregressive:
         #     concat, x = prmat2c.split(64, -2)

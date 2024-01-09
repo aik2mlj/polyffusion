@@ -50,7 +50,7 @@ class LDM_TrainConfig(TrainConfig):
 
             # self.autoencoder = Autoencoder(
             #     emb_channels=4, encoder=encoder, decoder=decoder, z_channels=4
-            # ).to(self.device)
+            # )
             raise NotImplementedError
 
         self.unet_model = UNetModel(
@@ -79,7 +79,7 @@ class LDM_TrainConfig(TrainConfig):
         self.txt_enc = None
         if params.cond_type == "pnotree":
             self.pnotree_enc, self.pnotree_dec = load_pretrained_pnotree_enc_dec(
-                PT_PNOTREE_PATH, 20, self.device
+                PT_PNOTREE_PATH, 20
             )
         if "chord" in params.cond_type:
             if params.use_enc:
@@ -115,7 +115,7 @@ class LDM_TrainConfig(TrainConfig):
             concat_ratio=params.concat_ratio
             if hasattr(params, "concat_ratio")
             else 1 / 8,
-        ).to(self.device)
+        )
         # Create dataloader
         if use_musicalion:
             self.train_dl, self.val_dl = get_train_val_dataloaders_musicalion(

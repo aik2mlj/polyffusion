@@ -34,10 +34,10 @@ class Chord8bar_TrainConfig(TrainConfig):
         self.model = Chord_8Bar(
             self.chord_enc,
             self.chord_dec,
-        ).to(self.device)
+        )
 
         # Create dataloader
-        if data_dir == None:
+        if data_dir is None:
             self.train_dl, self.val_dl = get_train_val_dataloaders(
                 params.batch_size, params.num_workers, params.pin_memory
             )

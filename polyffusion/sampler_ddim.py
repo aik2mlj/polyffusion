@@ -130,12 +130,11 @@ class DDIMSampler(DiffusionSampler):
             And `x_last` is then $x_{\tau_{S - i'}}$.
         """
 
-        # Get device and batch size
-        device = self.model.device
+        # Get batch size
         bs = shape[0]
 
         # Get $x_{\tau_S}$
-        x = x_last if x_last is not None else torch.randn(shape, device=device)
+        x = x_last if x_last is not None else torch.randn(shape)
 
         # Time steps to sample at $\tau_{S - i'}, \tau_{S - i' - 1}, \dots, \tau_1$
         time_steps = np.flip(self.time_steps)[t_start:]
@@ -253,10 +252,10 @@ class DDIMSampler(DiffusionSampler):
             noise = 0.0
         # If same noise is used for all samples in the batch
         elif repeat_noise:
-            noise = torch.randn((1, *x.shape[1:]), device=x.device)
+            noise = torch.randn((1, *x.shape[1:]))
             # Different noise for each sample
         else:
-            noise = torch.randn(x.shape, device=x.device)
+            noise = torch.randn(x.shape)
 
         # Multiply noise by the temperature
         noise = noise * temperature

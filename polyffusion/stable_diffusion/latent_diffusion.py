@@ -196,7 +196,7 @@ class LatentDiffusion(nn.Module):
         var = gather(self.sigma2, t)
 
         # $\epsilon \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$
-        eps = torch.randn(xt.shape, device=xt.device)
+        eps = torch.randn(xt.shape)
         # Sample
         return mean + (var**0.5) * eps
 
@@ -213,9 +213,7 @@ class LatentDiffusion(nn.Module):
         # Get batch size
         batch_size = x0.shape[0]
         # Get random $t$ for each sample in the batch
-        t = torch.randint(
-            0, self.n_steps, (batch_size,), device=x0.device, dtype=torch.long
-        )
+        t = torch.randint(0, self.n_steps, (batch_size,), dtype=torch.long)
         if self.first_stage_model is not None:
             x0 = self.autoencoder_encode(x0)
 

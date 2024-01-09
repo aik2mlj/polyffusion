@@ -112,12 +112,11 @@ class DDPMSampler(DiffusionSampler):
             And `x_last` is then $x_{T - t'}$.
         """
 
-        # Get device and batch size
-        device = self.model.device
+        # Get batch size
         bs = shape[0]
 
         # Get $x_T$
-        x = x_last if x_last is not None else torch.randn(shape, device=device)
+        x = x_last if x_last is not None else torch.randn(shape)
 
         # Time steps to sample at $T - t', T - t' - 1, \dots, 1$
         time_steps = np.flip(self.time_steps)[skip_steps:]

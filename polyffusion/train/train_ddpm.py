@@ -23,18 +23,17 @@ class DDPM_TrainConfig(TrainConfig):
             n_channels=params.n_channels,
             ch_mults=params.channel_multipliers,
             is_attn=params.is_attention,
-        ).to(self.device)
+        )
 
         # Create [DDPM class](index.html)
         self.diffusion = DenoiseDiffusion(
             eps_model=self.eps_model,
             n_steps=params.n_steps,
-            device=self.device,
         )
 
-        self.model = Polyffusion_DDPM(self.diffusion, params).to(self.device)
+        self.model = Polyffusion_DDPM(self.diffusion, params)
         # Create dataloader
-        if data_dir == None:
+        if data_dir is None:
             self.train_dl, self.val_dl = get_train_val_dataloaders(
                 params.batch_size, params.num_workers, params.pin_memory
             )

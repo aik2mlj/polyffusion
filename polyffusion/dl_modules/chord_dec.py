@@ -56,10 +56,10 @@ class ChordDecoder(nn.Module):
             if teacher_force and not inference:
                 token = gt_chd[:, t].unsqueeze(1)
             else:
-                t_root = torch.zeros(bs, 1, 12).to(z_chd.device).float()
+                t_root = torch.zeros(bs, 1, 12).float()
                 t_root[torch.arange(0, bs), 0, r_root.max(-1)[-1]] = 1.0
                 t_chroma = r_chroma.max(-1)[-1].float()
-                t_bass = torch.zeros(bs, 1, 12).to(z_chd.device).float()
+                t_bass = torch.zeros(bs, 1, 12).float()
                 t_bass[torch.arange(0, bs), 0, r_bass.max(-1)[-1]] = 1.0
                 token = torch.cat([t_root, t_chroma, t_bass], dim=-1)
 

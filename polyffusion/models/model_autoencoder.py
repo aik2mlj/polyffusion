@@ -9,7 +9,6 @@ from utils import *
 class Polyffusion_Autoencoder(nn.Module):
     def __init__(self, autoencoder: Autoencoder):
         super(Polyffusion_Autoencoder, self).__init__()
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.autoencoder = autoencoder
 
     @classmethod

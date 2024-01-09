@@ -68,10 +68,10 @@ class RnnDecoder(nn.Module):
             recon_chroma.append(r_chroma)
             recon_bass.append(r_bass)
 
-            t_root = torch.zeros(bs, 1, 12).to(z_chd.device).float()
+            t_root = torch.zeros(bs, 1, 12).float()
             t_root[torch.arange(0, bs), 0, r_root.max(-1)[-1]] = 1.0
             t_chroma = r_chroma.max(-1)[-1].float()
-            t_bass = torch.zeros(bs, 1, 12).to(z_chd.device).float()
+            t_bass = torch.zeros(bs, 1, 12).float()
             t_bass[torch.arange(0, bs), 0, r_bass.max(-1)[-1]] = 1.0
             token = torch.cat([t_root, t_chroma, t_bass], dim=-1)
             if t == self.num_step - 1:
@@ -121,7 +121,6 @@ class TextureEncoder(nn.Module):
 class PtvaeEncoder(nn.Module):
     def __init__(
         self,
-        device,
         max_simu_note=32,
         max_pitch=127,
         min_pitch=0,
@@ -151,10 +150,6 @@ class PtvaeEncoder(nn.Module):
         self.note_size = self.pitch_range + dur_width
         self.max_simu_note = max_simu_note  # the max # of notes at each ts.
         self.num_step = num_step  # 32
-        if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            self.device = device
         self.note_emb_size = note_emb_size
         self.z_size = z_size
         self.enc_notes_hid_size = enc_notes_hid_size
@@ -197,7 +192,7 @@ class PtvaeEncoder(nn.Module):
                     self.pitch_range + 1,
                 ],
                 dtype=torch.float,
-            ).to(self.device)
+            )
 
             out[range(0, out.size(0)), ind_x[:, :, :, 0].view(-1)] = 1.0
             out = out.view(-1, 32, self.max_simu_note, self.pitch_range + 1)
@@ -236,7 +231,6 @@ class PtvaeEncoder(nn.Module):
 class PtvaeDecoder(nn.Module):
     def __init__(
         self,
-        device=None,
         note_embedding=None,
         max_simu_note=32,
         max_pitch=127,
@@ -269,12 +263,6 @@ class PtvaeDecoder(nn.Module):
         self.note_size = self.pitch_range + dur_width
         self.max_simu_note = max_simu_note  # the max # of notes at each ts.
         self.num_step = num_step  # 32
-
-        # device
-        if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            self.device = device
 
         self.note_emb_size = note_emb_size
         self.z_size = z_size
@@ -350,7 +338,7 @@ class PtvaeDecoder(nn.Module):
                     self.pitch_range + 1,
                 ],
                 dtype=torch.float,
-            ).to(self.device)
+            )
 
             out[range(0, out.size(0)), ind_x[:, :, :, 0].view(-1)] = 1.0
             out = out.view(-1, 32, self.max_simu_note, self.pitch_range + 1)
@@ -361,20 +349,20 @@ class PtvaeDecoder(nn.Module):
         sos = torch.zeros(self.note_size)
         sos[self.pitch_sos] = 1.0
         sos[self.pitch_range :] = 2.0
-        sos = sos.to(self.device)
+        sos = sos
         return sos
 
     def dur_ind_to_dur_token(self, inds, batch_size):
         token = torch.zeros(batch_size, self.dur_width)
         token[range(0, batch_size), inds] = 1.0
-        token = token.to(self.device)
+        token = token
         return token
 
     def pitch_dur_ind_to_note_token(self, pitch_inds, dur_inds, batch_size):
         token = torch.zeros(batch_size, self.note_size)
         token[range(0, batch_size), pitch_inds] = 1.0
         token[:, self.pitch_range :] = dur_inds
-        token = token.to(self.device)
+        token = token
         token = self.note_embedding(token)
         return token
 
@@ -398,7 +386,7 @@ class PtvaeDecoder(nn.Module):
         # token: (B, 1, dur_width)
 
         est_durs = torch.zeros(batch_size, self.dur_width, 2)
-        est_durs = est_durs.to(self.device)
+        est_durs = est_durs
 
         for t in range(self.dur_width):
             token, dur_hid = self.dec_dur_gru(token, dur_hid)
@@ -431,8 +419,8 @@ class PtvaeDecoder(nn.Module):
         predicted_notes[:, :, self.pitch_range :] = 2.0
         predicted_notes[:, 0] = token.squeeze(1)  # fill sos index
         lengths = torch.zeros(batch_size)
-        predicted_notes = predicted_notes.to(self.device)
-        lengths = lengths.to(self.device)
+        predicted_notes = predicted_notes
+        lengths = lengths
         pitch_outs = []
         dur_outs = []
 
@@ -585,7 +573,7 @@ class PtvaeDecoder(nn.Module):
             dur2 = dur_loss_func(recon_dur[:, 2, :], gt_dur[:, 2])
             dur3 = dur_loss_func(recon_dur[:, 3, :], gt_dur[:, 3])
             dur4 = dur_loss_func(recon_dur[:, 4, :], gt_dur[:, 4])
-            w = torch.tensor([1, 0.6, 0.4, 0.3, 0.3], device=recon_dur.device).float()
+            w = torch.tensor([1, 0.6, 0.4, 0.3, 0.3]).float()
             dur_loss = (
                 w[0] * dur0 + w[1] * dur1 + w[2] * dur2 + w[3] * dur3 + w[4] * dur4
             )

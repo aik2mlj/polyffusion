@@ -14,9 +14,9 @@ from dirs import *
 from dl_modules import *
 
 
-def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
-    pnotree_enc = PianoTreeEncoder(device=device, max_simu_note=max_simu_note)
-    pnotree_dec = PianoTreeDecoder(device=device, max_simu_note=max_simu_note)
+def load_pretrained_pnotree_enc_dec(fpath, max_simu_note):
+    pnotree_enc = PianoTreeEncoder(max_simu_note=max_simu_note)
+    pnotree_dec = PianoTreeDecoder(max_simu_note=max_simu_note)
     checkpoint = torch.load(fpath)
     enc_checkpoint = OrderedDict()
     dec_checkpoint = OrderedDict()
@@ -40,8 +40,6 @@ def load_pretrained_pnotree_enc_dec(fpath, max_simu_note, device):
             dec_checkpoint[k] = v
     pnotree_enc.load_state_dict(enc_checkpoint)
     pnotree_dec.load_state_dict(dec_checkpoint)
-    pnotree_enc.to(device)
-    pnotree_dec.to(device)
     return pnotree_enc, pnotree_dec
 
 

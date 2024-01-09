@@ -162,7 +162,7 @@ class UNetModel(nn.Module):
             -math.log(max_period)
             * torch.arange(start=0, end=half, dtype=torch.float32)
             / half
-        ).to(device=time_steps.device)
+        )
         # $\frac{t}{10000^{\frac{2i}{c}}}$
         args = time_steps[:, None].float() * frequencies[None]
         # $\cos\Bigg(\frac{t}{10000^{\frac{2i}{c}}}\Bigg)$ and $\sin\Bigg(\frac{t}{10000^{\frac{2i}{c}}}\Bigg)$
