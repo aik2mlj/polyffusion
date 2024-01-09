@@ -702,11 +702,11 @@ if __name__ == "__main__":
                 int(args.ddim_steps),
                 args.ddim_discretize,
                 int(args.ddim_eta),
+                is_show_image=args.show_image,
             )
         else:
             sampler = SDFSampler(
                 model.ldm,
-                is_autocast=params.fp16,
                 is_show_image=args.show_image,
             )
         expmt = Experiments(model_label, params, sampler)

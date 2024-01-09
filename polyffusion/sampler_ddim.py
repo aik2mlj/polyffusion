@@ -43,7 +43,6 @@ class DDIMSampler(DiffusionSampler):
         n_steps: int,
         ddim_discretize: str = "uniform",
         ddim_eta: float = 0.0,
-        is_autocast=False,
         is_show_image=False,
     ):
         """
@@ -57,7 +56,6 @@ class DDIMSampler(DiffusionSampler):
         super().__init__(model)
 
         self.is_show_image = is_show_image
-        self.autocast = torch.cuda.amp.autocast(enabled=is_autocast)
 
         # Number of steps, $T$
         self.n_steps = model.n_steps

@@ -225,7 +225,6 @@ if __name__ == "__main__":
     ).to(device)
     sampler = SDFSampler(
         model.ldm,
-        is_autocast=params.fp16,
         is_show_image=args.show_image,
     )
     expmt = Experiments(model_label, params, sampler)

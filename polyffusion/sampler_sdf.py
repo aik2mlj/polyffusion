@@ -37,7 +37,6 @@ class SDFSampler(DiffusionSampler):
     def __init__(
         self,
         model: LatentDiffusion,
-        is_autocast=False,
         is_show_image=False,
     ):
         """
@@ -49,8 +48,6 @@ class SDFSampler(DiffusionSampler):
         self.time_steps = np.asarray(list(range(self.n_steps)), dtype=np.int32)
 
         self.is_show_image = is_show_image
-
-        self.autocast = torch.cuda.amp.autocast(enabled=is_autocast)
 
         with torch.no_grad():
             # $\bar\alpha_t$
@@ -108,19 +105,18 @@ class SDFSampler(DiffusionSampler):
         """
 
         # Get $\epsilon_\theta$
-        with self.autocast:
-            if cond_concat is not None:
-                e_t = self.get_eps(
-                    torch.concat([x, cond_concat], dim=1),
-                    t,
-                    c,
-                    uncond_scale=uncond_scale,
-                    uncond_cond=uncond_cond,
-                )
-            else:
-                e_t = self.get_eps(
-                    x, t, c, uncond_scale=uncond_scale, uncond_cond=uncond_cond
-                )
+        if cond_concat is not None:
+            e_t = self.get_eps(
+                torch.concat([x, cond_concat], dim=1),
+                t,
+                c,
+                uncond_scale=uncond_scale,
+                uncond_cond=uncond_cond,
+            )
+        else:
+            e_t = self.get_eps(
+                x, t, c, uncond_scale=uncond_scale, uncond_cond=uncond_cond
+            )
 
         # Get batch size
         bs = x.shape[0]
