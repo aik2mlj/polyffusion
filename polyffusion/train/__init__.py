@@ -85,7 +85,7 @@ class TrainConfig:
         checkpoint_callback = ModelCheckpoint(
             dirpath=self.checkpoint_dir,
             monitor="val/loss",
-            filename="epoch{epoch}-val_loss{val/loss:.2f}",
+            filename="epoch{epoch}-val_loss{val/loss:.6f}",
             save_last=True,
             save_top_k=3,
             auto_insert_metric_name=False,
