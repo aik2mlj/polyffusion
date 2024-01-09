@@ -31,9 +31,8 @@ from data.dataset import DataSampleNpz
 from data.dataset_musicalion import DataSampleNpz_Musicalion
 from data.midi_to_data import get_data_for_single_midi
 from dirs import *
+from lightning_learner import LightningLearner
 from models.model_sdf import Polyffusion_SDF
-
-# from params_sdf import params
 from params import AttrDict
 from polydis_aftertouch import PolydisAftertouch
 from sampler_ddim import DDIMSampler
@@ -402,8 +401,10 @@ class Experiments:
 
 
 if __name__ == "__main__":
+    parser.add_argument("--chkpt_path", help="the path of the checkpoint to be used")
     parser.add_argument(
-        "--model_dir", help="directory in which trained model checkpoints are stored"
+        "--custom_params_path",
+        help="the path of custom parameters, default load from 'params.json' in the parent folder of the checkpoint",
     )
     parser.add_argument(
         "--uncond_scale",
@@ -506,8 +507,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    model_label = Path(args.model_dir).parent.name
-    print(f"model_label: {model_label}")
 
     if args.seed is not None:
         SEED = int(args.seed)
@@ -517,9 +516,15 @@ if __name__ == "__main__":
         random.seed(SEED)
 
     # params ready
-    with open(f"{args.model_dir}/params.json", "r") as params_file:
+    if args.custom_params_path is None:
+        params_path = f"{Path(args.chkpt_path).parent.parent}/params.json"
+    else:
+        params_path = args.custom_params_path
+    with open(params_path, "r") as params_file:
         params = json.load(params_file)
     params = AttrDict(params)
+    model_label = params.model_name
+    print(f"model_label: {model_label}")
 
     # model ready
     autoencoder = None
@@ -663,8 +668,9 @@ if __name__ == "__main__":
         txt_enc = None
         if params.cond_type == "pnotree":
             pnotree_enc, pnotree_dec = load_pretrained_pnotree_enc_dec(
-                PT_PNOTREE_PATH, 20, device
+                PT_PNOTREE_PATH, 20
             )
+            pnotree_enc, pnotree_dec = pnotree_enc.to(device), pnotree_dec.to(device)
         if "chord" in params.cond_type:
             if params.use_enc:
                 chord_enc, chord_dec = load_pretrained_chd_enc_dec(
@@ -675,6 +681,7 @@ if __name__ == "__main__":
                     params.chd_z_dim,
                     params.chd_n_step,
                 )
+                chord_enc, chord_dec = chord_enc.to(device), chord_dec.to(device)
         if "txt" in params.cond_type:
             if params.use_enc:
                 txt_enc = load_pretrained_txt_enc(
@@ -683,19 +690,41 @@ if __name__ == "__main__":
                     params.txt_hidden_dim,
                     params.txt_z_dim,
                     params.txt_num_channel,
-                )
+                ).to(device)
 
-        model = Polyffusion_SDF.load_trained(
-            ldm_model,
-            f"{args.model_dir}/chkpts/{args.chkpt_name}",
-            params.cond_type,
-            params.cond_mode,
-            chord_enc,
-            chord_dec,
-            pnotree_enc,
-            pnotree_dec,
-            txt_enc,
-        ).to(device)
+        if os.path.exists(f"{args.chkpt_path}/chkpts/{args.chkpt_name}"):
+            args.chkpt_path = f"{args.chkpt_path}/chkpts/{args.chkpt_name}"
+        if args.chkpt_path[-3:] == ".pt":
+            # legacy ".pt" ckeckpoint
+            model = Polyffusion_SDF.load_trained(
+                ldm_model,
+                args.chkpt_path,
+                params.cond_type,
+                params.cond_mode,
+                chord_enc,
+                chord_dec,
+                pnotree_enc,
+                pnotree_dec,
+                txt_enc,
+            ).to(device)
+        elif args.chkpt_path[-5:] == ".ckpt":
+            # new lightning checkpoint
+            init_model = Polyffusion_SDF(
+                ldm_model,
+                params.cond_type,
+                params.cond_mode,
+                chord_enc,
+                chord_dec,
+                pnotree_enc,
+                pnotree_dec,
+                txt_enc,
+            )
+            learner = LightningLearner.load_from_checkpoint(
+                args.chkpt_path, model=init_model, optimizer=None
+            )
+            model = learner.model.to(device)
+        else:
+            raise RuntimeError
         if args.ddim:
             sampler = DDIMSampler(
                 model.ldm,
