@@ -98,7 +98,7 @@ def get_custom_train_val_dataloaders(
     val_dl = DataLoader(
         val_dataset,
         batch_size,
-        True,
+        False,
         collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
         pin_memory=pin_memory,
@@ -126,7 +126,7 @@ def get_train_val_dataloaders(
     val_dl = DataLoader(
         val_dataset,
         batch_size,
-        True,
+        False,
         collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
         pin_memory=pin_memory,
@@ -144,7 +144,7 @@ def get_val_dataloader(
     val_dl = DataLoader(
         val_dataset,
         batch_size,
-        True,
+        False,
         collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
         pin_memory=pin_memory,

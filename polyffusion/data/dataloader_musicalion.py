@@ -64,7 +64,7 @@ def get_train_val_dataloaders(batch_size, num_workers=0, pin_memory=False, debug
     val_dl = DataLoader(
         val_dataset,
         batch_size,
-        True,
+        False,
         collate_fn=lambda x: collate_fn(x, shift=False),
         num_workers=num_workers,
         pin_memory=pin_memory,
