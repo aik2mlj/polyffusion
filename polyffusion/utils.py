@@ -117,9 +117,6 @@ def nested_map(struct, map_fn):
 
 def standard_normal(shape):
     N = Normal(torch.zeros(shape), torch.ones(shape))
-    if torch.cuda.is_available():
-        N.loc = N.loc.cuda()
-        N.scale = N.scale.cuda()
     return N
 
 

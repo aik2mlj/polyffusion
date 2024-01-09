@@ -12,9 +12,6 @@ def get_zs_from_dists(dists, sample=False):
 
 def standard_normal(shape):
     N = Normal(torch.zeros(shape), torch.ones(shape))
-    if torch.cuda.is_available():
-        N.loc = N.loc.cuda()
-        N.scale = N.scale.cuda()
     return N
 
 
@@ -133,8 +130,8 @@ class DisentangleVAE(nn.Module):
 
     def kl_loss(self, *dists):
         # kl = kl_with_normal(dists[0])
-        kl_chd = kl_with_normal(dists[0])
-        kl_rhy = kl_with_normal(dists[1])
+        kl_chd = kl_with_normal(dists[0]).to(dists[0].device)
+        kl_rhy = kl_with_normal(dists[1]).to(dists[0].device)
         kl_loss = kl_chd + kl_rhy
         return kl_loss, kl_chd, kl_rhy
 

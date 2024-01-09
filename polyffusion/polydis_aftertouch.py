@@ -4,7 +4,6 @@ from polydis.model import DisentangleVAE
 from utils import estx_to_midi_file
 
 model_path = "pretrained/polydis/model_master_final.pt"
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # readme_fn = "./train.py"
 batch_size = 128
 length = 16  # 16 bars for inference
@@ -25,8 +24,8 @@ class PolydisAftertouch:
         self.model = model
 
     def reconstruct(self, prmat, chd, fn, chd_sample=False):
-        chd = chd.to(device).float()
-        prmat = prmat.to(device).float()
+        chd = chd.float()
+        prmat = prmat.float()
         est_x = self.model.inference(prmat, chd, sample=False, chd_sample=chd_sample)
         estx_to_midi_file(est_x, fn)
 
