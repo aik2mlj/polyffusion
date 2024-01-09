@@ -158,10 +158,10 @@ class SDFSampler(DiffusionSampler):
             noise = 0
         # If same noise is used for all samples in the batch
         elif repeat_noise:
-            noise = torch.randn((1, *x.shape[1:]))
+            noise = torch.randn((1, *x.shape[1:]), device=x.device)
         # Different noise for each sample
         else:
-            noise = torch.randn(x.shape)
+            noise = torch.randn(x.shape, device=x.device)
 
         # Multiply noise by the temperature
         noise = noise * temperature
@@ -190,7 +190,7 @@ class SDFSampler(DiffusionSampler):
 
         # Random noise, if noise is not specified
         if noise is None:
-            noise = torch.randn_like(x0)
+            noise = torch.randn_like(x0, device=x0.device)
 
         # Sample from $\mathcal{N} \Big(x_t; \sqrt{\bar\alpha_t} x_0, (1-\bar\alpha_t) \mathbf{I} \Big)$
         return self.sqrt_alpha_bar[index] * x0 + self.sqrt_1m_alpha_bar[index] * noise
@@ -222,11 +222,11 @@ class SDFSampler(DiffusionSampler):
             And `x_last` is then $x_{T - t'}$.
         """
 
-        # Get batch size
+        # Get device and batch size
         bs = shape[0]
 
         # Get $x_T$
-        x = x_last if x_last is not None else torch.randn(shape)
+        x = x_last if x_last is not None else torch.randn(shape, device=cond.device)
 
         # Time steps to sample at $T - t', T - t' - 1, \dots, 1$
         time_steps = np.flip(self.time_steps)[t_start:]
@@ -319,7 +319,9 @@ class SDFSampler(DiffusionSampler):
                     # index = len(time_steps) - i - 1
                     # Time step $\tau_i$
                     noise = (
-                        torch.randn_like(orig) if step > 0 else torch.zeros_like(orig)
+                        torch.randn_like(orig, device=orig.device)
+                        if step > 0
+                        else torch.zeros_like(orig, device=orig.device)
                     )
                     x_kn_tm1 = self.q_sample(orig, step, noise=noise)
                     ts = x_t.new_full((bs,), step, dtype=torch.long)
@@ -337,7 +339,7 @@ class SDFSampler(DiffusionSampler):
                     # Replace the masked area
                     x = x_kn_tm1 * mask + x_unkn_tm1 * (1 - mask)
                     if u < repaint_n - 1 and step > 0:
-                        noise = torch.randn_like(orig)
+                        noise = torch.randn_like(orig, device=orig.device)
                         x_t = (
                             1 - self.model.beta[step - 1]
                         ) ** 0.5 * x + self.model.beta[step - 1] * noise

@@ -22,7 +22,7 @@ class DenoiseDiffusion(nn.Module):
         self.eps_model = eps_model
 
         # Create $\beta_1, \dots, \beta_T$ linearly increasing variance schedule
-        self.beta = torch.linspace(0.0001, 0.02, n_steps)
+        self.register_buffer("beta", torch.linspace(0.0001, 0.02, n_steps))
 
         # $\alpha_t = 1 - \beta_t$
         self.alpha = 1.0 - self.beta
@@ -83,7 +83,7 @@ class DenoiseDiffusion(nn.Module):
         var = gather(self.sigma2, t)
 
         # $\epsilon \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$
-        eps = torch.randn(xt.shape)
+        eps = torch.randn(xt.shape, device=xt.device)
         # Sample
         return mean + (var**0.5) * eps
 
@@ -94,7 +94,9 @@ class DenoiseDiffusion(nn.Module):
         # Get batch size
         batch_size = x0.shape[0]
         # Get random $t$ for each sample in the batch
-        t = torch.randint(0, self.n_steps, (batch_size,), dtype=torch.long)
+        t = torch.randint(
+            0, self.n_steps, (batch_size,), device=x0.device, dtype=torch.long
+        )
 
         # $\epsilon \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$
         if noise is None:

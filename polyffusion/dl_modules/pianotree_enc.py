@@ -59,6 +59,13 @@ class PianoTreeEncoder(nn.Module):
         self.linear_mu = nn.Linear(2 * enc_time_hid_size, z_size)
         self.linear_std = nn.Linear(2 * enc_time_hid_size, z_size)
 
+    @property
+    def device(self):
+        """
+        ### Get model device
+        """
+        return next(iter(self.parameters())).device
+
     def get_len_index_tensor(self, ind_x):
         """Calculate the lengths ((B, 32), torch.LongTensor) of pgrid."""
         with torch.no_grad():
@@ -78,7 +85,7 @@ class PianoTreeEncoder(nn.Module):
                     self.pitch_range + 1,
                 ],
                 dtype=torch.float,
-            )
+            ).to(self.device)
 
             out[range(0, out.size(0)), ind_x[:, :, :, 0].reshape(-1)] = 1.0
             out = out.view(-1, 32, self.max_simu_note, self.pitch_range + 1)

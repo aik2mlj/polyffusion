@@ -98,6 +98,13 @@ class PianoTreeDecoder(nn.Module):
         )
         self.dur_out_linear = nn.Linear(dec_dur_hid_size, 2)
 
+    @property
+    def device(self):
+        """
+        ### Get model device
+        """
+        return next(iter(self.parameters())).device
+
     def get_len_index_tensor(self, ind_x):
         """Calculate the lengths ((B, 32), torch.LongTensor) of pgrid."""
         with torch.no_grad():
@@ -117,7 +124,7 @@ class PianoTreeDecoder(nn.Module):
                     self.pitch_range + 1,
                 ],
                 dtype=torch.float,
-            )
+            ).to(self.device)
 
             out[range(0, out.size(0)), ind_x[:, :, :, 0].view(-1)] = 1.0
             out = out.view(-1, 32, self.max_simu_note, self.pitch_range + 1)
@@ -128,20 +135,20 @@ class PianoTreeDecoder(nn.Module):
         sos = torch.zeros(self.note_size)
         sos[self.pitch_sos] = 1.0
         sos[self.pitch_range :] = 2.0
-        sos = sos
+        sos = sos.to(self.device)
         return sos
 
     def dur_ind_to_dur_token(self, inds, batch_size):
         token = torch.zeros(batch_size, self.dur_width)
         token[range(0, batch_size), inds] = 1.0
-        token = token
+        token = token.to(self.device)
         return token
 
     def pitch_dur_ind_to_note_token(self, pitch_inds, dur_inds, batch_size):
         token = torch.zeros(batch_size, self.note_size)
         token[range(0, batch_size), pitch_inds] = 1.0
         token[:, self.pitch_range :] = dur_inds
-        token = token
+        token = token.to(self.device)
         token = self.note_embedding(token)
         return token
 
@@ -165,7 +172,7 @@ class PianoTreeDecoder(nn.Module):
         # token: (B, 1, dur_width)
 
         est_durs = torch.zeros(batch_size, self.dur_width, 2)
-        est_durs = est_durs
+        est_durs = est_durs.to(self.device)
 
         for t in range(self.dur_width):
             token, dur_hid = self.dec_dur_gru(token, dur_hid)
@@ -198,8 +205,8 @@ class PianoTreeDecoder(nn.Module):
         predicted_notes[:, :, self.pitch_range :] = 2.0
         predicted_notes[:, 0] = token.squeeze(1)  # fill sos index
         lengths = torch.zeros(batch_size)
-        predicted_notes = predicted_notes
-        lengths = lengths
+        predicted_notes = predicted_notes.to(self.device)
+        lengths = lengths.to(self.device)
         pitch_outs = []
         dur_outs = []
 
@@ -352,7 +359,7 @@ class PianoTreeDecoder(nn.Module):
             dur2 = dur_loss_func(recon_dur[:, 2, :], gt_dur[:, 2])
             dur3 = dur_loss_func(recon_dur[:, 3, :], gt_dur[:, 3])
             dur4 = dur_loss_func(recon_dur[:, 4, :], gt_dur[:, 4])
-            w = torch.tensor([1, 0.6, 0.4, 0.3, 0.3]).float()
+            w = torch.tensor([1, 0.6, 0.4, 0.3, 0.3], device=recon_dur.device).float()
             dur_loss = (
                 w[0] * dur0 + w[1] * dur1 + w[2] * dur2 + w[3] * dur3 + w[4] * dur4
             )

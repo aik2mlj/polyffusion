@@ -47,14 +47,14 @@ class DisentangleVAE(nn.Module):
 
     def get_chroma(self, pr_mat):
         bs = pr_mat.size(0)
-        pad = torch.zeros(bs, 32, 4)
+        pad = torch.zeros(bs, 32, 4).to(pr_mat.device)
         pr_mat = torch.cat([pr_mat, pad], dim=-1)
         c = pr_mat.view(bs, 32, -1, 12).contiguous()
         c = c.sum(dim=-2)  # (bs, 32, 12)
         c = c.view(bs, 8, 4, 12)
         c = c.sum(dim=-2).float()
         c = torch.log(c + 1)
-        return c
+        return c.to(pr_mat.device)
 
     def run(self, x, c, pr_mat, tfr1, tfr2, tfr3, confuse=True):
         # NOTE: dist means distribution
@@ -196,7 +196,7 @@ class DisentangleVAE(nn.Module):
             z_chd, z_rhy = get_zs_from_dists([dist_chd, dist_rhy], sample)
             if chd_sample:
                 dist = Normal(torch.zeros_like(z_chd), torch.ones_like(z_chd))
-                z_chd = dist.sample()
+                z_chd = dist.sample().to(pr_mat.device)
             dec_z = torch.cat([z_chd, z_rhy], dim=-1)
             pitch_outs, dur_outs = self.decoder(dec_z, True, None, None, 0.0, 0.0)
             est_x, _, _ = self.decoder.output_to_numpy(pitch_outs, dur_outs)
@@ -300,7 +300,7 @@ class DisentangleVAE(nn.Module):
             [interpolation_count] + list(result_shape)
         )
         # out = np.array([(1 - t) * z1 + t * z2 for t in percentages])
-        return torch.from_numpy(out).float()
+        return torch.from_numpy(out).to(z1.device).float()
 
     @staticmethod
     def init_model(chd_size=256, txt_size=256, num_channel=10):

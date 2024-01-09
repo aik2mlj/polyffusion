@@ -70,7 +70,7 @@ class TimeEmbedding(nn.Module):
         # where $d$ is `half_dim`
         half_dim = self.n_channels // 8
         emb = math.log(10_000) / (half_dim - 1)
-        emb = torch.exp(torch.arange(half_dim) * -emb)
+        emb = torch.exp(torch.arange(half_dim, device=t.device) * -emb)
         emb = t[:, None] * emb[None, :]
         emb = torch.cat((emb.sin(), emb.cos()), dim=1)
 
