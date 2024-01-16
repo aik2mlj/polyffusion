@@ -1,0 +1,27 @@
+model_name: ddpm
+batch_size: 16
+max_epoch: 100
+learning_rate: 2.0e-05
+max_grad_norm: 10
+fp16: false
+num_workers: 4
+pin_memory: true
+beta: 0.1
+weights:
+- 1
+- 0.5
+image_channels: 2
+image_size_h: 128
+image_size_w: 128
+n_channels: 64
+channel_multipliers:
+- 1
+- 2
+- 2
+- 4
+is_attention:
+- false
+- false
+- false
+- true
+n_steps: 1000

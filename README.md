@@ -46,16 +46,16 @@ python polyffusion/main.py --model [model] --output_dir [output_dir]
 
 The models that can be selected (which make sense):
 
-- `ldm_chd8bar`: conditioned on latent chord representations encoded by a pre-trained chord encoder.
-- `ldm_txt`: conditioned on latent texture representations encoded by a pre-trained texture encoder.
-- `ldm_chdvnl`: conditioned on vanilla chord representations.
-- `ldm_txtvnl`: conditioned on vanilla texture representations.
+- `sdf_chd8bar`: conditioned on latent chord representations encoded by a pre-trained chord encoder.
+- `sdf_txt`: conditioned on latent texture representations encoded by a pre-trained texture encoder.
+- `sdf_chdvnl`: conditioned on vanilla chord representations.
+- `sdf_txtvnl`: conditioned on vanilla texture representations.
 - `ddpm`: vanilla diffusion model from DDPM without conditioning.
 
 Examples:
 
 ```shell
-python polyffusion/main.py --model ldm_chd8bar --output_dir result/ldm_chd8bar
+python polyffusion/main.py --model sdf_chd8bar --output_dir result/sdf_chd8bar
 ```
 
 ## Trained Checkpoints

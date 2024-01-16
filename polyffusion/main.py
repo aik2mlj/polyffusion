@@ -1,17 +1,7 @@
 from argparse import ArgumentParser
 
-from params.params_autoencoder import params as params_autoencoder
-from params.params_chd_8bar import params as params_chd_8bar
-from params.params_ddpm import params as params_ddpm
-from params.params_sdf import params as params_sdf
-from params.params_sdf_chdvnl import params as params_sdf_chdvnl
-from params.params_sdf_chd8bar import params as params_sdf_chd8bar
-from params.params_sdf_concat import params as params_sdf_concat
-from params.params_sdf_pnotree import params as params_sdf_pnotree
-from params.params_sdf_txt import params as params_sdf_txt
-from params.parmas_sdf_txtvnl import params as params_sdf_txtvnl
-from params.params_sdf_chd8bar_txt import params as params_sdf_chd8bar_txt
-from params.params_sdf_chd8bar_txt_mix2 import params as params_sdf_chd8bar_txt_mix2
+from omegaconf import OmegaConf
+
 from train.train_autoencoder import Autoencoder_TrainConfig
 from train.train_chd_8bar import Chord8bar_TrainConfig
 from train.train_ddpm import DDPM_TrainConfig
@@ -39,79 +29,25 @@ if __name__ == "__main__":
     if args.pop909_use_track is not None:
         use_track = [int(x) for x in args.pop909_use_track.split(",")]
 
-    if args.model == "ldm":
+    params = OmegaConf.load(f"params/{args.model}.yaml")
+
+    if args.model.startswith("sdf"):
+        use_musicalion = "musicalion" in args.model
         config = LDM_TrainConfig(
-            params_sdf, args.output_dir, use_track=use_track, data_dir=args.data_dir
-        )
-    elif args.model == "ldm_chdvnl":
-        config = LDM_TrainConfig(
-            params_sdf_chdvnl,
+            params,
             args.output_dir,
+            use_musicalion,
             use_track=use_track,
             data_dir=args.data_dir,
         )
-    elif args.model == "ldm_chd8bar":
-        config = LDM_TrainConfig(
-            params_sdf_chd8bar,
-            args.output_dir,
-            use_track=use_track,
-            data_dir=args.data_dir,
-        )
-    elif args.model == "ldm_pnotree":
-        config = LDM_TrainConfig(
-            params_sdf_pnotree,
-            args.output_dir,
-            use_track=use_track,
-            data_dir=args.data_dir,
-        )
-    elif args.model == "ldm_txt":
-        config = LDM_TrainConfig(
-            params_sdf_txt, args.output_dir, use_track=use_track, data_dir=args.data_dir
-        )
-    elif args.model == "ldm_txtvnl":
-        config = LDM_TrainConfig(
-            params_sdf_txtvnl,
-            args.output_dir,
-            use_track=use_track,
-            data_dir=args.data_dir,
-        )
-    elif args.model == "ldm_chd8bar+txt":
-        config = LDM_TrainConfig(
-            params_sdf_chd8bar_txt,
-            args.output_dir,
-            use_track=use_track,
-            data_dir=args.data_dir,
-        )
-    elif args.model == "ldm_chd8bar+txt_mix2":
-        config = LDM_TrainConfig(
-            params_sdf_chd8bar_txt_mix2,
-            args.output_dir,
-            use_track=use_track,
-            data_dir=args.data_dir,
-        )
-    elif args.model == "ldm_concat":
-        config = LDM_TrainConfig(
-            params_sdf_concat,
-            args.output_dir,
-            use_track=use_track,
-            data_dir=args.data_dir,
-        )
-    elif args.model == "ldm_musicalion_pnotree":
-        config = LDM_TrainConfig(
-            params_sdf_pnotree, args.output_dir, use_musicalion=True
-        )
-    elif args.model == "ldm_musicalion_txt":
-        config = LDM_TrainConfig(params_sdf_txt, args.output_dir, use_musicalion=True)
     elif args.model == "ddpm":
-        config = DDPM_TrainConfig(params_ddpm, args.output_dir, data_dir=args.data_dir)
+        config = DDPM_TrainConfig(params, args.output_dir, data_dir=args.data_dir)
     elif args.model == "autoencoder":
         config = Autoencoder_TrainConfig(
-            params_autoencoder, args.output_dir, data_dir=args.data_dir
+            params, args.output_dir, data_dir=args.data_dir
         )
     elif args.model == "chd_8bar":
-        config = Chord8bar_TrainConfig(
-            params_chd_8bar, args.output_dir, data_dir=args.data_dir
-        )
+        config = Chord8bar_TrainConfig(params, args.output_dir, data_dir=args.data_dir)
     else:
         raise NotImplementedError
     config.train()
