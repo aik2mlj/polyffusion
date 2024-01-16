@@ -16,8 +16,9 @@
 
 ```shell
 pip install -r requirements.txt
-pip install -e polyffusion/chord_extractor
 pip install -e polyffusion
+pip install -e polyffusion/chord_extractor
+pip isntall -e polyffusion/mir_eval
 ```
 
 ## Some Clarifications
