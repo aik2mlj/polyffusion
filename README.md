@@ -74,20 +74,20 @@ Examples:
 
 ```shell
 # unconditional generation of length 10x8 bars
-python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=0. --length=10
+python polyffusion/inference_sdf.py --chkpt_path=/path/to/checkpoint --uncond_scale=0. --length=10
 
 # conditional generation using DDIM sampler (default guidance scale = 1)
-python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --ddim --ddim_steps=80 --ddim_eta=0.0 --ddim_discretize=uniform
+python polyffusion/inference_sdf.py --chkpt_path=/path/to/checkpoint --ddim --ddim_steps=50 --ddim_eta=0.0 --ddim_discretize=uniform
 
 # conditional generation with guidance scale = 5, conditional chord progressions chosen from a song from POP909 validation set.
-python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=5.
+python polyffusion/inference_sdf.py --chkpt_path=/path/to/checkpoint --uncond_scale=5.
 
 # conditional iterative inpainting (i.e. autoregressive generation) (default guidance scale = 1)
-python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --autoreg
+python polyffusion/inference_sdf.py --chkpt_path=/path/to/checkpoint --autoreg
 
 # unconditional melody generation given accompaniment
-python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --uncond_scale=0. --inpaint_from_midi=/path/to/accompaniment.mid --inpaint_type=above
+python polyffusion/inference_sdf.py --chkpt_path=/path/to/checkpoint --uncond_scale=0. --inpaint_from_midi=/path/to/accompaniment.mid --inpaint_type=above
 
 # accompaniment generation given melody, conditioned on chord progressions of another midi file (default guidance scale = 1)
-python polyffusion/inference_sdf.py --model_dir=result/ldm_chd8bar --inpaint_from_midi=/path/to/melody.mid --inpaint_type=below --from_midi=/path/to/cond_midi.mid
+python polyffusion/inference_sdf.py --chkpt_path=/path/to/checkpoint --inpaint_from_midi=/path/to/melody.mid --inpaint_type=below --from_midi=/path/to/cond_midi.mid
 ```
