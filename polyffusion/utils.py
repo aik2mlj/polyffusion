@@ -1,7 +1,6 @@
 import pickle
 from collections import OrderedDict
 
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pretty_midi as pm
@@ -586,13 +585,13 @@ def get_blurry_image_2(img):
     # plt.imsave("exp/img/blurry.png", tensor)
 
 
-def get_blurry_image_cv2(img):
-    img = cv2.imread(img)
-    img = cv2.pyrDown(img)
-    img = cv2.pyrDown(img)
-    img = cv2.pyrUp(img)
-    img = cv2.pyrUp(img)
-    cv2.imwrite("exp/img/blurry.png", img)
+# def get_blurry_image_cv2(img):
+#     img = cv2.imread(img)
+#     img = cv2.pyrDown(img)
+#     img = cv2.pyrDown(img)
+#     img = cv2.pyrUp(img)
+#     img = cv2.pyrUp(img)
+#     cv2.imwrite("exp/img/blurry.png", img)
 
 
 if __name__ == "__main__":
