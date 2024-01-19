@@ -1,9 +1,11 @@
+import os
 import pickle
 from argparse import ArgumentParser
 from datetime import datetime
 from os.path import join
 
 import torch
+from omegaconf import OmegaConf
 from tqdm import tqdm
 
 from data.dataset import DataSampleNpz
@@ -12,7 +14,6 @@ from ddpm.unet import UNet
 from ddpm.utils import gather
 from dirs import *
 from models.model_ddpm import Polyffusion_DDPM
-from params.params_ddpm import params
 from utils import prmat2c_to_midi_file, show_image
 
 
@@ -201,7 +202,7 @@ def choose_song_from_val_dl():
     print(song_fn)
 
     song = DataSampleNpz(song_fn)
-    prmat, _ = song.get_whole_song_data()
+    _, _, _, prmat = song.get_whole_song_data()
     prmat_np = prmat.squeeze().cpu().numpy()
     prmat2c_to_midi_file(prmat_np, "exp/origin.mid")
     return song_fn, prmat, prmat
@@ -234,6 +235,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
+    params = OmegaConf.load("polyffusion/params/ddpm.yaml")
     config = Configs(params, args.model_dir, args.chkpt_name)
     for i in range(args.num_generate):
         config.predict(

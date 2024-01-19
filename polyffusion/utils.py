@@ -1,3 +1,5 @@
+import json
+import os
 import pickle
 from collections import OrderedDict
 
@@ -6,6 +8,7 @@ import numpy as np
 import pretty_midi as pm
 import torch
 import torchvision.transforms as T
+from omegaconf import OmegaConf
 from torch.distributions import Normal, kl_divergence
 from torch.nn.functional import interpolate
 
@@ -592,6 +595,20 @@ def get_blurry_image_2(img):
 #     img = cv2.pyrUp(img)
 #     img = cv2.pyrUp(img)
 #     cv2.imwrite("exp/img/blurry.png", img)
+
+
+def convert_json_to_yaml(params_path):
+    """Converts json to yaml, return yaml_path"""
+    if params_path.endswith(".json"):
+        print("Converting json to yaml...")
+        with open(params_path, "r") as params_file:
+            params = OmegaConf.create(json.load(params_file))
+        OmegaConf.save(params, params_path[:-5] + ".yaml")
+
+        if input("Delete old json file? (y/n)") == "y":
+            os.remove(params_path)
+        params_path = params_path[:-5] + ".yaml"
+    return params_path
 
 
 if __name__ == "__main__":

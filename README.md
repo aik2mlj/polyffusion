@@ -23,7 +23,7 @@ pip isntall -e polyffusion/mir_eval
 
 ## Some Clarifications
 
-- The abbreviation "sdf" means Stable Diffusion, and "ldm" means Latent Diffusion. Basically they are referring to the same thing.
+- The abbreviation "sdf" means Stable Diffusion, and "ldm" means Latent Diffusion. Basically they are referring to the same thing. However, we only borrow the cross-attention conditioning mechanism from Latent Diffusion, without utilizing its encoder and decoder. The latter is left for future experiments.
 - `prmat2c` in the code is the piano-roll image representation.
 
 ## Training
@@ -36,7 +36,7 @@ pip isntall -e polyffusion/mir_eval
 
 ### Modifications
 
-- You can modify the parameters in the corresponding `params_{}.py` files under `/polyffusion/params/`.
+- You can modify the parameters in the corresponding `*.yaml` files under `/polyffusion/params/`, or create your own.
 
 ### Commands
 
@@ -44,7 +44,7 @@ pip isntall -e polyffusion/mir_eval
 python polyffusion/main.py --model [model] --output_dir [output_dir]
 ```
 
-The models that can be selected (which make sense):
+The models can be selected from `/polyffusion/params/[model].yaml`. Here are some cases:
 
 - `sdf_chd8bar`: conditioned on latent chord representations encoded by a pre-trained chord encoder.
 - `sdf_txt`: conditioned on latent texture representations encoded by a pre-trained texture encoder.

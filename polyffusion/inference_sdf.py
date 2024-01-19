@@ -13,7 +13,6 @@ For a simpler DDPM implementation refer to our [DDPM implementation](../../ddpm/
 We use same notations for $\alpha_t$, $\beta_t$ schedules, etc.
 """
 
-import json
 import os
 import pickle
 import random
@@ -25,6 +24,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+from omegaconf import OmegaConf
 
 from data.datasample import DataSample
 from data.dataset import DataSampleNpz
@@ -33,7 +33,6 @@ from data.midi_to_data import get_data_for_single_midi
 from dirs import *
 from lightning_learner import LightningLearner
 from models.model_sdf import Polyffusion_SDF
-from params import AttrDict
 from polydis_aftertouch import PolydisAftertouch
 from sampler_ddim import DDIMSampler
 from sampler_sdf import SDFSampler
@@ -42,6 +41,7 @@ from stable_diffusion.model.unet import UNetModel
 from stable_diffusion.sampler import DiffusionSampler
 from utils import (
     chd_to_midi_file,
+    convert_json_to_yaml,
     estx_to_midi_file,
     get_blurry_image,
     load_pretrained_chd_enc_dec,
@@ -404,7 +404,7 @@ if __name__ == "__main__":
     parser.add_argument("--chkpt_path", help="the path of the checkpoint to be used")
     parser.add_argument(
         "--custom_params_path",
-        help="the path of custom parameters, default load from 'params.json' in the parent folder of the checkpoint",
+        help="the path of custom parameters, default load from 'params.yaml/json' in the parent folder of the checkpoint",
     )
     parser.add_argument(
         "--uncond_scale",
@@ -517,12 +517,19 @@ if __name__ == "__main__":
 
     # params ready
     if args.custom_params_path is None:
-        params_path = f"{Path(args.chkpt_path).parent.parent}/params.json"
+        model_path = Path(args.chkpt_path).parent.parent
+        if os.path.exists(f"{model_path}/params.yaml"):
+            params_path = f"{model_path}/params.yaml"
+        elif os.path.exists(f"{model_path}/params.json"):
+            params_path = f"{model_path}/params.json"
+        else:
+            raise FileNotFoundError(
+                f"params.yaml or params.json not found in {model_path}, please specify custom_params_path then."
+            )
     else:
         params_path = args.custom_params_path
-    with open(params_path, "r") as params_file:
-        params = json.load(params_file)
-    params = AttrDict(params)
+    params_path = convert_json_to_yaml(params_path)
+    params = OmegaConf.load(params_path)
     model_label = params.model_name
     print(f"model_label: {model_label}")
 

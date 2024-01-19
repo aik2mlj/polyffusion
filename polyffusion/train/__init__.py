@@ -1,19 +1,18 @@
-import json
 import os
 from datetime import datetime
-from shutil import copy2
 from pathlib import Path
+from shutil import copy2
 
 import torch
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
+from omegaconf import OmegaConf
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from learner import PolyffusionLearner
 from lightning_learner import LightningLearner
-from params import AttrDict
+from utils import convert_json_to_yaml
 
 
 class TrainConfig:
@@ -48,40 +47,40 @@ class TrainConfig:
         os.makedirs(self.log_dir, exist_ok=True)
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
-        # json dump
+        # json to yaml (compatibility)
         if os.path.exists(f"{output_dir}/params.json"):
-            with open(f"{output_dir}/params.json", "r+") as params_file:
-                old_params = AttrDict(json.load(params_file))
+            convert_json_to_yaml(f"{output_dir}/params.json")
 
-                # The "weights" attribute is a tuple in AttrDict, but saved as a list. To compare these two, we make them both tuples:
-                if "weights" in old_params:
-                    old_params["weights"] = tuple(old_params["weights"])
+        if os.path.exists(f"{output_dir}/params.yaml"):
+            old_params = OmegaConf.load(f"{output_dir}/params.yaml")
 
-                if old_params != self.params:
-                    print("New params differ, using new params could break things.")
-                    if (
-                        input(
-                            "Do you want to keep the old params file (y/n)? The model will still be trained on new params regardless."
-                        )
-                        == "y"
-                    ):
-                        time_stamp = datetime.now().strftime("%y-%m-%d_%H%M%S")
-                        copy2(
-                            f"{output_dir}/params.json",
-                            f"{output_dir}/old_params_{time_stamp}.json",
-                        )
-                    params_file.seek(0)
-                    json.dump(self.params, params_file)
-                    params_file.truncate()
-        else:
-            json.dump(self.params, open(f"{output_dir}/params.json", "w"))
+            # The "weights" attribute is a tuple in AttrDict, but saved as a list. To compare these two, we make them both tuples:
+            # if "weights" in old_params:
+            #     old_params["weights"] = tuple(old_params["weights"])
+
+            if old_params != self.params:
+                print("New params differ, using new params could break things.")
+                if (
+                    input(
+                        "Do you want to keep the old params file (y/n)? The model will be trained on new params regardless."
+                    )
+                    == "y"
+                ):
+                    time_stamp = datetime.now().strftime("%y-%m-%d_%H%M%S")
+                    copy2(
+                        f"{output_dir}/params.yaml",
+                        f"{output_dir}/old_params_{time_stamp}.yaml",
+                    )
+                    print(f"Old params saved as old_params_{time_stamp}.yaml")
+        # save params
+        OmegaConf.save(self.params, f"{output_dir}/params.yaml")
 
     def train(self):
         total_parameters = sum(
             p.numel() for p in self.model.parameters() if p.requires_grad
         )
         print(f"Total parameters: {total_parameters}")
-        print(json.dumps(self.params, sort_keys=True, indent=4))
+        print(OmegaConf.to_yaml(self.params))
 
         checkpoint_callback = ModelCheckpoint(
             dirpath=self.checkpoint_dir,

@@ -1,12 +1,12 @@
-import json
 import os
 from typing import Optional
 
 import torch
 import torch.nn as nn
+import wandb
+from omegaconf import OmegaConf
 from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
-import wandb
 
 from dirs import *
 from utils import nested_map
@@ -43,10 +43,9 @@ class PolyffusionLearner:
             os.makedirs(self.output_dir)
             os.makedirs(self.log_dir)
             os.makedirs(self.checkpoint_dir)
-            with open(f"{output_dir}/params.json", "w") as params_file:
-                json.dump(self.params, params_file)
+            OmegaConf.save(self.params, f"{output_dir}/params.yaml")
 
-        print(json.dumps(self.params, sort_keys=True, indent=4))
+        print(OmegaConf.to_yaml(self.params))
         wandb.init(project=f"Polyff-{output_dir}".replace("/", "-"), config=params)
 
     def _write_summary(self, losses: dict, scheduled_params: Optional[dict], type):

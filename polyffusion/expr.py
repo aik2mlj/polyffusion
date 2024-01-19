@@ -1,8 +1,9 @@
+from omegaconf import OmegaConf
 from tqdm import tqdm
 
 from data.dataloader import get_val_dataloader
 from inference_sdf import *
-from utils import check_prmat2c_integrity, nested_map
+from utils import check_prmat2c_integrity, nested_map, convert_json_to_yaml
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -156,9 +157,9 @@ if __name__ == "__main__":
         random.seed(SEED)
 
     # params ready
-    with open(f"{args.model_dir}/params.json", "r") as params_file:
-        params = json.load(params_file)
-    params = AttrDict(params)
+    if os.path.exists(f"{args.model_dir}/params.json"):
+        convert_json_to_yaml(f"{args.model_dir}/params.json")
+    params = OmegaConf.load(f"{args.model_dir}/params.yaml")
 
     # model ready
     autoencoder = None

@@ -29,7 +29,7 @@ if __name__ == "__main__":
     if args.pop909_use_track is not None:
         use_track = [int(x) for x in args.pop909_use_track.split(",")]
 
-    params = OmegaConf.load(f"params/{args.model}.yaml")
+    params = OmegaConf.load(f"polyffusion/params/{args.model}.yaml")
 
     if args.model.startswith("sdf"):
         use_musicalion = "musicalion" in args.model
