@@ -37,7 +37,7 @@ class TrainConfig:
         else:
             output_dir = f"{output_dir}/{datetime.now().strftime('%y-%m-%d_%H%M%S')}"
             print(f"Creating new log folder as {output_dir}")
-            os.makedirs(output_dir)
+            os.makedirs(output_dir, exist_ok=True)
 
         self.output_dir = output_dir
         self.log_dir = f"{output_dir}/logs"
