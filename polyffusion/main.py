@@ -20,14 +20,14 @@ if __name__ == "__main__":
         "--data_dir", default=None, help="directory of custom training data, in npzs"
     )
     parser.add_argument(
-        "--pop909_use_track", help="which tracks to use for pop909 training"
+        "--pop909_use_track",
+        default="0,1,2",
+        help="which tracks to use for pop909 (default dataset) training. (0: melody, 1: bridge, 2: piano accompaniment)",
     )
     parser.add_argument("--model", help="which model to train (autoencoder, ldm, ddpm)")
     args = parser.parse_args()
 
-    use_track = [0, 1, 2]
-    if args.pop909_use_track is not None:
-        use_track = [int(x) for x in args.pop909_use_track.split(",")]
+    use_track = [int(x) for x in args.pop909_use_track.split(",")]
 
     params = OmegaConf.load(f"polyffusion/params/{args.model}.yaml")
 

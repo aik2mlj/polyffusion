@@ -124,7 +124,10 @@ class LDM_TrainConfig(TrainConfig):
         else:
             if data_dir is None:
                 self.train_dl, self.val_dl = get_train_val_dataloaders(
-                    params.batch_size, params.num_workers, params.pin_memory
+                    params.batch_size,
+                    params.num_workers,
+                    params.pin_memory,
+                    use_track=use_track,
                 )
             else:
                 self.train_dl, self.val_dl = get_custom_train_val_dataloaders(

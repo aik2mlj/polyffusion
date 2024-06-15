@@ -73,7 +73,6 @@ def get_custom_train_val_dataloaders(
     pin_memory=False,
     debug=False,
     train_ratio=0.9,
-    **kwargs,
 ):
     all_data = next(os.walk(data_dir))[2]
     train_num = int(len(all_data) * train_ratio)
@@ -104,7 +103,7 @@ def get_custom_train_val_dataloaders(
         pin_memory=pin_memory,
     )
     print(
-        f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, train_segments={len(train_dataset)}, val_segments={len(val_dataset)} {kwargs}"
+        f"Dataloader ready: batch_size={batch_size}, num_workers={num_workers}, pin_memory={pin_memory}, train_segments={len(train_dataset)}, val_segments={len(val_dataset)}"
     )
     return train_dl, val_dl
 

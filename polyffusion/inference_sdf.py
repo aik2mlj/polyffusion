@@ -440,7 +440,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--inpaint_pop909_use_track",
-        help="which tracks to use as original song for inpainting (default: 0,1,2)",
+        default="0,1,2",
+        help="which tracks to use as original song for inpainting (0: melody, 1: bridge, 2: piano accompaniment)",
     )
     parser.add_argument(
         "--inpaint_type", help="inpaint a song, type: {remaining, below, above, bars}"
@@ -578,11 +579,9 @@ if __name__ == "__main__":
                     "inpaint"
                 )  # here chd is None
             elif args.inpaint_from_dataset == "pop909":
-                use_track_inp = [0, 1, 2]
-                if args.inpaint_pop909_use_track is not None:
-                    use_track_inp = [
-                        int(x) for x in args.inpaint_pop909_use_track.split(",")
-                    ]
+                use_track_inp = [
+                    int(x) for x in args.inpaint_pop909_use_track.split(",")
+                ]
                 prmat2c_inp, _, _, _, song_fn_inp = choose_song_from_val_dl(
                     "inpaint", use_track_inp
                 )
