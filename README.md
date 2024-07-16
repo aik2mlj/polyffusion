@@ -26,13 +26,13 @@ pip isntall -e polyffusion/mir_eval
 - The abbreviation "sdf" means Stable Diffusion, and "ldm" means Latent Diffusion. Basically they are referring to the same thing. However, we only borrow the cross-attention conditioning mechanism from Latent Diffusion, without utilizing its encoder and decoder. The latter is left for future experiments.
 - `prmat2c` in the code is the piano-roll image representation.
 
-## Training
-
-### Preparations
+## Preparations
 
 - The extracted features of the dataset POP909 can be accessed [here](https://yukisaki-my.sharepoint.com/:u:/g/personal/aik2_yukisaki_io/EdUovlRZvExJrGatAR8BlTsBDC8udJiuhnIimPuD2PQ3FQ?e=WwD7Dl). Please put it under `/data/` after extraction.
 
 - The needed pre-trained models for training can be accessed [here](https://yukisaki-my.sharepoint.com/:u:/g/personal/aik2_yukisaki_io/Eca406YwV1tMgwHdoepC7G8B5l-4GRBGv7TzrI9OOg3eIA?e=uecJdU). Please put them under `/pretrained/` after extraction.
+
+## Training
 
 ### Modifications
 
@@ -58,7 +58,7 @@ Examples:
 python polyffusion/main.py --model sdf_chd8bar --output_dir result/sdf_chd8bar
 ```
 
-## Trained Checkpoints
+### Trained Checkpoints
 
 If you'd like to test our trained checkpoints, please access the folder [here](https://yukisaki-my.sharepoint.com/:f:/g/personal/aik2_yukisaki_io/EjG0IB8Xb_1CoVfYCmNUB-ABMLVSRqJST4VTrYJxjJFdnw?e=OqmZpp). We suggest to put them under `/result/` after extraction for inference.
 
